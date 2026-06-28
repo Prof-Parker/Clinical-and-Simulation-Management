@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REGN 15P Clinical & Simulation Tracker</title>
+    <link rel="stylesheet" href="css/app.css">
+    <link rel="stylesheet" href="css/print.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <div class="sticky-top no-print">
+            <header class="header-row">
+                <div class="header-brand">
+                    <h1 class="header-title">Clinical & Simulation Management</h1>
+                    <p class="section-sub header-tagline">REGN 15P — Cohort Scheduling, Requirement Tracking, and Resource Allocation</p>
+                    <span id="fileStatus" class="file-status">Loading...</span>
+                </div>
+                <div class="semester-display-wrap">
+                    <div id="semesterDisplay" class="semester-display" aria-live="polite">
+                        <div class="semester-picker" id="semesterPicker">
+                            <button type="button" id="semesterPickerBtn" class="semester-picker-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Select semester">
+                                <span id="semesterPickerLabel" class="semester-picker-label"></span>
+                                <svg class="semester-picker-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <path stroke-linecap="round" d="M6 9l6 6 6-6"/>
+                                </svg>
+                            </button>
+                            <ul id="semesterPickerMenu" class="semester-picker-menu hidden" role="listbox"></ul>
+                        </div>
+                    </div>
+                    <button id="addSemesterBtn" class="btn btn-sm semester-add-btn" type="button" title="Add semester">+</button>
+                </div>
+                <div class="menu-wrap">
+                    <button id="menuToggle" class="btn btn-icon" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="menuDropdown">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/>
+                        </svg>
+                    </button>
+                    <div id="menuDropdown" class="menu-dropdown hidden" role="menu">
+                        <button id="darkModeToggle" class="menu-item" type="button" role="menuitem">Dark / Light Mode</button>
+                        <button id="openFileBtn" class="menu-item" type="button" role="menuitem">Open File</button>
+                        <button id="newFileBtn" class="menu-item" type="button" role="menuitem">New File</button>
+                        <button id="importBtn" class="menu-item" type="button" role="menuitem">Import JSON</button>
+                        <button id="exportBtn" class="menu-item" type="button" role="menuitem">Export JSON</button>
+                        <button id="saveBtn" class="menu-item menu-item-primary" type="button" role="menuitem">Save</button>
+                        <button id="openConfigBtn" class="menu-item" type="button" role="menuitem">Configure</button>
+                    </div>
+                </div>
+                <input type="file" id="importFileInput" accept=".json,application/json" class="hidden">
+            </header>
+
+            <nav class="nav-tabs" aria-label="Main navigation">
+                <button class="nav-tab active" data-tab="dashboard" type="button">Dashboard</button>
+                <button class="nav-tab" data-tab="student" type="button">Student View</button>
+                <button class="nav-tab" data-tab="roles" type="button">Simulation Roles</button>
+                <button class="nav-tab" data-tab="makeup" type="button">Makeup Finder</button>
+                <button class="nav-tab" data-tab="setup" type="button">Setup</button>
+            </nav>
+        </div>
+
+        <!-- DASHBOARD -->
+        <div id="view-dashboard" class="view-panel active">
+            <div id="conflictsPanel" class="conflicts-panel hidden no-print"></div>
+
+            <details class="card no-print dashboard-panel-details" open>
+                <summary class="dashboard-panel-summary">
+                    <div class="dashboard-panel-summary-text">
+                        <h3 class="section-title" style="margin:0">Simulation Groups &amp; Progression</h3>
+                        <p class="section-sub" style="margin:0.35rem 0 0">Track simulation assignments (Sim 1–5) by student.</p>
+                    </div>
+                    <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
+                </summary>
+                <div class="dashboard-panel-body">
+                    <div class="custom-scrollbar">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="sticky-col">Student</th>
+                                    <th>Clinical</th>
+                                    <th>Sim Group</th>
+                                    <th style="text-align:center">Sim 1</th>
+                                    <th style="text-align:center">Sim 2</th>
+                                    <th style="text-align:center">Sim 3</th>
+                                    <th style="text-align:center">Sim 4</th>
+                                    <th style="text-align:center">Sim 5</th>
+                                </tr>
+                            </thead>
+                            <tbody id="simTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </details>
+
+            <details class="card no-print dashboard-panel-details" open>
+                <summary class="dashboard-panel-summary">
+                    <div class="dashboard-panel-summary-text">
+                        <h3 class="section-title" style="margin:0">Master Interactive Schedule</h3>
+                        <p class="section-sub" style="margin:0.35rem 0 0">Full 18-week semester. Tap a cell to edit.</p>
+                    </div>
+                    <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
+                </summary>
+                <div class="dashboard-panel-body">
+                    <div class="legend dashboard-panel-legend">
+                        <span class="legend-item"><span class="dot dot-clin"></span> Clinical</span>
+                        <span class="legend-item"><span class="dot dot-sim"></span> Simulation</span>
+                        <span class="legend-item"><span class="dot dot-holiday"></span> Holiday</span>
+                    </div>
+                    <div class="custom-scrollbar">
+                        <table class="data-table">
+                            <thead><tr id="scheduleHeadRow"></tr></thead>
+                            <tbody id="scheduleBody"></tbody>
+                            <tfoot>
+                                <tr id="occupancyFooterSim">
+                                    <td colspan="2" class="sticky-col">Peak sim session</td>
+                                </tr>
+                                <tr id="occupancyFooterClin">
+                                    <td colspan="2" class="sticky-col">Students in clin</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </details>
+
+            <section class="grid-2 no-print">
+                <details class="card dashboard-panel-details" open>
+                    <summary class="dashboard-panel-summary">
+                        <div class="dashboard-panel-summary-text">
+                            <h3 class="section-title" style="margin:0">Sim Center Load</h3>
+                            <p class="section-sub" style="margin:0.35rem 0 0">Peak students per week (max per session configurable).</p>
+                        </div>
+                        <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
+                    </summary>
+                    <div class="dashboard-panel-body">
+                        <div class="chart-container"><canvas id="loadChart"></canvas></div>
+                    </div>
+                </details>
+                <details class="card dashboard-panel-details" open>
+                    <summary class="dashboard-panel-summary">
+                        <div class="dashboard-panel-summary-text">
+                            <h3 class="section-title" style="margin:0">Weekly Simulation Rosters</h3>
+                        </div>
+                        <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
+                    </summary>
+                    <div class="dashboard-panel-body">
+                        <div class="dashboard-panel-week-filter">
+                            <label for="weekFilter">Week</label>
+                            <select id="weekFilter"></select>
+                        </div>
+                        <div class="sim-roster-grid">
+                            <div class="sim-day-card">
+                                <div class="sim-day-header"><span>Monday</span><span id="monCount">0</span></div>
+                                <ul id="monSimList" class="sim-day-list"></ul>
+                                <p id="monEmpty" class="section-sub hidden" style="padding:1rem;text-align:center">No Monday sims.</p>
+                            </div>
+                            <div class="sim-day-card">
+                                <div class="sim-day-header"><span>Tuesday</span><span id="tueCount">0</span></div>
+                                <ul id="tueSimList" class="sim-day-list"></ul>
+                                <p id="tueEmpty" class="section-sub hidden" style="padding:1rem;text-align:center">No Tuesday sims.</p>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+            </section>
+
+            <details class="card no-print dashboard-panel-details dashboard-summary-details">
+                <summary class="dashboard-panel-summary dashboard-summary-summary">
+                    <div class="dashboard-summary-summary-text">
+                        <h3 class="section-title" style="margin:0">Requirement Tracking Summary</h3>
+                        <p class="section-sub" style="margin:0.35rem 0 0">Validation of <span id="reqClinLabel">10</span> Clinical Days &amp; <span id="reqSimLabel">5</span> Simulations</p>
+                    </div>
+                    <span class="dashboard-panel-chevron dashboard-summary-chevron" aria-hidden="true">▼</span>
+                </summary>
+                <div class="dashboard-summary-body">
+                    <div class="filters dashboard-summary-filters">
+                        <select id="groupFilter">
+                            <option value="all">All Clinical Groups</option>
+                        </select>
+                        <select id="simGroupFilter">
+                            <option value="all">All Sim Groups</option>
+                        </select>
+                        <select id="sectionFilter">
+                            <option value="all">All Sections</option>
+                        </select>
+                        <input type="text" id="studentSearch" placeholder="Search student...">
+                    </div>
+                    <div class="custom-scrollbar">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="sticky-col">Student</th>
+                                    <th>Group</th>
+                                    <th>Section</th>
+                                    <th style="text-align:center">Clinicals</th>
+                                    <th style="text-align:center">Sims</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rosterBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <!-- STUDENT VIEW -->
+        <div id="view-student" class="view-panel">
+            <section class="card no-print" style="padding:1.25rem;margin-bottom:1rem">
+                <div class="filters">
+                    <select id="studentViewSelect"><option value="">Select student...</option></select>
+                    <label class="filter-check" for="showMarkupToggle"><input type="checkbox" id="showMarkupToggle"> Show missed / makeup markup</label>
+                    <button id="printStudentBtn" class="btn btn-primary" type="button">Print Calendar</button>
+                </div>
+            </section>
+            <div id="studentCalendarPrint"></div>
+        </div>
+
+        <!-- SIMULATION ROLES -->
+        <div id="view-roles" class="view-panel">
+            <section class="card" style="padding:1.25rem">
+                <div class="filters" style="margin-bottom:1rem">
+                    <select id="roleSimSelect">
+                        <option value="1">Simulation 1</option>
+                        <option value="2">Simulation 2</option>
+                        <option value="3">Simulation 3</option>
+                        <option value="4">Simulation 4</option>
+                        <option value="5">Simulation 5</option>
+                    </select>
+                    <select id="roleGroupSelect">
+                        <option value="MonA">Monday — Week A</option>
+                        <option value="TueA">Tuesday — Week A</option>
+                        <option value="MonB">Monday — Week B</option>
+                        <option value="TueB">Tuesday — Week B</option>
+                    </select>
+                </div>
+                <div class="custom-scrollbar">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th class="sticky-col" rowspan="2">Student</th>
+                                <th colspan="4" style="text-align:center">Cumulative</th>
+                                <th colspan="4" style="text-align:center">Assign Roles</th>
+                                <th colspan="2" style="text-align:center">Performance Flags</th>
+                            </tr>
+                            <tr>
+                                <th>Pri</th><th>Sec</th><th>Eva</th><th>Scr</th>
+                                <th>Iter 1</th><th>Iter 2</th><th>Iter 3</th><th>Iter 4</th>
+                                <th>Primary</th><th>Secondary</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roleTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- MAKEUP FINDER -->
+        <div id="view-makeup" class="view-panel">
+            <section class="card" style="padding:1.25rem">
+                <h3 class="section-title">Makeup Day Finder</h3>
+                <p class="section-sub">Search for valid clinical or simulation makeup slots. Choose which simulation (1–5) to makeup. As a last resort, sim may be scheduled on a clinical week — the student misses that clinical and receives a Week 18 makeup clinical. Overload (9th student) is makeup-only when a session has 8.</p>
+                <div class="filters">
+                    <select id="makeupStudentSelect"><option value="">Select student...</option></select>
+                    <select id="makeupTypeSelect">
+                        <option value="clinical">Missed Clinical</option>
+                        <option value="sim">Missed Simulation</option>
+                    </select>
+                    <select id="makeupSimSelect" class="hidden">
+                        <option value="1">Simulation 1</option>
+                        <option value="2">Simulation 2</option>
+                        <option value="3">Simulation 3</option>
+                        <option value="4">Simulation 4</option>
+                        <option value="5">Simulation 5</option>
+                    </select>
+                </div>
+                <div id="makeupResults"></div>
+            </section>
+        </div>
+
+        <!-- SETUP -->
+        <div id="view-setup" class="view-panel">
+            <section class="card" style="padding:1.25rem;margin-bottom:1rem">
+                <h3 class="section-title">Semester</h3>
+                <div class="grid-2 setup-semester-fields">
+                    <label>Season
+                        <select id="semesterSeasonSelect">
+                            <option value="spring">Spring</option>
+                            <option value="fall">Fall</option>
+                        </select>
+                    </label>
+                    <label>Year<select id="semesterYearSelect"></select></label>
+                    <label class="setup-start-date-label">Start date<input type="date" id="semesterStartDate" class="date-input"></label>
+                </div>
+                <div class="setup-actions">
+                    <button id="saveSetupBtn" class="btn btn-primary" type="button">Save Setup</button>
+                    <button id="regenerateSchedulesBtn" class="btn" type="button">Regenerate Schedules</button>
+                    <button id="copyForwardBtn" class="btn" type="button">Copy Forward Semester</button>
+                    <button id="finalizeSemesterBtn" class="btn" type="button">Finalize Semester</button>
+                </div>
+            </section>
+            <div class="setup-config-grid">
+                <section class="card setup-sections-card" style="padding:1.25rem">
+                    <div class="setup-config-card-head">
+                        <h3 class="section-title" style="margin:0">Registrar Sections</h3>
+                        <button id="addSectionBtn" class="btn btn-sm" type="button">Add</button>
+                    </div>
+                    <p class="section-sub setup-sections-hint">Registrar section codes (e.g. F6016).</p>
+                    <div id="setupSections"></div>
+                </section>
+                <section class="card setup-facilities-card" style="padding:1.25rem">
+                    <div class="setup-config-card-head">
+                        <h3 class="section-title" style="margin:0">Facilities</h3>
+                        <button id="addFacilityBtn" class="btn btn-sm" type="button">Add</button>
+                    </div>
+                    <div id="setupFacilities" style="margin-top:0.75rem"></div>
+                </section>
+                <section class="card setup-faculty-card" style="padding:1.25rem">
+                    <h3 class="section-title" style="margin:0 0 0.75rem">Clinical Faculty</h3>
+                    <div id="setupFaculty"></div>
+                </section>
+                <section class="card setup-holidays-card" style="padding:1.25rem">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <h3 class="section-title" style="margin:0">Holidays &amp; Breaks</h3>
+                        <button id="addHolidayBtn" class="btn btn-sm" type="button">Add</button>
+                    </div>
+                    <div id="setupHolidays" style="margin-top:1rem"></div>
+                </section>
+            </div>
+            <section class="card setup-roster-full" style="padding:1.25rem">
+                <div class="setup-roster-header">
+                    <div>
+                        <h3 class="section-title" style="margin:0">Student Roster</h3>
+                        <p class="section-sub" style="margin:0.35rem 0 0">Drag students between cohorts. Each row is one student.</p>
+                    </div>
+                    <button id="rebalanceStudentsBtn" class="btn btn-sm" type="button" title="Evenly distribute students across clinical groups">Rebalance students</button>
+                </div>
+                <div id="setupRoster"></div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Config Modal -->
+    <div id="configModal" class="modal-overlay no-print">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 style="margin:0">Scheduling Configuration</h2>
+                    <p id="configModalSubtitle" class="section-sub" style="margin:0.35rem 0 0"></p>
+                </div>
+                <button id="configModalClose" class="btn btn-sm" type="button">&times;</button>
+            </div>
+            <div class="modal-body" id="configModalBody"></div>
+            <div class="modal-footer config-modal-footer">
+                <div class="config-modal-footer-left">
+                    <button id="configResetDefaultsBtn" class="btn btn-sm" type="button">Use program defaults</button>
+                    <button id="configApplyFutureBtn" class="btn btn-sm" type="button">Apply to future semesters</button>
+                </div>
+                <div class="config-modal-footer-right">
+                    <button id="configModalCancel" class="btn" type="button">Cancel</button>
+                    <button id="configModalSave" class="btn btn-primary" type="button">Save for this semester</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cell Edit Dialog -->
+    <div id="dialogModal" class="modal-overlay no-print">
+        <div class="modal-content" style="max-width:28rem">
+            <div class="modal-header">
+                <h2 id="dialogTitle" style="margin:0">Edit</h2>
+            </div>
+            <div class="modal-body" id="dialogBody"></div>
+            <div class="modal-footer">
+                <button id="dialogCancel" class="btn" type="button">Cancel</button>
+                <button id="dialogSave" class="btn btn-primary" type="button">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/state.js"></script>
+    <script src="js/data-model.js"></script>
+    <script src="js/calendar-engine.js"></script>
+    <script src="js/scheduler.js"></script>
+    <script src="js/validator.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/ui/dashboard.js"></script>
+    <script src="js/ui/master-calendar.js"></script>
+    <script src="js/ui/student-view.js"></script>
+    <script src="js/ui/sim-roles.js"></script>
+    <script src="js/ui/makeup-finder.js"></script>
+    <script src="js/ui/setup.js"></script>
+    <script src="js/ui/date-inputs.js"></script>
+    <script src="js/ui/config-modal.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

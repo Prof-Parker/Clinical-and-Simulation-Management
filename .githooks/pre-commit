@@ -1,0 +1,37 @@
+#!/bin/sh
+# Block commits that may contain student or semester data.
+
+blocked=0
+
+for file in $(git diff --cached --name-only --diff-filter=ACM); do
+  case "$file" in
+    package.json|package-lock.json)
+      continue
+      ;;
+    *.json)
+      echo "pre-commit: blocked — JSON data files must not be committed: $file"
+      blocked=1
+      ;;
+  esac
+
+  case "$file" in
+    *tracker*|*backup*|*semester*)
+      case "$file" in
+        *.js|*.css|*.html|*.md)
+          ;;
+        *)
+          echo "pre-commit: blocked — suspicious data filename: $file"
+          blocked=1
+          ;;
+      esac
+      ;;
+  esac
+done
+
+if [ "$blocked" -ne 0 ]; then
+  echo ""
+  echo "This repository stores source code only. Export .json semester files belong in OneDrive, not Git."
+  exit 1
+fi
+
+exit 0

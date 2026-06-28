@@ -1,0 +1,20 @@
+# --- Student / semester data (NEVER commit) ---
+*.json
+!package.json
+!package-lock.json
+
+# Common export / backup names
+regn-tracker.json
+*-tracker.json
+*semester*.json
+*backup*.json
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+
+# Local env / secrets (future-proof)
+.env
+.env.*
