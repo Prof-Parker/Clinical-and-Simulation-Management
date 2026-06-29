@@ -1,0 +1,46 @@
+---
+description: Verify no student PII before any git commit or push (README data policy)
+alwaysApply: true
+---
+
+# No Student Data in Git — Pre-Commit Verification
+
+**APPLY BEFORE CONFIRMING ANY COMMIT OR PUSH.**
+
+This repository stores **source code only**. Real semester data must never reach GitHub.
+
+## Required checks (all must pass)
+
+Before `git add`, `git commit`, or `git push`, run verification and report results:
+
+1. **No JSON data files staged or untracked for commit**
+   - Run `git status` and inspect staged/unstaged files.
+   - Reject commit if any `.json` file would be included (except `package.json` / `package-lock.json` if ever added).
+   - Also scan the project root for `*tracker*.json`, `*backup*.json`, `*semester*.json`.
+
+2. **No exported semester files in the project folder**
+   - Do not commit copies of OneDrive exports dropped into this directory.
+   - `.gitignore` is a safety net, not permission to commit data files.
+
+3. **Source code uses placeholder student names only**
+   - Default/demo rosters in code must use `Student 1`, `Student 2`, … — not real names.
+   - Before commit, grep staged diff for suspicious roster patterns (real first/last names in string literals, `"students":` blobs, hard-coded name arrays).
+   - Faculty names in committed source should be empty placeholders unless explicitly approved as non-PII demo text.
+
+4. **No screenshots or notes with real names**
+   - Do not add images, markdown notes, or comments containing real student or faculty rosters.
+
+## If any check fails
+
+- **Do not commit or push.**
+- Tell the user which check failed and what to remove or unstaged.
+- Remind them: semester data belongs in OneDrive via Export JSON, not in this repo.
+
+## If all checks pass
+
+- Proceed with commit using Conventional Commits.
+- Ensure `.githooks/pre-commit` is enabled (`git config core.hooksPath .githooks`) so the hook blocks JSON at commit time as a second layer.
+
+## Reference
+
+See [README.md](../README.md) — Pre-push checklist and Data policy sections.
