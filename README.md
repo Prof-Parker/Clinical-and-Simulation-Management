@@ -99,10 +99,17 @@ js/                     Application logic and UI modules
 
 ## GitHub Pages deployment
 
-Pushes to `main` deploy automatically via [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml).
+Pushes to `main` deploy automatically via [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml). The workflow publishes the app to the **`gh-pages`** branch.
 
-First-time setup: Repository **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+### First-time setup (required once)
 
-## License / use
+1. Wait for the **Deploy GitHub Pages** workflow to finish on `main` (creates the `gh-pages` branch).
+2. Open **Repository Settings → Pages**.
+3. Under **Build and deployment → Source**, select **Deploy from a branch** (not GitHub Actions).
+4. Set **Branch:** `gh-pages` and **Folder:** `/ (root)`, then **Save**.
+
+Live URL: https://prof-parker.github.io/Clinical-and-Simulation-Management/
+
+If deployment fails, check the Actions tab for the workflow log.
 
 Internal academic use. See project maintainer for questions.
