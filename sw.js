@@ -1,5 +1,5 @@
 /* Clinical & Simulation Management — app shell service worker */
-var CACHE_NAME = 'clin-sim-v1';
+var CACHE_NAME = 'clin-sim-v2';
 
 var PRECACHE_URLS = [
   './',

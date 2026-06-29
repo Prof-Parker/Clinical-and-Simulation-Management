@@ -18,7 +18,9 @@ No Microsoft API is used — you manage `.json` files directly in OneDrive.
 1. Install the app: Safari → Share → **Add to Home Screen**
 2. Open the installed app
 3. Menu → **Open semester file…**
-4. In the file picker: **Browse** → **OneDrive** → select your semester `.json`
+4. Tap **Browse** (bottom of the picker) → **OneDrive** → navigate to your folder → select the `.json` file
+
+If the file does not appear, pull down to refresh the OneDrive folder, or open it once in the OneDrive app so it syncs to Files. The app no longer filters by file type on iPad so all files in the folder should be visible.
 
 ## iPad: save changes back to OneDrive
 

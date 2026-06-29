@@ -178,6 +178,22 @@ App.Storage = (function () {
     }).catch(function () { return null; });
   }
 
+  function isIOSDevice() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
+  function configureImportInput() {
+    var input = document.getElementById('importFileInput');
+    if (!input) return;
+    // iOS Files / OneDrive often mislabels .json MIME types; a strict accept filter hides them.
+    if (isIOSDevice()) {
+      input.removeAttribute('accept');
+    } else {
+      input.setAttribute('accept', '.json,application/json');
+    }
+  }
+
   function importFromFile(file) {
     return new Promise(function (resolve, reject) {
       var reader = new FileReader();
@@ -323,6 +339,8 @@ App.Storage = (function () {
     exportDownload: exportDownload,
     updateStatusUI: updateStatusUI,
     cacheData: cacheData,
-    shouldShowOnedriveBanner: shouldShowOnedriveBanner
+    shouldShowOnedriveBanner: shouldShowOnedriveBanner,
+    configureImportInput: configureImportInput,
+    isIOSDevice: isIOSDevice
   };
 })();

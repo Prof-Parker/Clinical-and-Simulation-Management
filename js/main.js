@@ -145,6 +145,7 @@ App.UI.toggleDarkMode = function () {
 };
 
 App.UI.init = function () {
+  if (App.Storage.configureImportInput) App.Storage.configureImportInput();
   App.UI.Dashboard.init();
   App.UI.MasterCalendar.init();
   App.UI.StudentView.init();
