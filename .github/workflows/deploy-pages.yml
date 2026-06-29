@@ -18,16 +18,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
-      - name: Prepare static site
+      - name: Build site folder
         run: |
-          rm -rf .github .cursor .githooks
-          find . -name '.git*' -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
+          mkdir -p _site
+          rsync -a \
+            --exclude .git \
+            --exclude .github \
+            --exclude .cursor \
+            --exclude .githooks \
+            --exclude _site \
+            ./ _site/
 
       - name: Deploy to gh-pages branch
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: .
+          token: ${{ secrets.GITHUB_TOKEN }}
+          folder: _site
           branch: gh-pages
           clean: true
           single-commit: true

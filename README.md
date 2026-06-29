@@ -103,10 +103,11 @@ Pushes to `main` deploy automatically via [`.github/workflows/deploy-pages.yml`]
 
 ### First-time setup (required once)
 
-1. Wait for the **Deploy GitHub Pages** workflow to finish on `main` (creates the `gh-pages` branch).
-2. Open **Repository Settings → Pages**.
-3. Under **Build and deployment → Source**, select **Deploy from a branch** (not GitHub Actions).
-4. Set **Branch:** `gh-pages` and **Folder:** `/ (root)`, then **Save**.
+1. In **Settings → Actions → General → Workflow permissions**, select **Read and write permissions**, then Save.
+2. Wait for the **Deploy GitHub Pages** workflow to finish on `main` (creates the `gh-pages` branch automatically — do not create it manually).
+3. Open **Repository Settings → Pages**.
+4. Under **Build and deployment → Source**, select **Deploy from a branch** (not GitHub Actions).
+5. Set **Branch:** `gh-pages` and **Folder:** `/ (root)`, then **Save**.
 
 Live URL: https://prof-parker.github.io/Clinical-and-Simulation-Management/
 
