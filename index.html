@@ -3,13 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="description" content="REGN 15P clinical and simulation scheduling, requirement tracking, and resource allocation.">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Clin &amp; Sim">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>REGN 15P Clinical & Simulation Tracker</title>
+    <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/icon-180.png">
+    <link rel="manifest" href="manifest.webmanifest">
     <link rel="stylesheet" href="css/app.css">
     <link rel="stylesheet" href="css/print.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="vendor/chart.umd.min.js"></script>
 </head>
 <body>
     <div class="app-container">
+        <div id="pwaInstallBanner" class="pwa-banner hidden no-print" role="region" aria-label="Install app">
+            <span>Install Clinical &amp; Simulation Management for quick access.</span>
+            <div class="pwa-banner-actions">
+                <button id="pwaInstallBtn" class="btn btn-sm btn-primary" type="button">Install</button>
+                <button id="pwaInstallDismiss" class="btn btn-sm" type="button" aria-label="Dismiss">Dismiss</button>
+            </div>
+        </div>
+        <div id="pwaIosInstallBanner" class="pwa-banner hidden no-print" role="region" aria-label="Add to Home Screen">
+            <span>On iPad: tap <strong>Share</strong> → <strong>Add to Home Screen</strong> to install this app.</span>
+            <button id="pwaIosInstallDismiss" class="btn btn-sm" type="button" aria-label="Dismiss">Dismiss</button>
+        </div>
+        <div id="pwaOnedriveBanner" class="pwa-banner pwa-banner-info hidden no-print" role="region" aria-label="Open semester file">
+            <span>Open your semester file from college OneDrive: Menu → <strong>Open semester file</strong>, or use Files → OneDrive.</span>
+            <div class="pwa-banner-actions">
+                <button id="pwaOnedriveImportBtn" class="btn btn-sm btn-primary" type="button">Open file</button>
+                <button id="pwaOnedriveDismiss" class="btn btn-sm" type="button" aria-label="Dismiss">Dismiss</button>
+            </div>
+        </div>
         <div class="sticky-top no-print">
             <header class="header-row">
                 <div class="header-brand">
@@ -39,10 +65,10 @@
                     </button>
                     <div id="menuDropdown" class="menu-dropdown hidden" role="menu">
                         <button id="darkModeToggle" class="menu-item" type="button" role="menuitem">Dark / Light Mode</button>
-                        <button id="openFileBtn" class="menu-item" type="button" role="menuitem">Open File</button>
-                        <button id="newFileBtn" class="menu-item" type="button" role="menuitem">New File</button>
-                        <button id="importBtn" class="menu-item" type="button" role="menuitem">Import JSON</button>
-                        <button id="exportBtn" class="menu-item" type="button" role="menuitem">Export JSON</button>
+                        <button id="openFileBtn" class="menu-item" type="button" role="menuitem">Connect OneDrive file</button>
+                        <button id="newFileBtn" class="menu-item" type="button" role="menuitem">New semester file</button>
+                        <button id="importBtn" class="menu-item" type="button" role="menuitem">Open semester file…</button>
+                        <button id="exportBtn" class="menu-item" type="button" role="menuitem">Export backup</button>
                         <button id="saveBtn" class="menu-item menu-item-primary" type="button" role="menuitem">Save</button>
                         <button id="openConfigBtn" class="menu-item" type="button" role="menuitem">Configure</button>
                     </div>
@@ -393,5 +419,6 @@
     <script src="js/ui/date-inputs.js"></script>
     <script src="js/ui/config-modal.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/pwa.js"></script>
 </body>
 </html>

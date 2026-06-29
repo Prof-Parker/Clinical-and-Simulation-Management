@@ -194,10 +194,12 @@ App.UI.init = function () {
       App.CalendarEngine.rebuildWeeks(sem);
       App.setFileRoot(fileRoot);
       App.state.fileName = file.name;
+      App.state.fileHandle = null;
       App.markClean();
+      App.Storage.cacheData(fileRoot);
       App.UI.Dashboard.populateFilters(sem);
       App.UI.refresh();
-    }).catch(function () { alert('Invalid JSON file.'); });
+    }).catch(function () { alert('Invalid semester file.'); });
     e.target.value = '';
   });
 
@@ -208,7 +210,11 @@ App.UI.init = function () {
 
   document.getElementById('saveBtn').addEventListener('click', function () {
     App.Storage.saveCurrent().then(function () {
-      alert('Saved.');
+      if (App.Storage.supportsFS()) {
+        alert('Saved to connected semester file.');
+      } else {
+        alert('Saved on this device. Export backup to OneDrive when finished.');
+      }
     });
     App.UI.closeMenu();
   });

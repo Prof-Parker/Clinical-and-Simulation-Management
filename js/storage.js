@@ -6,6 +6,7 @@ App.Storage = (function () {
   var STORE = 'handles';
   var CACHE_KEY = 'semesterData';
   var HANDLE_KEY = 'fileHandle';
+  var META_KEY = 'storageMeta';
 
   function supportsFS() {
     return typeof window.showOpenFilePicker === 'function';
@@ -44,6 +45,29 @@ App.Storage = (function () {
     });
   }
 
+  function getMeta() {
+    return idbGet(META_KEY).then(function (m) {
+      return m || { lastImportedFileName: '', lastSavedAt: '', hasLoadedData: false };
+    });
+  }
+
+  function setMeta(partial) {
+    return getMeta().then(function (meta) {
+      var next = Object.assign({}, meta, partial);
+      return idbSet(META_KEY, next).then(function () { return next; });
+    });
+  }
+
+  function formatSavedTime(iso) {
+    if (!iso) return '';
+    try {
+      var d = new Date(iso);
+      return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    } catch (e) {
+      return '';
+    }
+  }
+
   function serialize(fileRoot) {
     App.syncSemesterToFile();
     fileRoot.meta.lastModified = new Date().toISOString();
@@ -54,7 +78,10 @@ App.Storage = (function () {
   }
 
   function cacheData(fileRoot) {
-    return idbSet(CACHE_KEY, fileRoot);
+    var now = new Date().toISOString();
+    return idbSet(CACHE_KEY, fileRoot).then(function () {
+      return setMeta({ lastSavedAt: now, hasLoadedData: true });
+    });
   }
 
   function loadCache() {
@@ -71,15 +98,15 @@ App.Storage = (function () {
   function saveCurrent() {
     var fileRoot = App.getFileRoot();
     if (!fileRoot) return Promise.resolve();
-    cacheData(fileRoot);
-    if (App.state.fileHandle && supportsFS()) {
-      return writeToHandle(App.state.fileHandle, fileRoot).then(function () {
-        App.markClean();
-        updateStatusUI();
-      }).catch(function () { updateStatusUI(); });
-    }
-    updateStatusUI();
-    return Promise.resolve();
+    return cacheData(fileRoot).then(function () {
+      if (App.state.fileHandle && supportsFS()) {
+        return writeToHandle(App.state.fileHandle, fileRoot).then(function () {
+          App.markClean();
+          updateStatusUI();
+        }).catch(function () { updateStatusUI(); });
+      }
+      updateStatusUI();
+    });
   }
 
   function writeToHandle(handle, data) {
@@ -109,6 +136,10 @@ App.Storage = (function () {
       App.state.fileName = handle.name;
       return idbSet(HANDLE_KEY, handle).then(function () {
         return readFromHandle(handle);
+      }).then(function (fileRoot) {
+        return setMeta({ lastImportedFileName: handle.name, hasLoadedData: true }).then(function () {
+          return fileRoot;
+        });
       });
     });
   }
@@ -123,7 +154,11 @@ App.Storage = (function () {
       App.state.fileName = handle.name;
       return idbSet(HANDLE_KEY, handle).then(function () {
         var fileRoot = App.getFileRoot() || App.DataModel.createDefaultFile();
-        return writeToHandle(handle, fileRoot).then(function () { return fileRoot; });
+        return writeToHandle(handle, fileRoot).then(function () {
+          return setMeta({ lastImportedFileName: handle.name, hasLoadedData: true }).then(function () {
+            return fileRoot;
+          });
+        });
       });
     });
   }
@@ -149,11 +184,17 @@ App.Storage = (function () {
       reader.onload = function () {
         try {
           var data = App.DataModel.migrateFile(JSON.parse(reader.result));
+          App.state.fileHandle = null;
           resolve(data);
         } catch (e) { reject(e); }
       };
       reader.onerror = reject;
       reader.readAsText(file);
+    }).then(function (data) {
+      return setMeta({
+        lastImportedFileName: file.name,
+        hasLoadedData: true
+      }).then(function () { return data; });
     });
   }
 
@@ -169,32 +210,75 @@ App.Storage = (function () {
     cacheData(fileRoot);
     App.markClean();
     updateStatusUI();
+    if (!supportsFS()) {
+      alert('Save the downloaded file to college OneDrive (Files app → OneDrive) to back up your semester data.');
+    }
   }
 
   function updateStatusUI() {
     var el = document.getElementById('fileStatus');
     if (!el) return;
-    var dirty = App.state.dirty;
-    var name = App.state.fileName;
-    if (supportsFS() && App.state.fileHandle) {
-      el.textContent = dirty ? 'Unsaved changes — ' + (name || 'connected') : 'Connected: ' + (name || 'regn-tracker.json');
-      el.className = dirty ? 'file-status dirty' : 'file-status connected';
-    } else if (dirty) {
-      el.textContent = 'Unsaved — Export JSON to save (iPad/desktop)';
-      el.className = 'file-status dirty';
-    } else {
-      el.textContent = name ? 'Loaded: ' + name : 'Import JSON to begin';
-      el.className = 'file-status';
-    }
+
+    getMeta().then(function (meta) {
+      var dirty = App.state.dirty;
+      var name = App.state.fileName;
+      var savedLabel = formatSavedTime(meta.lastSavedAt);
+
+      if (supportsFS() && App.state.fileHandle) {
+        el.textContent = dirty
+          ? 'Unsaved — ' + (name || 'semester file')
+          : 'Connected to OneDrive: ' + (name || 'semester file') +
+            (savedLabel ? ' · saved ' + savedLabel : '');
+        el.className = dirty ? 'file-status dirty' : 'file-status connected';
+      } else if (dirty) {
+        el.textContent = 'Unsaved on this device — export backup to OneDrive' +
+          (name ? ' (' + name + ')' : '');
+        el.className = 'file-status dirty';
+      } else if (meta.hasLoadedData) {
+        el.textContent = 'Saved on this device' +
+          (name || meta.lastImportedFileName ? ': ' + (name || meta.lastImportedFileName) : '') +
+          (savedLabel ? ' · ' + savedLabel : '');
+        el.className = 'file-status connected';
+      } else {
+        el.textContent = 'Open a semester file from OneDrive to begin';
+        el.className = 'file-status';
+      }
+    });
+  }
+
+  function shouldShowOnedriveBanner() {
+    if (supportsFS()) return false;
+    return getMeta().then(function (meta) {
+      return !meta.hasLoadedData;
+    });
+  }
+
+  function initUnloadWarning() {
+    window.addEventListener('beforeunload', function (e) {
+      if (supportsFS() || !App.state.dirty) return;
+      e.preventDefault();
+      e.returnValue = '';
+    });
   }
 
   function init() {
+    initUnloadWarning();
+    var loadedFromFile = false;
     return reconnectHandle().then(function (fromHandle) {
-      if (fromHandle) return fromHandle;
+      if (fromHandle) {
+        loadedFromFile = true;
+        return setMeta({
+          hasLoadedData: true,
+          lastImportedFileName: App.state.fileName || ''
+        }).then(function () { return fromHandle; });
+      }
       return loadCache();
     }).then(function (raw) {
       if (!raw) {
         raw = App.DataModel.migrateFromLegacyLocalStorage();
+        if (raw) loadedFromFile = true;
+      } else {
+        loadedFromFile = true;
       }
       var fileRoot = raw ? App.DataModel.migrateFile(raw) : App.DataModel.createDefaultFile();
       var sem = fileRoot.semesters.find(function (s) {
@@ -206,7 +290,15 @@ App.Storage = (function () {
       }
       App.setFileRoot(fileRoot);
       App.markClean();
+      if (!loadedFromFile) {
+        return setMeta({ hasLoadedData: false, lastImportedFileName: '' }).then(function () {
+          updateStatusUI();
+          document.dispatchEvent(new CustomEvent('AppReady'));
+          return fileRoot;
+        });
+      }
       updateStatusUI();
+      document.dispatchEvent(new CustomEvent('AppReady'));
       return fileRoot;
     });
   }
@@ -230,6 +322,7 @@ App.Storage = (function () {
     importFromFile: importFromFile,
     exportDownload: exportDownload,
     updateStatusUI: updateStatusUI,
-    cacheData: cacheData
+    cacheData: cacheData,
+    shouldShowOnedriveBanner: shouldShowOnedriveBanner
   };
 })();
