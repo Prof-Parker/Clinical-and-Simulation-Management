@@ -132,6 +132,7 @@ App.ScheduleStatus = (function () {
       totalStudents: 0,
       incompleteCount: 0,
       incompleteStudents: [],
+      orientationConflicts: [],
       adjustments: emptyAdjustments(),
       blockingIssues: [],
       notes: []
@@ -143,6 +144,9 @@ App.ScheduleStatus = (function () {
 
     result.blockingIssues = App.Feasibility.checkBlocking(data).issues;
     result.notes = informationalNotes(data);
+    if (App.ClinicalSites && App.ClinicalSites.getSiteWeekPlanNotes) {
+      result.notes = result.notes.concat(App.ClinicalSites.getSiteWeekPlanNotes(data));
+    }
     result.generated = schedulesGenerated(data);
 
     if (result.generated) {
@@ -151,8 +155,13 @@ App.ScheduleStatus = (function () {
       result.adjustments = scanAdjustments(data, calendar, simGroups);
       result.incompleteStudents = collectIncompleteStudents(data);
       result.incompleteCount = result.incompleteStudents.length;
+      result.orientationConflicts = App.Orientation
+        ? App.Orientation.findOrientationConflicts(data)
+        : [];
 
-      if (result.incompleteCount > 0) {
+      if (result.orientationConflicts.length > 0) {
+        result.tier = 'red';
+      } else if (result.incompleteCount > 0) {
         result.tier = 'red';
       } else if (hasAnyAdjustments(result.adjustments)) {
         result.tier = 'yellow';
@@ -164,6 +173,8 @@ App.ScheduleStatus = (function () {
     } else {
       result.tier = 'yellow';
     }
+
+    if (!result.orientationConflicts) result.orientationConflicts = [];
 
     return result;
   }

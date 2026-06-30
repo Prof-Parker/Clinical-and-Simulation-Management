@@ -55,7 +55,6 @@ App.switchSemester = function (semesterId) {
   App.state.fileRoot.meta.activeSemesterId = semesterId;
   App.state.data = sem;
   App.CalendarEngine.rebuildWeeks(sem);
-  document.documentElement.classList.toggle('dark', !!App.state.fileRoot.meta.darkMode);
   App.notifyChange();
   App.UI.Dashboard.populateFilters(sem);
   App.UI.refresh();

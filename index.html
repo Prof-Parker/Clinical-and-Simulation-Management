@@ -3,18 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#2563eb">
+    <meta name="theme-color" id="themeColorMeta" content="#2563eb">
     <meta name="description" content="REGN 15P clinical and simulation scheduling, requirement tracking, and resource allocation.">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Clin &amp; Sim">
     <meta name="mobile-web-app-capable" content="yes">
     <title>REGN 15P Clinical & Simulation Tracker</title>
+    <script>
+    (function () {
+      var p = localStorage.getItem('regnThemePreference');
+      var dark = p === 'dark' || (p !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (dark) document.documentElement.classList.add('dark');
+    })();
+    </script>
     <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/icon-180.png">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="stylesheet" href="css/app.css">
     <link rel="stylesheet" href="css/print.css">
     <script src="vendor/chart.umd.min.js"></script>
+    <script src="vendor/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -65,10 +73,13 @@
                     </button>
                     <div id="menuDropdown" class="menu-dropdown hidden" role="menu">
                         <button id="darkModeToggle" class="menu-item" type="button" role="menuitem">Dark / Light Mode</button>
-                        <button id="openFileBtn" class="menu-item" type="button" role="menuitem">Connect OneDrive file</button>
-                        <button id="newFileBtn" class="menu-item" type="button" role="menuitem">New semester file</button>
-                        <button id="importBtn" class="menu-item" type="button" role="menuitem">Open semester file…</button>
-                        <button id="exportBtn" class="menu-item" type="button" role="menuitem">Export backup</button>
+                        <div class="menu-group" role="group" aria-labelledby="menuFileManagementLabel">
+                            <div id="menuFileManagementLabel" class="menu-group-label">File Management</div>
+                            <button id="openFileBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Connect OneDrive file</button>
+                            <button id="newFileBtn" class="menu-item menu-item-nested" type="button" role="menuitem">New OneDrive file</button>
+                            <button id="importBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Open semester file…</button>
+                            <button id="exportBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Export backup</button>
+                        </div>
                         <hr class="menu-divider">
                         <button id="openSimFacultyBtn" class="menu-item" type="button" role="menuitem">Connect sim faculty file</button>
                         <button id="newSimFacultyBtn" class="menu-item" type="button" role="menuitem">New sim faculty file</button>
@@ -104,6 +115,7 @@
                         <p class="section-sub" style="margin:0.35rem 0 0">Full 18-week semester. Tap a cell to edit. Tracks <span id="reqClinLabel">10</span> clinical days &amp; <span id="reqSimLabel">5</span> simulations per student.</p>
                     </div>
                     <div class="dashboard-panel-summary-actions">
+                        <button id="scheduleExportXlsxBtn" class="btn btn-sm schedule-export-xlsx-btn no-print" type="button">Export to Excel</button>
                         <button id="scheduleFullscreenBtn" class="btn btn-sm schedule-fullscreen-btn no-print" type="button" aria-label="Open schedule in fullscreen">Fullscreen</button>
                         <button id="scheduleFullscreenCloseBtn" class="btn btn-icon schedule-fullscreen-close hidden no-print" type="button" aria-label="Exit fullscreen" title="Exit fullscreen">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -339,6 +351,17 @@
 
         <!-- SETUP -->
         <div id="view-setup" class="view-panel">
+            <div class="setup-actions-sticky card no-print">
+                <div class="setup-actions">
+                    <button id="saveSetupBtn" class="btn btn-primary" type="button">Save Setup</button>
+                    <button id="regenerateSchedulesBtn" class="btn" type="button">Regenerate Schedules</button>
+                    <button id="setupAdvancedConfigBtn" class="btn" type="button" aria-expanded="false">Advanced Configuration</button>
+                    <button id="finalizeSemesterBtn" class="btn btn-finalize" type="button">Finalize Semester</button>
+                </div>
+            </div>
+            <section id="setupScheduleWarningsSection" class="setup-schedule-warnings-section hidden" style="margin-bottom:1rem" aria-live="polite">
+                <div id="setupScheduleWarnings" class="setup-schedule-warnings hidden" role="alert"></div>
+            </section>
             <section class="card" style="padding:1.25rem;margin-bottom:1rem">
                 <h3 class="section-title">Semester</h3>
                 <div class="grid-2 setup-semester-fields">
@@ -351,14 +374,14 @@
                     <label>Year<select id="semesterYearSelect"></select></label>
                     <label class="setup-start-date-label">Start date<input type="date" id="semesterStartDate" class="date-input"></label>
                 </div>
-                <div class="setup-actions">
-                    <button id="saveSetupBtn" class="btn btn-primary" type="button">Save Setup</button>
-                    <button id="regenerateSchedulesBtn" class="btn" type="button">Regenerate Schedules</button>
-                    <button id="copyForwardBtn" class="btn" type="button">Copy Forward Semester</button>
-                    <button id="finalizeSemesterBtn" class="btn" type="button">Finalize Semester</button>
-                    <button id="setupAdvancedConfigBtn" class="btn" type="button" aria-expanded="false">Advanced Configuration</button>
+                <div class="setup-holidays-card setup-semester-holidays">
+                    <div class="setup-config-divider"></div>
+                    <div class="setup-config-card-head">
+                        <h3 class="section-title" style="margin:0">Holidays &amp; Breaks</h3>
+                        <button id="addHolidayBtn" class="btn btn-sm" type="button">Add</button>
+                    </div>
+                    <div id="setupHolidays" style="margin-top:1rem"></div>
                 </div>
-                <div id="setupScheduleWarnings" class="setup-schedule-warnings hidden" role="alert"></div>
                 <div id="setupAdvancedPanel" class="setup-advanced-panel hidden">
                     <p id="setupConfigSubtitle" class="section-sub" style="margin:0.5rem 0 0"></p>
                     <p id="setupPendingNewSemesterBanner" class="setup-new-semester-banner hidden">Review scheduling settings, then save and create the new semester.</p>
@@ -390,7 +413,7 @@
                                     <h3 class="section-title" style="margin:0">Registrar Sections</h3>
                                     <button id="addSectionBtn" class="btn btn-sm" type="button">Add</button>
                                 </div>
-                                <p class="section-sub setup-sections-hint">Registrar section codes (e.g. F6016).</p>
+                                <p class="section-sub setup-sections-hint">Registrar section codes (e.g. F6011). Sections are assigned per student in the roster&mdash;multiple clinical cohorts may share a section, and students in one cohort may use different sections.</p>
                                 <div id="setupSections"></div>
                             </div>
                             <div class="setup-program-block setup-faculty-block">
@@ -403,12 +426,11 @@
                                 <h3 class="section-title" style="margin:0">Facilities &amp; Clinical Groups</h3>
                                 <button id="addFacilityBtn" class="btn btn-sm" type="button">Add facility</button>
                             </div>
-                            <p class="section-sub setup-sections-hint">One entry per clinical site. Multiple cohorts may share a site on different weekdays (assign each clinical group below).</p>
+                            <p class="section-sub setup-sections-hint">One entry per clinical site. A clinical group may use one site all semester or multiple sites (clinical weeks rotate across listed sites in order).</p>
                             <div id="setupFacilities"></div>
                             <div class="setup-config-divider"></div>
                             <div class="config-section-header">
                                 <h4 style="margin:0">Clinical groups</h4>
-                                <button type="button" class="btn btn-sm add-clin-group">Add group</button>
                             </div>
                             <div id="cfgClinicalGroupsList" class="config-list"></div>
                             <div class="config-section-header">
@@ -420,19 +442,20 @@
                         </div>
                     </div>
                 </section>
-                <section class="card setup-holidays-card" style="padding:1.25rem">
+                <section class="card setup-orientations-card" style="padding:1.25rem">
                     <div style="display:flex;justify-content:space-between;align-items:center">
-                        <h3 class="section-title" style="margin:0">Holidays &amp; Breaks</h3>
-                        <button id="addHolidayBtn" class="btn btn-sm" type="button">Add</button>
+                        <h3 class="section-title" style="margin:0">Orientation Days</h3>
+                        <button id="addOrientationBtn" class="btn btn-sm" type="button">Add</button>
                     </div>
-                    <div id="setupHolidays" style="margin-top:1rem"></div>
+                    <p class="section-sub" style="margin:0.35rem 0 0">One orientation date per clinical group and site. Master schedule shows &ldquo;Orient SRMC&rdquo; style labels.</p>
+                    <div id="setupOrientations" style="margin-top:1rem"></div>
                 </section>
             </div>
             <section class="card setup-roster-full" style="padding:1.25rem">
                 <div class="setup-roster-header">
                     <div>
                         <h3 class="section-title" style="margin:0">Student Roster</h3>
-                        <p class="section-sub" style="margin:0.35rem 0 0">Drag students between cohorts. Clinical site and weekday are set in Clinical groups above.</p>
+                        <p class="section-sub" style="margin:0.35rem 0 0">Drag students between cohorts. Set each student&rsquo;s registrar section individually, or use the cohort Section control to assign all at once (you can still split students across sections afterward).</p>
                     </div>
                     <button id="rebalanceStudentsBtn" class="btn btn-sm" type="button" title="Evenly distribute students across clinical groups">Rebalance students</button>
                 </div>
@@ -466,7 +489,7 @@
     </div>
 
     <!-- Cell Edit Dialog -->
-    <div id="dialogModal" class="modal-overlay no-print">
+    <div id="dialogModal" class="modal-overlay no-print" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" aria-describedby="dialogBody">
         <div class="modal-content" style="max-width:28rem">
             <div class="modal-header">
                 <h2 id="dialogTitle" style="margin:0">Edit</h2>
@@ -483,11 +506,14 @@
     <script src="js/data-model.js"></script>
     <script src="js/roster-balance.js"></script>
     <script src="js/calendar-engine.js"></script>
+    <script src="js/orientation.js"></script>
+    <script src="js/clinical-sites.js"></script>
     <script src="js/scheduler.js"></script>
     <script src="js/validator.js"></script>
     <script src="js/feasibility.js"></script>
     <script src="js/schedule-status.js"></script>
     <script src="js/makeup-display.js"></script>
+    <script src="js/dashboard-export.js"></script>
     <script src="js/sim-faculty-data.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/sim-faculty-storage.js"></script>
@@ -500,6 +526,7 @@
     <script src="js/ui/setup.js"></script>
     <script src="js/ui/date-inputs.js"></script>
     <script src="js/ui/config-modal.js"></script>
+    <script src="js/theme.js"></script>
     <script src="js/main.js"></script>
     <script src="js/pwa.js"></script>
 </body>

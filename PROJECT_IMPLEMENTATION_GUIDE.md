@@ -89,6 +89,7 @@ Schedulers can use only the semester file. The sim faculty team connects both. O
 | `simMakeup` | Sim placed as makeup (not initial generation) |
 | `makeupClinical` | Makeup clinical day |
 | `inactive` | Holiday/break week |
+| `facilityId` | Optional clinical site for that week (multi-site groups) |
 
 ### Sim faculty file shape
 
@@ -110,7 +111,7 @@ From `js/data-model.js` `defaultConfig()`:
 | Caps | 6/clinical group (7 overload), 8/sim session (9 overload) |
 | Makeup headroom | `simMakeupHeadroomReserved: 1` (soft preference during initial gen) |
 
-**Facilities:** Students attend clinical only at their oriented facility (`facilityId`). Default mapping ties clinical groups to Shasta Regional or Saint Elizabeth.
+**Facilities:** Students attend clinical at the site assigned per week (`cell.facilityId`). Multi-site groups may use **round-robin** (default) or optional **`clinicalGroupSiteWeeks`** ranges (facility + start/end week index). `student.facilityId` holds the primary/home site.
 
 **Sim group patterns** (`js/scheduler.js` → `SIM_GROUP_SCHEDULE`):
 

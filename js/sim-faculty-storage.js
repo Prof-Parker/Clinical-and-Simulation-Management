@@ -216,7 +216,7 @@ App.SimFacultyStorage = (function () {
     App.markSimFacultyClean();
     updateStatusUI();
     if (!supportsFS()) {
-      alert('Save the downloaded sim faculty file to your team OneDrive folder.');
+      App.UI.showAlert('Export backup', 'Save the downloaded sim faculty file to your team OneDrive folder.');
     }
   }
 

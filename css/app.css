@@ -15,7 +15,12 @@
   --sticky-bg: #ffffff;
 }
 
+html {
+  color-scheme: light;
+}
+
 html.dark {
+  color-scheme: dark;
   --bg: #0f172a;
   --bg-card: #1e293b;
   --text: #f1f5f9;
@@ -313,6 +318,20 @@ html.dark .menu-dropdown { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
   font-size: 0.875rem; font-weight: 500; cursor: pointer;
 }
 .menu-item:hover { background: var(--bg); }
+.menu-group {
+  padding: 0.2rem 0 0.35rem;
+}
+.menu-group-label {
+  padding: 0.35rem 0.875rem 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.menu-item-nested {
+  padding-left: 1.125rem;
+}
 .menu-item-primary { color: var(--primary); font-weight: 700; }
 .menu-divider {
   margin: 0.35rem 0;
@@ -584,6 +603,8 @@ html.dark .badge-sim-makeup.makeup-tier-lastresort { background: #b91c1c; }
 html.dark .badge-clin-makeup.makeup-tier-clean { background: #6d28d9; }
 html.dark .badge-clin-makeup.makeup-tier-conflict { background: #c2410c; }
 html.dark .badge-clin-makeup.makeup-tier-lastresort { background: #b91c1c; }
+.badge-orient { display: block; background: #0d9488; color: #fff; font-size: 0.625rem; font-weight: 700; padding: 0.15rem 0.35rem; border-radius: 0.25rem; text-align: center; margin-bottom: 2px; }
+html.dark .badge-orient { background: #14b8a6; }
 
 .status-complete { background: #d1fae5; color: #047857; padding: 0.25rem 0.625rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
 .status-pending { background: #fef3c7; color: #b45309; padding: 0.25rem 0.625rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
@@ -653,19 +674,17 @@ html.dark .config-mode-badge.custom { background: #1e3a5f; color: #93c5fd; }
 .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
 .filters select,
 .filters input:not([type="checkbox"]) { width: auto; min-width: 140px; }
-.filters label.filter-check {
+label.filter-check {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  min-height: 44px;
   margin: 0;
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--text);
   cursor: pointer;
-  white-space: nowrap;
 }
-.filters label.filter-check input[type="checkbox"] {
+label.filter-check input[type="checkbox"] {
   width: 1rem;
   height: 1rem;
   min-width: 1rem;
@@ -675,6 +694,25 @@ html.dark .config-mode-badge.custom { background: #1e3a5f; color: #93c5fd; }
   flex-shrink: 0;
   accent-color: var(--primary);
   cursor: pointer;
+}
+.filters label.filter-check {
+  min-height: 44px;
+  white-space: nowrap;
+}
+#dialogBody .dialog-check-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0.75rem 0;
+}
+#dialogBody .dialog-check-list label.filter-check {
+  min-height: 44px;
+  display: flex;
+}
+#dialogBody .dialog-message {
+  margin: 0 0 0.75rem;
+}
+#dialogBody .dialog-message:last-child {
+  margin-bottom: 0;
 }
 
 .dashboard-panel-details {
@@ -700,6 +738,10 @@ html.dark .config-mode-badge.custom { background: #1e3a5f; color: #93c5fd; }
   flex-shrink: 0;
 }
 .schedule-fullscreen-btn {
+  font-size: 0.75rem;
+  padding: 0.35rem 0.65rem;
+}
+.schedule-export-xlsx-btn {
   font-size: 0.75rem;
   padding: 0.35rem 0.65rem;
 }
@@ -799,6 +841,7 @@ html.dark .config-mode-badge.custom { background: #1e3a5f; color: #93c5fd; }
   display: block;
 }
 .schedule-fullscreen-mode .schedule-fullscreen-btn,
+.schedule-fullscreen-mode .schedule-export-xlsx-btn,
 .schedule-fullscreen-mode #masterSchedulePanel .dashboard-panel-chevron {
   display: none;
 }
@@ -915,8 +958,48 @@ html.dark .makeup-hint-required { background: #431407; border-color: #ea580c; co
 .setup-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.5rem;
-  margin-top: 1rem;
+  width: 100%;
+}
+
+.btn-finalize {
+  margin-left: auto;
+  background: #16a34a;
+  border-color: #15803d;
+  color: #fff;
+}
+.btn-finalize:hover:not(:disabled) { filter: brightness(1.06); }
+.btn-finalize:disabled {
+  margin-left: auto;
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--text-muted);
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+html.dark .btn-finalize {
+  background: #22c55e;
+  border-color: #16a34a;
+}
+html.dark .btn-finalize:disabled {
+  background: var(--bg-card);
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+#view-setup .setup-actions-sticky {
+  position: sticky;
+  top: var(--setup-sticky-top, 8.5rem);
+  z-index: 55;
+  padding: 0.75rem 1.25rem;
+  margin-bottom: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+html.dark #view-setup .setup-actions-sticky {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
 .setup-advanced-panel {
@@ -947,6 +1030,18 @@ html.dark .setup-new-semester-banner {
   background: #1e3a5f;
   border-color: #3b82f6;
   color: #bfdbfe;
+}
+.setup-schedule-warnings-section.hidden {
+  display: none;
+}
+.setup-schedule-warnings-section .setup-schedule-warnings {
+  margin-top: 0;
+}
+.setup-semester-holidays {
+  margin-top: 0.25rem;
+}
+.setup-semester-holidays .setup-config-divider {
+  margin-top: 1rem;
 }
 .setup-schedule-warnings {
   margin-top: 1rem;
@@ -992,11 +1087,94 @@ html.dark .setup-schedule-status-red {
 .setup-facilities-block .config-section-header {
   margin-top: 0.25rem;
 }
+.config-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
 #cfgClinicalGroupsList .config-list-row {
-  grid-template-columns: 3rem minmax(4.25rem, 5.5rem) minmax(0, 1fr) 2.25rem;
+  grid-template-columns: 3rem minmax(4.25rem, 5.5rem) minmax(0, 1fr) auto 2.25rem;
+}
+#cfgClinicalGroupsList .clin-row-add-site {
+  white-space: nowrap;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+#cfgClinicalGroupsList .clin-row-add-site-spacer {
+  display: block;
+  min-width: 0;
+}
+.clin-groups-add-row {
+  grid-column: 1 / -1;
+  margin-top: 0.35rem;
+}
+#cfgClinicalGroupsList .clin-site-continuation .config-group-label-empty,
+#cfgClinicalGroupsList .clin-day-spacer {
+  display: block;
+  min-height: 1px;
 }
 #cfgClinicalGroupsList .clin-day-select {
   min-width: 0;
+}
+.clin-group-block {
+  display: contents;
+}
+.clin-group-block + .clin-group-block {
+  margin-top: 0;
+}
+#cfgClinicalGroupsList .clin-group-week-plan {
+  grid-column: 1 / -1;
+  margin: 0.35rem 0 0.85rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--bg);
+}
+html.dark #cfgClinicalGroupsList .clin-group-week-plan {
+  background: rgba(0, 0, 0, 0.12);
+}
+.clin-week-ranges-toggle {
+  min-height: auto;
+  margin: 0 0 0.35rem;
+  white-space: nowrap;
+}
+.clin-week-ranges-hint {
+  margin: 0 0 0.5rem !important;
+  font-size: 0.75rem;
+}
+.clin-site-ranges-head,
+.clin-site-range-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 2.25rem;
+  gap: 0.35rem 0.5rem;
+  align-items: start;
+}
+.clin-site-ranges-head {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+.clin-site-range-week-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.clin-site-range-week-field select {
+  min-width: 0;
+}
+.clin-site-range-week-hint {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+.clin-group-week-plan-body.hidden {
+  display: none;
+}
+#cfgClinicalGroupsList .add-clin-site-range {
+  margin-top: 0.35rem;
 }
 
 .setup-config-grid {
@@ -1079,7 +1257,7 @@ html.dark .setup-program-block {
   gap: 0.5rem;
 }
 @media (min-width: 768px) {
-  .setup-holidays-card { grid-column: 1 / -1; }
+  .setup-orientations-card { grid-column: 1 / -1; }
 }
 
 .setup-sections-hint {
@@ -1219,6 +1397,38 @@ html.dark .setup-group-day { background: rgba(96, 165, 250, 0.18); color: #93c5f
   align-self: center;
   white-space: nowrap;
 }
+.setup-group-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  flex: 0 1 auto;
+}
+.setup-group-sections {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin: 0;
+}
+.setup-cohort-section-bulk {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  min-width: 7rem;
+}
+.setup-cohort-section-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+.setup-cohort-section-bulk select {
+  min-height: 36px;
+  font-size: 0.8125rem;
+  min-width: 7rem;
+}
 
 .setup-student-row {
   display: grid;
@@ -1303,8 +1513,29 @@ html.dark .setup-group-day { background: rgba(96, 165, 250, 0.18); color: #93c5f
   width: 100%;
   min-width: 0;
 }
-.setup-holiday-row .date-input-wrap {
-  width: 100%;
+.setup-holiday-when-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.setup-holiday-when-row .date-input-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+}
+.setup-holiday-when-row select {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+}
+.setup-holiday-week-hint {
+  flex: 0 1 auto;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.2;
+  white-space: nowrap;
 }
 .setup-holiday-row .remove-holiday {
   align-self: end;
@@ -1326,6 +1557,102 @@ html.dark .setup-group-day { background: rgba(96, 165, 250, 0.18); color: #93c5f
   .setup-holiday-when { grid-area: when; }
   .setup-holiday-label { grid-area: label; }
   .setup-holiday-row .remove-holiday { grid-area: remove; align-self: start; margin-top: 1.5rem; }
+  .setup-holiday-week-hint { white-space: normal; }
+}
+
+.setup-orientations-card #setupOrientations {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.setup-orientations-head,
+.setup-orientation-row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.85fr) minmax(12rem, 1.35fr) minmax(10rem, 1.2fr) 2.25rem;
+  gap: 0.5rem;
+  align-items: end;
+  width: 100%;
+}
+
+.setup-orientations-head {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 0 0 0.35rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.35rem;
+}
+
+.setup-orientation-row {
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.setup-orientation-row:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.setup-orientation-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  margin: 0;
+}
+.setup-orientation-field-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+.setup-orientation-field select {
+  width: 100%;
+  min-width: 0;
+}
+.setup-orientation-date-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.setup-orientation-date-row .date-input-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+}
+.setup-orientation-week-hint {
+  flex: 0 1 auto;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.setup-orientation-row .remove-orientation {
+  align-self: end;
+  margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+  .setup-orientations-head { display: none; }
+  .setup-orientation-row {
+    grid-template-columns: 1fr 2.25rem;
+    grid-template-areas:
+      "group remove"
+      "date remove"
+      "facility remove";
+    align-items: start;
+    gap: 0.35rem 0.5rem;
+  }
+  .setup-orientation-group { grid-area: group; }
+  .setup-orientation-date { grid-area: date; }
+  .setup-orientation-facility { grid-area: facility; }
+  .setup-orientation-row .remove-orientation { grid-area: remove; align-self: start; margin-top: 1.5rem; }
+  .setup-orientation-week-hint { white-space: normal; }
 }
 
 .setup-group-dropzone {
@@ -1467,6 +1794,15 @@ html.dark table.data-table td.sim-prog-cell-guest {
 
 .cell-editable { cursor: pointer; min-width: 72px; }
 .cell-editable:hover { outline: 2px solid var(--primary); outline-offset: -1px; }
+.schedule-master-table td.cell-orientation-conflict {
+  background: #fee2e2;
+  outline: 1px solid #dc2626;
+  outline-offset: -1px;
+}
+html.dark .schedule-master-table td.cell-orientation-conflict {
+  background: rgba(220, 38, 38, 0.22);
+  outline-color: #f87171;
+}
 
 .conflicts-panel { background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.75rem; padding: 1rem; margin-bottom: 1rem; color: #991b1b; }
 html.dark .conflicts-panel { background: #450a0a; border-color: #7f1d1d; color: #fca5a5; }

@@ -16,7 +16,8 @@ App.DataModel = (function () {
   function emptyCell() {
     return {
       clinical: false, clinicalMissed: false, sim: null, simDay: null, simGuestGroup: null,
-      makeupClinical: false, inactive: false, simMakeup: false, simOverload: false
+      makeupClinical: false, inactive: false, simMakeup: false, simOverload: false,
+      facilityId: null
     };
   }
 
@@ -65,6 +66,20 @@ App.DataModel = (function () {
     });
     Object.keys(cfg.clinicalGroupDays).forEach(function (key) {
       if (cfg.clinicalGroups.indexOf(key) < 0) delete cfg.clinicalGroupDays[key];
+    });
+    if (!cfg.clinicalGroupFacilities) cfg.clinicalGroupFacilities = {};
+    cfg.clinicalGroups.forEach(function (g) {
+      if (!cfg.clinicalGroupFacilities[g]) cfg.clinicalGroupFacilities[g] = [];
+    });
+    Object.keys(cfg.clinicalGroupFacilities).forEach(function (key) {
+      if (cfg.clinicalGroups.indexOf(key) < 0) delete cfg.clinicalGroupFacilities[key];
+    });
+    if (!cfg.clinicalGroupSiteWeeks) cfg.clinicalGroupSiteWeeks = {};
+    cfg.clinicalGroups.forEach(function (g) {
+      if (!cfg.clinicalGroupSiteWeeks[g]) cfg.clinicalGroupSiteWeeks[g] = [];
+    });
+    Object.keys(cfg.clinicalGroupSiteWeeks).forEach(function (key) {
+      if (cfg.clinicalGroups.indexOf(key) < 0) delete cfg.clinicalGroupSiteWeeks[key];
     });
     if (!cfg.simDays || !cfg.simDays.length) cfg.simDays = ['Mon', 'Tue'];
     if (!cfg.simGroups || !cfg.simGroups.length) {
@@ -128,6 +143,7 @@ App.DataModel = (function () {
 
   function syncSemesterForConfig(semester) {
     normalizeConfig(semester.config);
+    migrateClinicalGroupFacilities(semester);
     syncSemesterFaculty(semester);
     syncSemesterStudentsForConfig(semester);
   }
@@ -159,6 +175,81 @@ App.DataModel = (function () {
     var siteName = DEFAULT_CLINICAL_GROUP_SITE[clinicalGroup];
     if (siteName) return facilityIdByName(facilities, siteName);
     return facilities[0] && facilities[0].id;
+  }
+
+  function buildDefaultClinicalGroupFacilities(clinicalGroups, facilities) {
+    var map = {};
+    (clinicalGroups || CLINICAL_GROUPS).forEach(function (g) {
+      var facId = getDefaultFacilityIdForClinicalGroup(g, facilities);
+      map[g] = facId ? [facId] : [];
+    });
+    return map;
+  }
+
+  function majorityFacilityIdForCohort(students, data) {
+    if (!students || !students.length) return null;
+    var counts = {};
+    students.forEach(function (s) {
+      if (!s.facilityId) return;
+      var canon = data && data.facilities
+        ? getCanonicalFacilityId(data, s.facilityId)
+        : s.facilityId;
+      counts[canon] = (counts[canon] || 0) + 1;
+    });
+    var best = null;
+    var bestN = 0;
+    Object.keys(counts).forEach(function (id) {
+      if (counts[id] > bestN) {
+        bestN = counts[id];
+        best = id;
+      }
+    });
+    if (best) return best;
+    if (students[0].facilityId) {
+      return data && data.facilities
+        ? getCanonicalFacilityId(data, students[0].facilityId)
+        : students[0].facilityId;
+    }
+    return null;
+  }
+
+  function migrateClinicalGroupFacilities(semester) {
+    if (!semester || !semester.config) return;
+    normalizeConfig(semester.config);
+    var cfg = semester.config;
+    var facilities = semester.facilities || [];
+    if (!cfg.clinicalGroupFacilities) cfg.clinicalGroupFacilities = {};
+    cfg.clinicalGroups.forEach(function (g) {
+      var list = cfg.clinicalGroupFacilities[g];
+      if (!list || !list.length) {
+        var cohort = (semester.students || []).filter(function (s) {
+          return s.clinicalGroup === g;
+        });
+        var facId = majorityFacilityIdForCohort(cohort, semester);
+        if (!facId) facId = getDefaultFacilityIdForClinicalGroup(g, facilities);
+        cfg.clinicalGroupFacilities[g] = facId ? [facId] : [];
+      }
+      var seen = {};
+      cfg.clinicalGroupFacilities[g] = (cfg.clinicalGroupFacilities[g] || []).map(function (id) {
+        return getCanonicalFacilityId(semester, id);
+      }).filter(function (id) {
+        if (!id || !findFacilityById(semester, id)) return false;
+        if (seen[id]) return false;
+        seen[id] = true;
+        return true;
+      });
+      if (!cfg.clinicalGroupFacilities[g].length) {
+        var fallback = getDefaultFacilityIdForClinicalGroup(g, facilities);
+        if (fallback) cfg.clinicalGroupFacilities[g] = [fallback];
+      }
+    });
+    Object.keys(cfg.clinicalGroupFacilities).forEach(function (key) {
+      if (cfg.clinicalGroups.indexOf(key) < 0) delete cfg.clinicalGroupFacilities[key];
+    });
+    if (!cfg.clinicalGroupSiteWeeks) cfg.clinicalGroupSiteWeeks = {};
+    Object.keys(cfg.clinicalGroupSiteWeeks).forEach(function (key) {
+      if (cfg.clinicalGroups.indexOf(key) < 0) delete cfg.clinicalGroupSiteWeeks[key];
+    });
   }
 
   function normalizeFacilityName(name) {
@@ -242,14 +333,45 @@ App.DataModel = (function () {
       (s.makeups || []).forEach(function (m) {
         if (m.facilityId) m.facilityId = remapId(m.facilityId);
       });
+      (s.schedule || []).forEach(function (c) {
+        if (c && c.facilityId) c.facilityId = remapId(c.facilityId);
+      });
+    });
+    if (semester.config && semester.config.clinicalGroupFacilities) {
+      Object.keys(semester.config.clinicalGroupFacilities).forEach(function (g) {
+        semester.config.clinicalGroupFacilities[g] =
+          (semester.config.clinicalGroupFacilities[g] || []).map(remapId).filter(function (id) {
+            return id && semester.facilities.some(function (f) { return f.id === id; });
+          });
+      });
+    }
+    if (semester.config && semester.config.clinicalGroupSiteWeeks) {
+      Object.keys(semester.config.clinicalGroupSiteWeeks).forEach(function (g) {
+        semester.config.clinicalGroupSiteWeeks[g] =
+          (semester.config.clinicalGroupSiteWeeks[g] || []).map(function (r) {
+            if (!r) return r;
+            return {
+              facilityId: remapId(r.facilityId),
+              startWeekIndex: r.startWeekIndex,
+              endWeekIndex: r.endWeekIndex
+            };
+          }).filter(function (r) {
+            return r && r.facilityId && semester.facilities.some(function (f) { return f.id === r.facilityId; });
+          });
+      });
+    }
+    (semester.orientations || []).forEach(function (o) {
+      if (o && o.facilityId) o.facilityId = remapId(o.facilityId);
     });
   }
 
   function defaultSections() {
     return [
-      { id: uid(), name: 'F6016' },
-      { id: uid(), name: 'S7926' },
-      { id: uid(), name: 'F6017' }
+      { id: uid(), name: 'F6011' },
+      { id: uid(), name: 'F6012' },
+      { id: uid(), name: 'F6013' },
+      { id: uid(), name: 'F6014' },
+      { id: uid(), name: 'F6015' }
     ];
   }
 
@@ -298,28 +420,27 @@ App.DataModel = (function () {
     var sections = defaultSections();
     var students = [];
     var cfg = defaultConfig();
+    cfg.clinicalGroupFacilities = buildDefaultClinicalGroupFacilities(cfg.clinicalGroups, facilities);
     var simGroups = cfg.simGroups;
     var idx = 0;
     cfg.clinicalGroups.forEach(function (g, gi) {
       var simGroup = simGroups[gi % simGroups.length];
       var facId = getDefaultFacilityIdForClinicalGroup(g, facilities);
+      var sectionName = sections[gi] ? sections[gi].name : sections[0].name;
       for (var i = 0; i < 6; i++) {
         students.push(createStudent(
           defaultStudentName(idx),
           g,
           simGroup,
           facId,
-          sections[idx % sections.length].name
+          sectionName
         ));
         idx++;
       }
     });
 
-    var startDate = new Date();
-    startDate.setMonth(startDate.getMonth() < 6 ? 0 : 7);
-    startDate.setDate(1);
-    var year = startDate.getFullYear();
-    var season = startDate.getMonth() < 6 ? 'spring' : 'fall';
+    var season = 'fall';
+    var year = 2026;
     var iso = startDateForSeason(season, year);
 
     return {
@@ -339,6 +460,7 @@ App.DataModel = (function () {
         weeks: []
       },
       holidays: [],
+      orientations: [],
       sections: sections,
       facilities: facilities,
       faculty: defaultFaculty(cfg.clinicalGroups),
@@ -353,7 +475,6 @@ App.DataModel = (function () {
       meta: {
         fileVersion: FILE_VERSION,
         activeSemesterId: sem.id,
-        darkMode: false,
         schedulingDefaults: defaults,
         lastModified: new Date().toISOString()
       },
@@ -412,8 +533,10 @@ App.DataModel = (function () {
     }
     if (!semester.calendar) semester.calendar = { semesterStartDate: new Date().toISOString().slice(0, 10), weeks: [] };
     if (!semester.holidays) semester.holidays = [];
+    if (!semester.orientations) semester.orientations = [];
     if (!semester.facilities) semester.facilities = defaultFacilities();
     normalizeFacilities(semester);
+    migrateClinicalGroupFacilities(semester);
     if (!semester.faculty) semester.faculty = defaultFaculty(getClinicalGroups(semester.config));
     syncSemesterFaculty(semester);
     if (!semester.students) semester.students = [];
@@ -433,9 +556,14 @@ App.DataModel = (function () {
       if (!s.id) s.id = uid();
       if (!s.absences) s.absences = [];
       if (!s.makeups) s.makeups = [];
+      if (s.orientationWeekIndex !== undefined && s.orientationWeekIndex !== null) {
+        var ow = parseInt(s.orientationWeekIndex, 10);
+        s.orientationWeekIndex = (ow >= 0 && ow < 18) ? ow : null;
+      }
       s.schedule.forEach(function (c) {
         if (c.simMakeup === undefined) c.simMakeup = false;
         if (c.simOverload === undefined) c.simOverload = false;
+        if (c.facilityId === undefined) c.facilityId = null;
       });
     });
     semester.meta.version = VERSION;
@@ -502,14 +630,12 @@ App.DataModel = (function () {
       });
       return raw;
     }
-    var darkMode = raw.meta && raw.meta.darkMode;
     var sem = migrateSemester(raw);
     var defaults = cloneConfig(sem.config);
     return {
       meta: {
         fileVersion: FILE_VERSION,
         activeSemesterId: sem.id,
-        darkMode: !!darkMode,
         schedulingDefaults: defaults,
         lastModified: new Date().toISOString()
       },
@@ -658,6 +784,9 @@ App.DataModel = (function () {
     defaultSections: defaultSections,
     defaultFacilities: defaultFacilities,
     getDefaultFacilityIdForClinicalGroup: getDefaultFacilityIdForClinicalGroup,
+    buildDefaultClinicalGroupFacilities: buildDefaultClinicalGroupFacilities,
+    migrateClinicalGroupFacilities: migrateClinicalGroupFacilities,
+    majorityFacilityIdForCohort: majorityFacilityIdForCohort,
     createDefaultSemester: createDefaultSemester,
     createDefaultFile: createDefaultFile,
     createNewSemesterFromTemplate: createNewSemesterFromTemplate,

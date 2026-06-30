@@ -83,7 +83,7 @@ App.Storage = (function () {
       if (App.Scheduler) App.Scheduler.regenerateAll(sem);
       App.state.fileHandle = null;
       App.state.fileName = null;
-      document.documentElement.classList.remove('dark');
+      if (App.Theme) App.Theme.apply();
       App.setFileRoot(fileRoot);
       App.markClean();
       return cacheData(fileRoot).then(function () {
@@ -125,6 +125,7 @@ App.Storage = (function () {
     if (App.state.data && App.state.data.meta) {
       App.state.data.meta.lastModified = exportRoot.meta.lastModified;
     }
+    if (exportRoot.meta) delete exportRoot.meta.darkMode;
     return JSON.stringify(exportRoot, null, 2);
   }
 
@@ -280,7 +281,7 @@ App.Storage = (function () {
     App.markClean();
     updateStatusUI();
     if (!supportsFS()) {
-      alert('Save the downloaded file to college OneDrive (Files app → OneDrive) to back up your semester data.');
+      App.UI.showAlert('Export backup', 'Save the downloaded file to college OneDrive (Files app → OneDrive) to back up your semester data.');
     }
   }
 

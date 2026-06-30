@@ -126,25 +126,84 @@ App.UI.switchTab = function (tabId) {
   App.UI.refresh();
 };
 
-App.UI.showDialog = function (title, bodyHtml, onSave) {
-  document.getElementById('dialogTitle').textContent = title;
-  document.getElementById('dialogBody').innerHTML = bodyHtml;
-  document.getElementById('dialogModal').classList.add('open');
+App.UI.escapeHtml = function (text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+};
+
+App.UI.dialogMessageHtml = function (text) {
+  var escaped = App.UI.escapeHtml(text);
+  var parts = escaped.split(/\n\n/);
+  return parts.map(function (p) {
+    return '<p class="dialog-message">' + p.replace(/\n/g, '<br>') + '</p>';
+  }).join('');
+};
+
+App.UI._dialogDefaults = {
+  saveLabel: 'Save',
+  cancelLabel: 'Cancel'
+};
+
+App.UI.closeDialog = function () {
+  var modal = document.getElementById('dialogModal');
+  var saveBtn = document.getElementById('dialogSave');
+  var cancelBtn = document.getElementById('dialogCancel');
+  if (modal) modal.classList.remove('open');
+  if (saveBtn) {
+    saveBtn.textContent = App.UI._dialogDefaults.saveLabel;
+    saveBtn.className = 'btn btn-primary';
+    saveBtn.style.display = '';
+  }
+  if (cancelBtn) {
+    cancelBtn.textContent = App.UI._dialogDefaults.cancelLabel;
+    cancelBtn.style.display = '';
+  }
+};
+
+App.UI._bindDialogPrimary = function (onPrimary) {
   var saveBtn = document.getElementById('dialogSave');
   var newSave = saveBtn.cloneNode(true);
   saveBtn.parentNode.replaceChild(newSave, saveBtn);
   newSave.addEventListener('click', function () {
-    document.getElementById('dialogModal').classList.remove('open');
-    if (onSave) onSave();
+    App.UI.closeDialog();
+    if (onPrimary) onPrimary();
   });
+  return newSave;
+};
+
+App.UI.showConfirm = function (title, message, onConfirm, options) {
+  options = options || {};
+  document.getElementById('dialogTitle').textContent = title;
+  document.getElementById('dialogBody').innerHTML = App.UI.dialogMessageHtml(message);
+  var cancelBtn = document.getElementById('dialogCancel');
+  cancelBtn.style.display = '';
+  var saveBtn = App.UI._bindDialogPrimary(onConfirm);
+  saveBtn.textContent = options.confirmLabel || 'OK';
+  document.getElementById('dialogModal').classList.add('open');
+};
+
+App.UI.showAlert = function (title, message, onOk) {
+  document.getElementById('dialogTitle').textContent = title;
+  document.getElementById('dialogBody').innerHTML = App.UI.dialogMessageHtml(message);
+  document.getElementById('dialogCancel').style.display = 'none';
+  var saveBtn = App.UI._bindDialogPrimary(onOk);
+  saveBtn.textContent = 'OK';
+  document.getElementById('dialogModal').classList.add('open');
+};
+
+App.UI.showDialog = function (title, bodyHtml, onSave) {
+  document.getElementById('dialogTitle').textContent = title;
+  document.getElementById('dialogBody').innerHTML = bodyHtml;
+  document.getElementById('dialogCancel').style.display = '';
+  App.UI._bindDialogPrimary(onSave);
+  document.getElementById('dialogModal').classList.add('open');
 };
 
 App.UI.toggleDarkMode = function () {
-  var fileRoot = App.getFileRoot();
-  if (!fileRoot) return;
-  fileRoot.meta.darkMode = !fileRoot.meta.darkMode;
-  document.documentElement.classList.toggle('dark', fileRoot.meta.darkMode);
-  App.notifyChange();
+  if (App.Theme) App.Theme.toggle();
 };
 
 App.UI.init = function () {
@@ -163,7 +222,11 @@ App.UI.init = function () {
   }
 
   document.getElementById('dialogCancel').addEventListener('click', function () {
-    document.getElementById('dialogModal').classList.remove('open');
+    App.UI.closeDialog();
+  });
+
+  document.getElementById('dialogModal').addEventListener('click', function (e) {
+    if (e.target.id === 'dialogModal') App.UI.closeDialog();
   });
 
   document.querySelectorAll('.nav-tab').forEach(function (btn) {
@@ -199,13 +262,13 @@ App.UI.init = function () {
     if (!file) return;
     App.SimFacultyStorage.importFromFile(file).then(function () {
       App.UI.refresh();
-    }).catch(function () { alert('Invalid sim faculty file.'); });
+    }).catch(function () { App.UI.showAlert('Invalid file', 'Invalid sim faculty file.'); });
     e.target.value = '';
   });
 
   document.getElementById('exportSimFacultyBtn').addEventListener('click', function () {
     if (!App.SimFacultyStorage.isReady()) {
-      alert('Connect or create a sim faculty file first.');
+      App.UI.showAlert('Sim faculty', 'Connect or create a sim faculty file first.');
       App.UI.closeMenu();
       return;
     }
@@ -228,7 +291,7 @@ App.UI.init = function () {
       App.Storage.cacheData(fileRoot);
       App.UI.Dashboard.populateFilters(sem);
       App.UI.refresh();
-    }).catch(function () { alert('Invalid semester file.'); });
+    }).catch(function () { App.UI.showAlert('Invalid file', 'Invalid semester file.'); });
     e.target.value = '';
   });
 
@@ -241,11 +304,12 @@ App.UI.init = function () {
     App.UI.closeMenu();
     var msg = 'This will erase all semester data saved on this device and restore the default roster and settings. ' +
       'Any connected OneDrive file will be disconnected. This cannot be undone.\n\nContinue?';
-    if (!confirm(msg)) return;
-    App.Storage.clearAndRestoreDefaults().then(function () {
-      App.UI.Dashboard.populateFilters(App.getData());
-      App.UI.refresh();
-    });
+    App.UI.showConfirm('Clear local data?', msg, function () {
+      App.Storage.clearAndRestoreDefaults().then(function () {
+        App.UI.Dashboard.populateFilters(App.getData());
+        App.UI.refresh();
+      });
+    }, { confirmLabel: 'Continue' });
   });
 
   document.getElementById('saveBtn').addEventListener('click', function () {
@@ -254,9 +318,9 @@ App.UI.init = function () {
       App.SimFacultyStorage.isReady() ? App.SimFacultyStorage.saveCurrent() : Promise.resolve()
     ]).then(function () {
       if (App.Storage.supportsFS()) {
-        alert('Saved to connected file(s).');
+        App.UI.showAlert('Saved', 'Saved to connected file(s).');
       } else {
-        alert('Saved on this device. Export backup to OneDrive when finished.');
+        App.UI.showAlert('Saved', 'Saved on this device. Export backup to OneDrive when finished.');
       }
     });
     App.UI.closeMenu();
@@ -309,7 +373,7 @@ App.main = function () {
       return fileRoot;
     });
   }).then(function (fileRoot) {
-    if (fileRoot.meta.darkMode) document.documentElement.classList.add('dark');
+    if (App.Theme) App.Theme.init(fileRoot);
     App.UI.Dashboard.populateFilters(App.getData());
     App.UI.init();
     App.UI.switchTab('dashboard');

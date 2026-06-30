@@ -58,6 +58,29 @@ App.Validator = (function () {
 
     }
 
+    if (App.ClinicalSites) {
+      var allowed = App.ClinicalSites.getGroupFacilities(data, student.clinicalGroup);
+      student.schedule.forEach(function (cell, wi) {
+        if (!cell || cell.inactive) return;
+        if (!(cell.clinical || cell.makeupClinical)) return;
+        var fac = App.ClinicalSites.getStudentFacilityAtWeek(data, student, wi);
+        if (!fac) {
+          warnings.push('Week ' + (wi + 1) + ' clinical missing site assignment');
+          return;
+        }
+        if (!allowed.length) return;
+        var ok = allowed.some(function (id) {
+          return App.DataModel.sameFacilitySite(data, id, fac);
+        });
+        if (!ok) {
+          warnings.push('Week ' + (wi + 1) + ' clinical site not in group allowed list');
+        }
+        if (App.ClinicalSites.isWeekGapForGroup(data, student.clinicalGroup, wi)) {
+          warnings.push('Week ' + (wi + 1) + ' clinical uses primary site (no week-range assignment)');
+        }
+      });
+    }
+
 
 
     return {
@@ -264,6 +287,13 @@ App.Validator = (function () {
 
     return violations;
 
+  }
+
+
+
+  function validateOrientationConflicts(data) {
+    if (!App.Orientation || !App.Orientation.findOrientationConflicts) return [];
+    return App.Orientation.findOrientationConflicts(data);
   }
 
 
@@ -550,6 +580,8 @@ App.Validator = (function () {
 
     var simBlockNoRepeat = validateSimBlockNoRepeat(data);
 
+    var orientationConflicts = validateOrientationConflicts(data);
+
     var results = {
 
       students: {},
@@ -561,6 +593,8 @@ App.Validator = (function () {
       groupErrors: validateGroups(data),
 
       doubleBooking: doubleBooking,
+
+      orientationConflicts: orientationConflicts,
 
       simClinicalConflicts: simClinical,
 
@@ -602,6 +636,8 @@ App.Validator = (function () {
 
     if (doubleBooking.length) results.allValid = false;
 
+    if (orientationConflicts.length) results.allValid = false;
+
     if (simClinical.length) results.allValid = false;
 
     if (simGroupExceptions.length) results.allValid = false;
@@ -641,6 +677,8 @@ App.Validator = (function () {
     validateClinicalSessions: validateClinicalSessions,
 
     validateNoDoubleBooking: validateNoDoubleBooking,
+
+    validateOrientationConflicts: validateOrientationConflicts,
 
     validateSimClinicalConflicts: validateSimClinicalConflicts,
 

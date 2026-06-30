@@ -20,6 +20,54 @@ App.UI.Setup = (function () {
     yearSelect.value = String(selectedYear || curYear);
   }
 
+  function updateSetupStickyOffset() {
+    var sticky = document.querySelector('.sticky-top');
+    var top = sticky ? sticky.offsetHeight : 136;
+    document.documentElement.style.setProperty('--setup-sticky-top', top + 'px');
+  }
+
+  function scrollSetupToTop() {
+    var view = document.getElementById('view-setup');
+    if (!view || !view.classList.contains('active')) return;
+    var target = view.querySelector('.setup-actions-sticky') || view;
+    var sticky = document.querySelector('.sticky-top');
+    var offset = (sticky ? sticky.offsetHeight : 0) + 8;
+    var top = target.getBoundingClientRect().top + window.scrollY - offset;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }
+
+  function updateFinalizeButtonState(data) {
+    var finalizeBtn = document.getElementById('finalizeSemesterBtn');
+    if (!finalizeBtn) return;
+    finalizeBtn.disabled = !!(data && data.meta && data.meta.finalized);
+    finalizeBtn.title = finalizeBtn.disabled ? 'This semester has been finalized' : '';
+  }
+
+  function markSetupDraft(data) {
+    if (!data || !data.meta || !data.meta.finalized) return;
+    data.meta.finalized = false;
+    updateFinalizeButtonState(data);
+    if (App.UI.updateSemesterDisplay) App.UI.updateSemesterDisplay();
+  }
+
+  function isSetupDraftArea(el) {
+    if (!el || !el.closest('#view-setup')) return false;
+    if (el.closest('.setup-actions-sticky')) return false;
+    if (el.closest('#setupRoster')) return false;
+    return !!(
+      el.closest('#view-setup > section.card') ||
+      el.closest('.setup-program-card') ||
+      el.closest('.setup-holidays-card') ||
+      el.closest('.setup-orientations-card') ||
+      el.closest('#setupAdvancedPanel')
+    );
+  }
+
+  function handleSetupDraftInput(e) {
+    if (!isSetupDraftArea(e.target)) return;
+    markSetupDraft(App.getData());
+  }
+
   function updateStartDateFromSeasonYear() {
     var season = document.getElementById('semesterSeasonSelect').value;
     var year = parseInt(document.getElementById('semesterYearSelect').value, 10);
@@ -40,21 +88,23 @@ App.UI.Setup = (function () {
 
     var finalizeBtn = document.getElementById('finalizeSemesterBtn');
     if (finalizeBtn) {
-      finalizeBtn.disabled = !!data.meta.finalized;
-      finalizeBtn.title = data.meta.finalized ? 'This semester has been finalized' : '';
+      updateFinalizeButtonState(data);
     }
   }
 
   function renderScheduleWarnings(data) {
     var panel = document.getElementById('setupScheduleWarnings');
+    var section = document.getElementById('setupScheduleWarningsSection');
     if (!panel || !App.ScheduleStatus) return;
     var summary = App.ScheduleStatus.summarize(data);
     if (!App.ScheduleStatus.shouldShowPanel(summary)) {
       panel.className = 'setup-schedule-warnings setup-schedule-status hidden';
       panel.innerHTML = '';
+      if (section) section.classList.add('hidden');
       return;
     }
 
+    if (section) section.classList.remove('hidden');
     panel.classList.remove('hidden');
     panel.className = 'setup-schedule-warnings setup-schedule-status setup-schedule-status-' + summary.tier;
 
@@ -103,6 +153,13 @@ App.UI.Setup = (function () {
       }
     } else {
       html += '<strong>Schedule status: Incomplete</strong>';
+      if (summary.generated && summary.orientationConflicts && summary.orientationConflicts.length) {
+        html += '<p class="section-sub" style="margin:0.35rem 0 0.5rem">Orientation day conflicts with scheduled clinical or simulation — manually reassign affected students in the Master Schedule.</p><ul>';
+        summary.orientationConflicts.forEach(function (v) {
+          html += '<li>' + escHtml(v.message) + '</li>';
+        });
+        html += '</ul>';
+      }
       if (summary.generated && summary.incompleteCount) {
         html += '<p class="section-sub" style="margin:0.35rem 0 0.5rem">' + summary.incompleteCount +
           ' of ' + summary.totalStudents + ' students cannot meet requirements:</p><ul>';
@@ -129,12 +186,15 @@ App.UI.Setup = (function () {
     renderFacilities(data);
     renderFaculty(data);
     renderHolidays(data);
+    renderOrientations(data);
     renderRoster(data);
     renderScheduleWarnings(data);
     if (App.UI.SetupConfig) App.UI.SetupConfig.render(data);
     if (App.UI.DateInputs) {
       App.UI.DateInputs.init(document.getElementById('view-setup'), data);
     }
+    updateAllHolidayWeekHints(data);
+    updateAllOrientationWeekHints(data);
   }
 
   function sectionSelectHtml(data, student) {
@@ -156,9 +216,26 @@ App.UI.Setup = (function () {
   }
 
   function getCohortFacilityIdForGroup(data, clinicalGroup) {
+    if (App.ClinicalSites) {
+      var primary = App.ClinicalSites.getPrimaryGroupFacility(data, clinicalGroup);
+      if (primary) return primary;
+    }
     var cohort = data.students.filter(function (s) { return s.clinicalGroup === clinicalGroup; });
     if (cohort.length) return getCohortFacilityId(cohort, data);
     return App.DataModel.getDefaultFacilityIdForClinicalGroup(clinicalGroup, data.facilities || []);
+  }
+
+  function applyGroupFacilitiesFromConfig(data) {
+    if (App.ClinicalSites) {
+      App.ClinicalSites.collectGroupFacilitiesFromDom(data);
+      App.ClinicalSites.applyPrimarySitesToStudents(data);
+      return;
+    }
+    document.querySelectorAll('[data-clin-site-facility]').forEach(function (el) {
+      var group = el.getAttribute('data-clin-group');
+      var siteIndex = parseInt(el.getAttribute('data-clin-site-index'), 10) || 0;
+      if (siteIndex === 0) applyGroupFacility(data, group, el.value);
+    });
   }
 
   function getCohortFacilityId(cohort, data) {
@@ -197,6 +274,69 @@ App.UI.Setup = (function () {
     return App.DataModel.getUniqueFacilitiesForSelect(data).map(function (f) {
       return '<option value="' + f.id + '"' + (selectedId === f.id ? ' selected' : '') + '>' + escAttr(f.name) + '</option>';
     }).join('');
+  }
+
+  function predominantSection(cohort) {
+    var counts = {};
+    var best = '';
+    var bestN = 0;
+    cohort.forEach(function (s) {
+      if (!s.section) return;
+      counts[s.section] = (counts[s.section] || 0) + 1;
+      if (counts[s.section] > bestN) {
+        bestN = counts[s.section];
+        best = s.section;
+      }
+    });
+    return best;
+  }
+
+  function cohortSectionSummaryText(cohort) {
+    var counts = {};
+    cohort.forEach(function (s) {
+      if (!s.section) return;
+      counts[s.section] = (counts[s.section] || 0) + 1;
+    });
+    var keys = Object.keys(counts);
+    if (!keys.length) return '';
+    if (keys.length === 1) return keys[0];
+    return keys.map(function (k) { return k + ' (' + counts[k] + ')'; }).join(', ');
+  }
+
+  function cohortSectionBulkSelectHtml(data, clinicalGroup, cohort) {
+    var selected = predominantSection(cohort);
+    var mixed = cohort.length > 0 && cohort.some(function (s) {
+      return s.section && s.section !== selected;
+    });
+    var html = '<label class="setup-cohort-section-bulk">' +
+      '<span class="setup-cohort-section-label">Section</span>' +
+      '<select data-cohort-section-bulk="' + escAttr(clinicalGroup) + '" aria-label="Set section for all in ' + clinicalGroup + '">' +
+      '<option value=""' + (mixed ? ' selected' : '') + '>' + (mixed ? 'Mixed sections' : 'Set all…') + '</option>';
+    (data.sections || []).forEach(function (sec) {
+      if (!sec.name) return;
+      html += '<option value="' + escAttr(sec.name) + '"' +
+        (!mixed && selected === sec.name ? ' selected' : '') + '>' + escAttr(sec.name) + '</option>';
+    });
+    html += '</select></label>';
+    return html;
+  }
+
+  function applyCohortSection(data, clinicalGroup, sectionName) {
+    data.students.forEach(function (s) {
+      if (s.clinicalGroup === clinicalGroup) s.section = sectionName;
+    });
+  }
+
+  function defaultSectionForNewStudent(data, clinicalGroup) {
+    var cohort = data.students.filter(function (s) { return s.clinicalGroup === clinicalGroup; });
+    var fromCohort = predominantSection(cohort);
+    if (fromCohort) return fromCohort;
+    var groups = App.DataModel.getClinicalGroups(data.config);
+    var gi = groups.indexOf(clinicalGroup);
+    if (gi >= 0 && data.sections && data.sections[gi] && data.sections[gi].name) {
+      return data.sections[gi].name;
+    }
+    return (data.sections && data.sections[0] && data.sections[0].name) ? data.sections[0].name : '';
   }
 
   function moveCohortSelectHtml(data, student) {
@@ -248,9 +388,8 @@ App.UI.Setup = (function () {
   function createNewStudentForGroup(data, clinicalGroup) {
     var groups = App.DataModel.getClinicalGroups(data.config);
     var simGroups = App.DataModel.getSimGroups(data.config);
-    var cohort = data.students.filter(function (s) { return s.clinicalGroup === clinicalGroup; });
-    var facId = getCohortFacilityId(cohort, data);
-    var section = (data.sections && data.sections[0] && data.sections[0].name) ? data.sections[0].name : '';
+    var facId = getCohortFacilityIdForGroup(data, clinicalGroup);
+    var section = defaultSectionForNewStudent(data, clinicalGroup);
     var student = App.DataModel.createStudent(
       App.DataModel.nextDefaultStudentName(data.students),
       clinicalGroup,
@@ -324,6 +463,7 @@ App.UI.Setup = (function () {
     App.DataModel.getClinicalGroups(data.config).forEach(function (g) {
       var cohort = data.students.filter(function (s) { return s.clinicalGroup === g; });
       var clinDay = App.DataModel.getClinicalDayForGroup(g, data.config);
+      var sectionSummary = cohortSectionSummaryText(cohort);
       var groupDiv = document.createElement('div');
       groupDiv.className = 'setup-group';
       groupDiv.innerHTML =
@@ -332,9 +472,13 @@ App.UI.Setup = (function () {
         '<h4>' + g + ' Cohort</h4>' +
         '<span class="setup-group-day">' + clinDay + ' clinical</span>' +
         '<span class="setup-group-count">' + cohort.length + ' / ' + maxPer + ' students</span>' +
+        (sectionSummary ? '<span class="setup-group-sections section-sub" title="Registrar sections in this cohort">' +
+          escHtml(sectionSummary) + '</span>' : '') +
         '</div>' +
+        '<div class="setup-group-header-actions">' +
+        cohortSectionBulkSelectHtml(data, g, cohort) +
         '<button type="button" class="btn btn-sm add-student-btn" data-clinical-group="' + g + '">Add student</button>' +
-        '</div>' +
+        '</div></div>' +
         columnHeadersHtml;
       var inner = document.createElement('div');
       inner.className = 'setup-group-dropzone';
@@ -358,7 +502,7 @@ App.UI.Setup = (function () {
     (data.sections || []).forEach(function (sec) {
       container.innerHTML +=
         '<div class="setup-item-row">' +
-        '<input type="text" class="setup-section-code" data-sec="name" data-sec-id="' + sec.id + '" value="' + escAttr(sec.name) + '" placeholder="F6016" maxlength="12">' +
+        '<input type="text" class="setup-section-code" data-sec="name" data-sec-id="' + sec.id + '" value="' + escAttr(sec.name) + '" placeholder="F6011" maxlength="12">' +
         '<button class="btn btn-icon-remove remove-section" type="button" data-sec-id="' + sec.id + '" aria-label="Remove section" title="Remove section">&times;</button>' +
         '</div>';
     });
@@ -394,6 +538,38 @@ App.UI.Setup = (function () {
     });
   }
 
+  function semesterWeekHintText(data, dateStr) {
+    if (!dateStr) return 'Select a date to see week';
+    var wi = App.CalendarEngine.getWeekIndexForDate(data, dateStr);
+    if (wi < 0) return 'Outside semester weeks';
+    return semesterWeekHintForIndex(data, wi);
+  }
+
+  function semesterWeekHintForIndex(data, weekIndex) {
+    var wi = parseInt(weekIndex, 10);
+    if (isNaN(wi) || wi < 0 || wi > 17) return 'Select a week';
+    var label = App.CalendarEngine.getWeekDisplay(data, wi, true);
+    if (App.CalendarEngine.isWeekInactive(data, wi)) label += ' — inactive';
+    return label;
+  }
+
+  function updateHolidayWeekHint(data, el) {
+    var row = el.closest('.setup-holiday-when-row');
+    var hint = row && row.querySelector('[data-hol-week-hint]');
+    if (!hint) return;
+    if (el.getAttribute('data-hol') === 'date') {
+      hint.textContent = semesterWeekHintText(data, el.value);
+    } else if (el.getAttribute('data-hol') === 'week') {
+      hint.textContent = semesterWeekHintForIndex(data, el.value);
+    }
+  }
+
+  function updateAllHolidayWeekHints(data) {
+    document.querySelectorAll('#setupHolidays [data-hol="date"], #setupHolidays [data-hol="week"]').forEach(function (el) {
+      updateHolidayWeekHint(data, el);
+    });
+  }
+
   function renderHolidays(data) {
     var container = document.getElementById('setupHolidays');
     container.innerHTML = '';
@@ -417,10 +593,16 @@ App.UI.Setup = (function () {
       var whenHtml = isBreak
         ? '<label class="setup-holiday-field setup-holiday-when">' +
           '<span class="setup-holiday-field-label">Week off</span>' +
-          '<select data-hol="week" data-idx="' + i + '">' + weekSelectHtml(data, h.weekIndex != null ? h.weekIndex : 0) + '</select></label>'
+          '<div class="setup-holiday-when-row">' +
+          '<select data-hol="week" data-idx="' + i + '">' + weekSelectHtml(data, h.weekIndex != null ? h.weekIndex : 0) + '</select>' +
+          '<span class="setup-holiday-week-hint" data-hol-week-hint data-idx="' + i + '">' +
+          escHtml(semesterWeekHintForIndex(data, h.weekIndex != null ? h.weekIndex : 0)) + '</span></div></label>'
         : '<label class="setup-holiday-field setup-holiday-when">' +
           '<span class="setup-holiday-field-label">Date</span>' +
-          '<input type="date" class="date-input" data-hol="date" data-idx="' + i + '" value="' + (h.date || '') + '"></label>';
+          '<div class="setup-holiday-when-row">' +
+          '<input type="date" class="date-input" data-hol="date" data-idx="' + i + '" value="' + (h.date || '') + '">' +
+          '<span class="setup-holiday-week-hint" data-hol-week-hint data-idx="' + i + '">' +
+          escHtml(semesterWeekHintText(data, h.date || '')) + '</span></div></label>';
       container.innerHTML +=
         '<div class="setup-holiday-row" data-hol-idx="' + i + '">' +
         '<label class="setup-holiday-field setup-holiday-type">' +
@@ -447,6 +629,98 @@ App.UI.Setup = (function () {
     }
   }
 
+  function orientationFacilitySelectHtml(data, selectedId) {
+    selectedId = App.DataModel.getCanonicalFacilityId(data, selectedId);
+    return App.DataModel.getUniqueFacilitiesForSelect(data).map(function (f) {
+      return '<option value="' + f.id + '"' + (selectedId === f.id ? ' selected' : '') + '>' + escAttr(f.name) + '</option>';
+    }).join('');
+  }
+
+  function orientationWeekHintText(data, dateStr) {
+    return semesterWeekHintText(data, dateStr);
+  }
+
+  function updateOrientationWeekHint(data, dateInput) {
+    var row = dateInput.closest('.setup-orientation-date-row');
+    var hint = row && row.querySelector('[data-orient-week-hint]');
+    if (hint) hint.textContent = orientationWeekHintText(data, dateInput.value);
+  }
+
+  function updateAllOrientationWeekHints(data) {
+    document.querySelectorAll('#setupOrientations [data-orient="date"]').forEach(function (el) {
+      updateOrientationWeekHint(data, el);
+    });
+  }
+
+  function nextOrientationDefault(data) {
+    var groups = App.DataModel.getClinicalGroups(data.config);
+    for (var gi = 0; gi < groups.length; gi++) {
+      var group = groups[gi];
+      var facIds = App.ClinicalSites
+        ? App.ClinicalSites.getGroupFacilities(data, group)
+        : [getCohortFacilityIdForGroup(data, group)];
+      for (var fi = 0; fi < facIds.length; fi++) {
+        var facId = facIds[fi];
+        var exists = (data.orientations || []).some(function (o) {
+          if (!o || o.clinicalGroup !== group) return false;
+          if (!facId) return true;
+          return App.DataModel.sameFacilitySite(data, o.facilityId, facId);
+        });
+        if (!exists) {
+          return { clinicalGroup: group, facilityId: facId };
+        }
+      }
+    }
+    var fallbackGroup = groups[0] || 'C1';
+    return {
+      clinicalGroup: fallbackGroup,
+      facilityId: getCohortFacilityIdForGroup(data, fallbackGroup)
+    };
+  }
+
+  function renderOrientations(data) {
+    var container = document.getElementById('setupOrientations');
+    if (!container) return;
+    container.innerHTML = '';
+    if (!data.calendar.weeks || !data.calendar.weeks.length) {
+      App.CalendarEngine.rebuildWeeks(data);
+    }
+    var orientations = data.orientations || [];
+    if (orientations.length) {
+      container.innerHTML =
+        '<div class="setup-orientations-head" aria-hidden="true">' +
+        '<span>Clinical group</span><span>Orientation date</span><span>Facility</span><span></span>' +
+        '</div>';
+    }
+    var clinicalGroups = App.DataModel.getClinicalGroups(data.config);
+    orientations.forEach(function (o, i) {
+      var groupOptions = clinicalGroups.map(function (g) {
+        return '<option value="' + g + '"' + (o.clinicalGroup === g ? ' selected' : '') + '>' + g + '</option>';
+      }).join('');
+      var defaultFacId = App.DataModel.getDefaultFacilityIdForClinicalGroup(o.clinicalGroup, data.facilities || []);
+      var facId = o.facilityId || defaultFacId;
+      container.innerHTML +=
+        '<div class="setup-orientation-row" data-orient-idx="' + i + '">' +
+        '<label class="setup-orientation-field setup-orientation-group">' +
+        '<span class="setup-orientation-field-label">Clinical group</span>' +
+        '<select data-orient="group" data-idx="' + i + '">' + groupOptions + '</select></label>' +
+        '<label class="setup-orientation-field setup-orientation-date">' +
+        '<span class="setup-orientation-field-label">Orientation date</span>' +
+        '<div class="setup-orientation-date-row">' +
+        '<input type="date" class="date-input" data-orient="date" data-idx="' + i + '" value="' + (o.date || '') + '">' +
+        '<span class="setup-orientation-week-hint" data-orient-week-hint data-idx="' + i + '">' +
+        escHtml(orientationWeekHintText(data, o.date || '')) + '</span></div></label>' +
+        '<label class="setup-orientation-field setup-orientation-facility">' +
+        '<span class="setup-orientation-field-label">Facility</span>' +
+        '<select data-orient="facility" data-idx="' + i + '">' + orientationFacilitySelectHtml(data, facId) + '</select></label>' +
+        '<button class="btn btn-icon-remove remove-orientation" type="button" data-idx="' + i + '" aria-label="Remove orientation" title="Remove orientation">&times;</button>' +
+        '</div>';
+    });
+    if (!orientations.length) {
+      container.innerHTML = '<p class="section-sub">No orientation days defined. Click Add above.</p>';
+    }
+  }
+
   function escAttr(s) {
     return String(s || '').replace(/"/g, '&quot;');
   }
@@ -465,7 +739,7 @@ App.UI.Setup = (function () {
     data.meta.semesterSeason = season;
     data.meta.semesterYear = year;
     data.meta.semesterName = App.DataModel.buildSemesterName(season, year);
-    if (prevSeason !== season || prevYear !== year) data.meta.finalized = false;
+    if (prevSeason !== season || prevYear !== year) markSetupDraft(data);
   }
 
   function collectFromForm(data) {
@@ -486,9 +760,7 @@ App.UI.Setup = (function () {
       s[el.dataset.field] = el.value;
     });
 
-    document.querySelectorAll('[data-cohort-facility]').forEach(function (el) {
-      applyGroupFacility(data, el.getAttribute('data-cohort-facility'), el.value);
-    });
+    applyGroupFacilitiesFromConfig(data);
 
     Object.keys(sectionRenames).forEach(function (oldName) {
       var newName = sectionRenames[oldName];
@@ -513,6 +785,19 @@ App.UI.Setup = (function () {
       if (el.dataset.hol === 'label') h.label = el.value;
       if (el.dataset.hol === 'type') h.type = el.value;
       if (el.dataset.hol === 'week') h.weekIndex = parseInt(el.value, 10);
+    });
+    if (!data.orientations) data.orientations = [];
+    document.querySelectorAll('#setupOrientations [data-orient]').forEach(function (el) {
+      var o = data.orientations[parseInt(el.dataset.idx, 10)];
+      if (!o) return;
+      if (el.dataset.orient === 'date') o.date = el.value;
+      if (el.dataset.orient === 'group') o.clinicalGroup = el.value;
+      if (el.dataset.orient === 'facility') o.facilityId = el.value;
+    });
+    (data.orientations || []).forEach(function (o) {
+      if (o.date) {
+        o.weekIndex = App.CalendarEngine.getWeekIndexForDate(data, o.date);
+      }
     });
     (data.holidays || []).forEach(function (h) {
       if (h.type === 'break') syncBreakHolidayDate(h, data);
@@ -539,7 +824,38 @@ App.UI.Setup = (function () {
     data.students.forEach(function (s) {
       if (s.facilityId === facId) s.facilityId = fallback.id;
     });
+    if (data.config && data.config.clinicalGroupFacilities) {
+      Object.keys(data.config.clinicalGroupFacilities).forEach(function (g) {
+        var seen = {};
+        data.config.clinicalGroupFacilities[g] = (data.config.clinicalGroupFacilities[g] || [])
+          .map(function (id) { return id === facId ? fallback.id : id; })
+          .filter(function (id) {
+            if (!id || seen[id]) return false;
+            seen[id] = true;
+            return true;
+          });
+        if (!data.config.clinicalGroupFacilities[g].length) {
+          data.config.clinicalGroupFacilities[g] = [fallback.id];
+        }
+      });
+    }
+    if (data.config && data.config.clinicalGroupSiteWeeks) {
+      Object.keys(data.config.clinicalGroupSiteWeeks).forEach(function (g) {
+        data.config.clinicalGroupSiteWeeks[g] = (data.config.clinicalGroupSiteWeeks[g] || [])
+          .filter(function (r) {
+            return r && r.facilityId !== facId &&
+              !App.DataModel.sameFacilitySite(data, r.facilityId, facId);
+          })
+          .map(function (r) {
+            if (App.DataModel.sameFacilitySite(data, r.facilityId, facId)) {
+              return { facilityId: fallback.id, startWeekIndex: r.startWeekIndex, endWeekIndex: r.endWeekIndex };
+            }
+            return r;
+          });
+      });
+    }
     App.DataModel.normalizeFacilities(data);
+    markSetupDraft(data);
     App.notifyChange();
     App.UI.Setup.render(data);
   }
@@ -552,6 +868,7 @@ App.UI.Setup = (function () {
     data.students.forEach(function (s) {
       if (s.section === sec.name) s.section = '';
     });
+    markSetupDraft(data);
     App.notifyChange();
     App.UI.Setup.render(data);
   }
@@ -561,12 +878,12 @@ App.UI.Setup = (function () {
     var maxStudents = data.config.maxStudents || 30;
     var maxPer = data.config.maxPerClinicalGroup || 6;
     if (data.students.length >= maxStudents) {
-      alert('Maximum students (' + maxStudents + ') reached. Increase max in scheduling configuration or remove a student.');
+      App.UI.showAlert('Cannot add student', 'Maximum students (' + maxStudents + ') reached. Increase max in scheduling configuration or remove a student.');
       return;
     }
     var inGroup = data.students.filter(function (s) { return s.clinicalGroup === clinicalGroup; }).length;
     if (inGroup >= maxPer) {
-      alert(clinicalGroup + ' already has ' + maxPer + ' students (configured maximum per clinical group).');
+      App.UI.showAlert('Cannot add student', clinicalGroup + ' already has ' + maxPer + ' students (configured maximum per clinical group).');
       return;
     }
     data.students.push(createNewStudentForGroup(data, clinicalGroup));
@@ -589,14 +906,11 @@ App.UI.Setup = (function () {
       return s.clinicalGroup === clinicalGroup && s.id !== studentId;
     }).length;
     if (inTarget >= maxPer) {
-      alert(clinicalGroup + ' already has ' + maxPer + ' students.');
+      App.UI.showAlert('Cannot move student', clinicalGroup + ' already has ' + maxPer + ' students.');
       return;
     }
     student.clinicalGroup = clinicalGroup;
-    var cohort = data.students.filter(function (s) {
-      return s.clinicalGroup === clinicalGroup && s.id !== studentId;
-    });
-    student.facilityId = getCohortFacilityId(cohort, data);
+    student.facilityId = getCohortFacilityIdForGroup(data, clinicalGroup);
     var groups = App.DataModel.getClinicalGroups(data.config);
     var simGroups = App.DataModel.getSimGroups(data.config);
     student.simGroup = App.RosterBalance.simGroupForClinicalCohort(
@@ -659,6 +973,16 @@ App.UI.Setup = (function () {
     });
 
     roster.addEventListener('change', function (e) {
+      if (e.target.hasAttribute('data-cohort-section-bulk')) {
+        var sectionName = e.target.value;
+        if (!sectionName) return;
+        var data = App.getData();
+        collectFromForm(data);
+        applyCohortSection(data, e.target.getAttribute('data-cohort-section-bulk'), sectionName);
+        App.notifyChange();
+        App.UI.Setup.render(data);
+        return;
+      }
       if (e.target.classList.contains('move-cohort-select')) {
         var target = e.target.value;
         if (!target) return;
@@ -677,14 +1001,20 @@ App.UI.Setup = (function () {
       }
       var removeBtn = e.target.closest('.remove-student-btn');
       if (removeBtn) {
-        if (!confirm('Remove this student from the roster?')) return;
-        removeStudent(App.getData(), removeBtn.getAttribute('data-student-id'));
+        App.UI.showConfirm('Remove student?', 'Remove this student from the roster?', function () {
+          removeStudent(App.getData(), removeBtn.getAttribute('data-student-id'));
+        }, { confirmLabel: 'Remove' });
       }
     });
   }
 
   function init() {
     initRosterDragDrop();
+    var viewSetup = document.getElementById('view-setup');
+    if (viewSetup) {
+      viewSetup.addEventListener('input', handleSetupDraftInput);
+      viewSetup.addEventListener('change', handleSetupDraftInput);
+    }
     document.getElementById('semesterSeasonSelect').addEventListener('change', updateStartDateFromSeasonYear);
     document.getElementById('semesterYearSelect').addEventListener('change', updateStartDateFromSeasonYear);
 
@@ -694,7 +1024,8 @@ App.UI.Setup = (function () {
       App.notifyChange();
       if (App.UI.SetupConfig) App.UI.SetupConfig.maybeRegenerateAfterChange(data, configBefore);
       App.UI.refresh();
-      alert('Setup saved.');
+      App.UI.showAlert('Saved', 'Setup saved.');
+      scrollSetupToTop();
     });
 
     document.getElementById('finalizeSemesterBtn').addEventListener('click', function () {
@@ -703,7 +1034,7 @@ App.UI.Setup = (function () {
       data.meta.finalized = true;
       App.notifyChange();
       App.UI.refresh();
-      alert('Semester finalized.');
+      App.UI.showAlert('Finalized', 'Semester finalized.');
     });
 
     document.getElementById('regenerateSchedulesBtn').addEventListener('click', function () {
@@ -736,17 +1067,23 @@ App.UI.Setup = (function () {
             '\n\nRegenerate anyway? Manual edits will be lost.';
         }
       }
-      if (!confirm(confirmMsg)) return;
-      App.Scheduler.regenerateAll(data);
-      App.notifyChange();
-      App.UI.refresh();
+      App.UI.showConfirm('Regenerate schedules?', confirmMsg, function () {
+        App.Scheduler.regenerateAll(data);
+        App.notifyChange();
+        App.UI.refresh();
+        scrollSetupToTop();
+      }, { confirmLabel: 'Regenerate' });
     });
+
+    updateSetupStickyOffset();
+    window.addEventListener('resize', updateSetupStickyOffset);
 
     document.getElementById('addSectionBtn').addEventListener('click', function () {
       var data = App.getData();
       collectFromForm(data);
       if (!data.sections) data.sections = [];
       data.sections.push({ id: App.DataModel.uid(), name: '' });
+      markSetupDraft(data);
       App.notifyChange();
       App.UI.Setup.render(data);
     });
@@ -761,6 +1098,7 @@ App.UI.Setup = (function () {
       var data = App.getData();
       collectFromForm(data);
       data.facilities.push({ id: App.DataModel.uid(), name: 'New Facility' });
+      markSetupDraft(data);
       App.notifyChange();
       App.UI.Setup.render(data);
     });
@@ -776,12 +1114,18 @@ App.UI.Setup = (function () {
       collectFromForm(data);
       if (!data.holidays) data.holidays = [];
       data.holidays.push({ id: App.DataModel.uid(), date: '', label: '', type: 'holiday' });
+      markSetupDraft(data);
       App.notifyChange();
       App.UI.Setup.render(data);
     });
 
     document.getElementById('setupHolidays').addEventListener('change', function (e) {
-      if (e.target.getAttribute('data-hol') !== 'type') return;
+      var hol = e.target.getAttribute('data-hol');
+      if (hol === 'date' || hol === 'week') {
+        updateHolidayWeekHint(App.getData(), e.target);
+        return;
+      }
+      if (hol !== 'type') return;
       var data = App.getData();
       collectFromForm(data);
       var idx = parseInt(e.target.dataset.idx, 10);
@@ -795,8 +1139,14 @@ App.UI.Setup = (function () {
         }
         syncBreakHolidayDate(h, data);
       }
+      markSetupDraft(data);
       App.notifyChange();
       App.UI.Setup.render(data);
+    });
+
+    document.getElementById('setupHolidays').addEventListener('input', function (e) {
+      if (e.target.getAttribute('data-hol') !== 'date') return;
+      updateHolidayWeekHint(App.getData(), e.target);
     });
 
     document.getElementById('setupHolidays').addEventListener('click', function (e) {
@@ -805,13 +1155,46 @@ App.UI.Setup = (function () {
       var data = App.getData();
       collectFromForm(data);
       data.holidays.splice(parseInt(btn.dataset.idx, 10), 1);
+      markSetupDraft(data);
       App.notifyChange();
       App.UI.Setup.render(data);
     });
 
-    document.getElementById('copyForwardBtn').addEventListener('click', function () {
-      App.addSemester();
-      alert('New semester created. Update student roster in Setup.');
+    document.getElementById('addOrientationBtn').addEventListener('click', function () {
+      var data = App.getData();
+      collectFromForm(data);
+      if (!data.orientations) data.orientations = [];
+      var next = nextOrientationDefault(data);
+      data.orientations.push({
+        id: App.DataModel.uid(),
+        clinicalGroup: next.clinicalGroup,
+        date: '',
+        facilityId: next.facilityId
+      });
+      markSetupDraft(data);
+      App.notifyChange();
+      App.UI.Setup.render(data);
+    });
+
+    document.getElementById('setupOrientations').addEventListener('click', function (e) {
+      var btn = e.target.closest('.remove-orientation');
+      if (!btn) return;
+      var data = App.getData();
+      collectFromForm(data);
+      data.orientations.splice(parseInt(btn.dataset.idx, 10), 1);
+      markSetupDraft(data);
+      App.notifyChange();
+      App.UI.Setup.render(data);
+    });
+
+    document.getElementById('setupOrientations').addEventListener('change', function (e) {
+      if (e.target.getAttribute('data-orient') !== 'date') return;
+      updateOrientationWeekHint(App.getData(), e.target);
+    });
+
+    document.getElementById('setupOrientations').addEventListener('input', function (e) {
+      if (e.target.getAttribute('data-orient') !== 'date') return;
+      updateOrientationWeekHint(App.getData(), e.target);
     });
 
     document.getElementById('rebalanceStudentsBtn').addEventListener('click', function () {
@@ -821,10 +1204,11 @@ App.UI.Setup = (function () {
       var msg = syncCount
         ? 'Adjust roster to ' + (data.config.maxStudents || 30) + ' students and evenly assign across clinical groups?'
         : 'Evenly assign all students across clinical groups?';
-      if (!confirm(msg)) return;
-      rebalanceStudents(data, syncCount);
-      App.notifyChange();
-      App.UI.refresh();
+      App.UI.showConfirm('Rebalance roster?', msg, function () {
+        rebalanceStudents(data, syncCount);
+        App.notifyChange();
+        App.UI.refresh();
+      }, { confirmLabel: 'Rebalance' });
     });
   }
 
@@ -832,9 +1216,12 @@ App.UI.Setup = (function () {
     render: render,
     init: init,
     collectFromForm: collectFromForm,
+    markSetupDraft: markSetupDraft,
     needsRebalance: needsRebalance,
     rebalanceStudents: rebalanceStudents,
     getCohortFacilityIdForGroup: getCohortFacilityIdForGroup,
-    cohortFacilitySelectHtml: cohortFacilitySelectHtml
+    cohortFacilitySelectHtml: cohortFacilitySelectHtml,
+    weekSelectHtml: weekSelectHtml,
+    semesterWeekHintForIndex: semesterWeekHintForIndex
   };
 })();

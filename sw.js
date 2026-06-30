@@ -1,5 +1,5 @@
 /* Clinical & Simulation Management — app shell service worker */
-var CACHE_NAME = 'clin-sim-v5';
+var CACHE_NAME = 'clin-sim-v7';
 
 var PRECACHE_URLS = [
   './',
@@ -8,17 +8,26 @@ var PRECACHE_URLS = [
   './css/app.css',
   './css/print.css',
   './vendor/chart.umd.min.js',
+  './vendor/xlsx.full.min.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-180.png',
   './icons/favicon.svg',
   './js/state.js',
   './js/data-model.js',
+  './js/roster-balance.js',
   './js/calendar-engine.js',
+  './js/orientation.js',
+  './js/clinical-sites.js',
   './js/scheduler.js',
   './js/validator.js',
+  './js/feasibility.js',
+  './js/schedule-status.js',
   './js/makeup-display.js',
+  './js/dashboard-export.js',
+  './js/sim-faculty-data.js',
   './js/storage.js',
+  './js/sim-faculty-storage.js',
   './js/ui/dashboard.js',
   './js/ui/master-calendar.js',
   './js/ui/student-view.js',
@@ -28,6 +37,7 @@ var PRECACHE_URLS = [
   './js/ui/setup.js',
   './js/ui/date-inputs.js',
   './js/ui/config-modal.js',
+  './js/theme.js',
   './js/main.js',
   './js/pwa.js'
 ];

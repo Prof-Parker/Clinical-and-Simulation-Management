@@ -41,6 +41,7 @@ App.UI.DateInputs = (function () {
     var range = null;
     if (input.id === 'semesterStartDate') range = semesterRange(data);
     else if (input.getAttribute('data-hol') === 'date') range = holidayRange(data);
+    else if (input.getAttribute('data-orient') === 'date') range = holidayRange(data);
     if (!range) return;
     if (range.min) input.min = range.min;
     if (range.max) input.max = range.max;

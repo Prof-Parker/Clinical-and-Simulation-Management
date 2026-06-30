@@ -108,8 +108,12 @@ App.UI.Dashboard = (function () {
     var hasScheduledClin = cell.clinical || cell.clinicalMissed;
     var hasMakeupClin = cell.makeupClinical;
     var hasSim = cell.sim;
+    var isOrientWeek = App.Orientation && App.Orientation.isOrientationWeek(data, student, weekIndex);
+    var orientHtml = isOrientWeek
+      ? '<span class="badge-orient">' + App.Orientation.getOrientationLabel(data, student, weekIndex) + '</span>'
+      : '';
 
-    if (hasMakeupClin && !hasScheduledClin && !hasSim) {
+    if (hasMakeupClin && !hasScheduledClin && !hasSim && !isOrientWeek) {
       var clinTier = App.MakeupDisplay.getClinicalMakeupTier(cell, student, weekIndex);
       var clinStar = clinMeta && clinMeta.overload ? '*' : '';
       var joinDay = clinMeta && clinMeta.joinedDay ? ' (' + clinMeta.joinedDay.toUpperCase() + ')' : '';
@@ -117,13 +121,19 @@ App.UI.Dashboard = (function () {
     }
 
     if (!hasScheduledClin && !hasSim && !hasMakeupClin) {
+      if (isOrientWeek) return '<div class="flex-col">' + orientHtml + '</div>';
       return '<div class="cell-empty">-</div>';
     }
 
     var html = '<div class="flex-col">';
+    if (orientHtml) html += orientHtml;
     if (hasScheduledClin) {
       var cls = cell.clinicalMissed ? 'badge-clin badge-clin-missed' : 'badge-clin';
-      html += '<span class="' + cls + '">CLIN (' + cDay.toUpperCase() + ')</span>';
+      var siteSuffix = App.ClinicalSites
+        ? App.ClinicalSites.facilityInitialsForCell(data, student, weekIndex)
+        : '';
+      var siteText = siteSuffix ? ' ' + siteSuffix : '';
+      html += '<span class="' + cls + '">CLIN (' + cDay.toUpperCase() + ')' + siteText + '</span>';
     }
     if (hasMakeupClin && (hasScheduledClin || hasSim)) {
       var mTier = App.MakeupDisplay.getClinicalMakeupTier(cell, student, weekIndex);
@@ -204,7 +214,10 @@ App.UI.Dashboard = (function () {
     return data.students.filter(function (s) {
       if (groupVal !== 'all' && s.clinicalGroup !== groupVal) return false;
       if (simVal !== 'all' && s.simGroup !== simVal) return false;
-      if (facilityVal !== 'all' && !App.DataModel.sameFacilitySite(data, s.facilityId, facilityVal)) return false;
+      if (facilityVal !== 'all' && App.ClinicalSites &&
+          !App.ClinicalSites.studentHasAnyWeekAtFacility(data, s, facilityVal)) return false;
+      if (facilityVal !== 'all' && !App.ClinicalSites &&
+          !App.DataModel.sameFacilitySite(data, s.facilityId, facilityVal)) return false;
       if (sectionVal !== 'all' && s.section !== sectionVal) return false;
       if (searchVal && s.name.toLowerCase().indexOf(searchVal) < 0) return false;
       if (statusVal !== 'all' && validation) {
@@ -242,6 +255,14 @@ App.UI.Dashboard = (function () {
     while (cells.length) tr.appendChild(cells[0]);
   }
 
+  function exportScheduleXlsx() {
+    var data = App.getData();
+    if (!data || !App.DashboardExport) return;
+    var validation = App.Validator.validateAll(data);
+    var students = getScheduleFilteredStudents(data, validation);
+    App.DashboardExport.download(data, students, validation);
+  }
+
   function refreshScheduleView() {
     var data = App.getData();
     if (!data) return;
@@ -270,6 +291,7 @@ App.UI.Dashboard = (function () {
     validation.simSessions.forEach(function (v) { msgs.push(v.message); });
     (validation.clinicalSessions || []).forEach(function (v) { msgs.push(v.message); });
     (validation.doubleBooking || []).forEach(function (v) { msgs.push(v.message); });
+    (validation.orientationConflicts || []).forEach(function (v) { msgs.push(v.message); });
     (validation.simClinicalConflicts || []).forEach(function (v) { msgs.push(v.message); });
     (validation.simGroupExceptions || []).forEach(function (v) { msgs.push(v.message); });
     (validation.simWeekOrder || []).forEach(function (v) { msgs.push(v.message); });
@@ -303,7 +325,11 @@ App.UI.Dashboard = (function () {
       var cells = '<td class="sticky-col"><strong>' + escapeHtml(student.name) + '</strong></td>' +
         '<td class="sticky-col-grp">' + student.clinicalGroup + '</td>';
       student.schedule.forEach(function (cell, wi) {
-        cells += '<td class="cell-editable" data-student="' + student.id + '" data-week="' + wi + '">' +
+        var tdClass = 'cell-editable';
+        if (App.Orientation && App.Orientation.weekHasOrientationConflict(data, student, wi)) {
+          tdClass += ' cell-orientation-conflict';
+        }
+        cells += '<td class="' + tdClass + '" data-student="' + student.id + '" data-week="' + wi + '">' +
           renderCellHtml(cell, student, data, wi) + '</td>';
       });
       cells += scheduleRightColsHtml(vr);
@@ -586,6 +612,14 @@ App.UI.Dashboard = (function () {
   function init() {
     bindScheduleScrollSync();
     bindScheduleFullscreen();
+    var exportBtn = document.getElementById('scheduleExportXlsxBtn');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        exportScheduleXlsx();
+      });
+    }
     ['scheduleGroupFilter', 'scheduleSimGroupFilter', 'scheduleFacilityFilter',
       'scheduleSectionFilter', 'scheduleStatusFilter'].forEach(function (id) {
       var el = document.getElementById(id);
@@ -611,6 +645,7 @@ App.UI.Dashboard = (function () {
     populateFilters: populateFilters,
     init: init,
     renderCellHtml: renderCellHtml,
-    setScheduleFullscreen: setScheduleFullscreen
+    setScheduleFullscreen: setScheduleFullscreen,
+    exportScheduleXlsx: exportScheduleXlsx
   };
 })();

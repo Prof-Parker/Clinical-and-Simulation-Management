@@ -4,6 +4,8 @@ Browser-based app for REGN 15P cohort scheduling, clinical and simulation requir
 
 **Live app (PWA):** https://prof-parker.github.io/Clinical-and-Simulation-Management/
 
+On the **Dashboard**, use **Export to Excel** on the Master Interactive Schedule panel to download a filtered `.xlsx` workbook (master schedule + sim progression sheets).
+
 ## Install the app
 
 ### iPad (Safari)
@@ -62,6 +64,7 @@ Because this project folder may sync via OneDrive, do not save `regn-tracker.jso
 2. **Open semester file…** → Files → OneDrive → select `.json`
 3. Work on the iPad — data saves locally between sessions
 4. When done: **Export backup** → save to OneDrive in the Files app
+5. **Export to Excel** from the Master Interactive Schedule panel (respects current filters) → save the `.xlsx` to OneDrive via the share sheet for reference viewing in Excel
 
 ## Pre-commit hook (developers)
 
@@ -93,6 +96,7 @@ manifest.webmanifest    PWA manifest
 sw.js                   Service worker (offline app shell)
 icons/                  App icons
 vendor/chart.umd.min.js Chart.js (bundled for offline use)
+vendor/xlsx.full.min.js  SheetJS (Excel export)
 css/                    Styles (app + print)
 js/                     Application logic and UI modules
 ```

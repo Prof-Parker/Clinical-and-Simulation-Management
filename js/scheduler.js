@@ -29,10 +29,19 @@ App.Scheduler = (function () {
     });
   }
 
-  function assignFacilities(students, facilities) {
+  function assignFacilities(students, facilities, config) {
     if (!facilities.length) return;
     students.forEach(function (s, i) {
-      if (!s.facilityId) s.facilityId = facilities[i % facilities.length].id;
+      if (s.facilityId) return;
+      if (config && App.ClinicalSites) {
+        var pseudo = { config: config, facilities: facilities };
+        var primary = App.ClinicalSites.getPrimaryGroupFacility(pseudo, s.clinicalGroup);
+        if (primary) {
+          s.facilityId = primary;
+          return;
+        }
+      }
+      s.facilityId = facilities[i % facilities.length].id;
     });
   }
 
@@ -80,8 +89,19 @@ App.Scheduler = (function () {
     return fac ? fac.name : 'facility';
   }
 
-  function studentAtSite(data, student, facilityId) {
+  function studentAtSite(data, student, facilityId, weekIndex) {
+    if (weekIndex != null && App.ClinicalSites) {
+      return App.ClinicalSites.studentAtFacilityAtWeek(data, student, weekIndex, facilityId);
+    }
     return App.DataModel.studentAtFacilitySite(data, student, facilityId);
+  }
+
+  function assignClinicalCellFacility(data, student, cell, weekIndex, ordinalIndex) {
+    if (!App.ClinicalSites) return;
+    var facId = App.ClinicalSites.resolveFacilityForWeek(
+      data, student.clinicalGroup, weekIndex, ordinalIndex
+    );
+    if (facId) cell.facilityId = facId;
   }
 
   function getExistingSimSessions(data, simNum) {
@@ -115,9 +135,9 @@ App.Scheduler = (function () {
       if (App.CalendarEngine.isWeekInactive(data, w)) continue;
       data.students.forEach(function (s) {
         if (s.id === excludeStudentId) return;
-        if (!studentAtSite(data, s, facilityId)) return;
         var cell = s.schedule[w];
         if (!cell || !cell.clinical || cell.clinicalMissed) return;
+        if (!studentAtSite(data, s, facilityId, w)) return;
         var day = App.DataModel.getClinicalDayForGroup(s.clinicalGroup, cfg);
         var key = w + '-' + day + '-' + s.clinicalGroup;
         if (!sessions[key]) {
@@ -172,11 +192,15 @@ App.Scheduler = (function () {
     var cell = student.schedule[wi];
     if (!cell || cell.inactive) return null;
     if (cell.sim || cell.clinical || cell.makeupClinical) return null;
+    var facId = App.ClinicalSites
+      ? App.ClinicalSites.getPrimaryGroupFacility(data, student.clinicalGroup) || student.facilityId
+      : student.facilityId;
     return {
       weekIndex: wi,
       week: 18,
       week18Fallback: true,
-      reason: 'Week 18 makeup clinical at ' + getFacilityName(data, student.facilityId) + ' — last resort'
+      facilityId: facId ? App.DataModel.getCanonicalFacilityId(data, facId) : null,
+      reason: 'Week 18 makeup clinical at ' + getFacilityName(data, facId) + ' — last resort'
     };
   }
 
@@ -858,12 +882,18 @@ App.Scheduler = (function () {
         if (!cell || cell.inactive) continue;
         if (cell.sim || cell.clinical || cell.makeupClinical) continue;
         cell.makeupClinical = true;
+        var conflictFac = App.ClinicalSites
+          ? App.ClinicalSites.resolveFacilityForWeek(data, student.clinicalGroup, missedWi, 0)
+          : student.facilityId;
+        if (conflictFac) {
+          cell.facilityId = App.DataModel.getCanonicalFacilityId(data, conflictFac);
+        }
         student.makeups.push({
           weekIndex: target,
           type: 'clinical',
           clinicalConflict: true,
-          facilityId: student.facilityId
-            ? App.DataModel.getCanonicalFacilityId(data, student.facilityId)
+          facilityId: conflictFac
+            ? App.DataModel.getCanonicalFacilityId(data, conflictFac)
             : null,
           joinedDay: clinDay,
           hostGroup: student.clinicalGroup,
@@ -885,7 +915,9 @@ App.Scheduler = (function () {
       var cell = student.schedule[wi];
       if (cell.inactive || cell.makeupClinical) continue;
       if (cell.clinical && !cell.clinicalMissed) continue;
+      var ordinal = countedClinicals(student);
       cell.clinical = true;
+      assignClinicalCellFacility(data, student, cell, wi, ordinal);
     }
 
     for (var j = 17; j >= clinStart && countedClinicals(student) < needed; j--) {
@@ -893,6 +925,12 @@ App.Scheduler = (function () {
       var c = student.schedule[j];
       if (c.inactive || c.sim || c.clinical || c.makeupClinical) continue;
       c.makeupClinical = true;
+      if (App.ClinicalSites) {
+        var mkFac = App.ClinicalSites.resolveFacilityForWeek(
+          data, student.clinicalGroup, j, countedClinicals(student)
+        );
+        if (mkFac) c.facilityId = mkFac;
+      }
     }
   }
 
@@ -905,6 +943,12 @@ App.Scheduler = (function () {
       var c = student.schedule[j];
       if (c.inactive || c.sim || c.clinical || c.makeupClinical) continue;
       c.makeupClinical = true;
+      if (App.ClinicalSites) {
+        var mkFacMissed = App.ClinicalSites.resolveFacilityForWeek(
+          data, student.clinicalGroup, j, countedClinicals(student)
+        );
+        if (mkFacMissed) c.facilityId = mkFacMissed;
+      }
       shortfall--;
     }
   }
@@ -913,7 +957,7 @@ App.Scheduler = (function () {
     if (!data || !data.students.length) return data;
     App.CalendarEngine.rebuildWeeks(data);
     assignSimGroups(data.students, data.config);
-    assignFacilities(data.students, data.facilities);
+    assignFacilities(data.students, data.facilities, data.config);
     clearSchedules(data.students);
     data.students.forEach(function (s) { s.makeups = []; });
     markInactiveWeeks(data);
@@ -997,42 +1041,47 @@ App.Scheduler = (function () {
     var seen = {};
 
     if (type === 'clinical') {
-      if (!student.facilityId) return [];
+      var facIds = App.ClinicalSites
+        ? App.ClinicalSites.getGroupFacilities(data, student.clinicalGroup)
+        : (student.facilityId ? [student.facilityId] : []);
+      if (!facIds.length) return [];
       var clinCaps = getClinicalCaps(cfg);
-      var facName = getFacilityName(data, student.facilityId);
       var joinSlots = [];
       var seenClin = {};
 
-      getExistingClinicalAtFacility(data, student.facilityId, student.id).forEach(function (session) {
-        var wi = session.weekIndex;
-        var cell = student.schedule[wi];
-        if (cell.sim) return;
-        if (cell.makeupClinical) return;
-        if (cell.clinical && !cell.clinicalMissed) return;
+      facIds.forEach(function (searchFacId) {
+        var facName = getFacilityName(data, searchFacId);
+        getExistingClinicalAtFacility(data, searchFacId, student.id).forEach(function (session) {
+          var wi = session.weekIndex;
+          var cell = student.schedule[wi];
+          if (cell.sim) return;
+          if (cell.makeupClinical) return;
+          if (cell.clinical && !cell.clinicalMissed) return;
 
-        var count = getClinicalGroupAttendanceCount(data, wi, session.group, session.day);
-        var overload = false;
-        if (count >= clinCaps.overload) return;
-        if (count >= clinCaps.normal) {
-          if (count < clinCaps.overload) overload = true;
-          else return;
-        }
+          var count = getClinicalGroupAttendanceCount(data, wi, session.group, session.day);
+          var overload = false;
+          if (count >= clinCaps.overload) return;
+          if (count >= clinCaps.normal) {
+            if (count < clinCaps.overload) overload = true;
+            else return;
+          }
 
-        var key = wi + '-' + session.day;
-        if (seenClin[key]) return;
-        seenClin[key] = true;
+          var key = wi + '-' + session.day + '-' + session.group;
+          if (seenClin[key]) return;
+          seenClin[key] = true;
 
-        joinSlots.push({
-          weekIndex: wi,
-          week: wi + 1,
-          day: session.day,
-          facilityJoin: true,
-          hostGroup: session.group,
-          facilityId: App.DataModel.getCanonicalFacilityId(data, student.facilityId),
-          overload: overload,
-          week18Fallback: false,
-          reason: 'Join ' + facName + ' clinical on ' + session.day + ' (Week ' + (wi + 1) + ') — ' +
-            count + '/' + clinCaps.normal + (overload ? ', overload available' : '')
+          joinSlots.push({
+            weekIndex: wi,
+            week: wi + 1,
+            day: session.day,
+            facilityJoin: true,
+            hostGroup: session.group,
+            facilityId: App.DataModel.getCanonicalFacilityId(data, searchFacId),
+            overload: overload,
+            week18Fallback: false,
+            reason: 'Join ' + facName + ' clinical on ' + session.day + ' (Week ' + (wi + 1) + ') — ' +
+              count + '/' + clinCaps.normal + (overload ? ', overload available' : '')
+          });
         });
       });
 
@@ -1085,6 +1134,8 @@ App.Scheduler = (function () {
         if (count >= clinCaps.overload) return { clinicalConflictApplied: false };
         if (count >= clinCaps.normal && !slot.overload) return { clinicalConflictApplied: false };
         cell.makeupClinical = true;
+        var joinFac = App.DataModel.getCanonicalFacilityId(data, slot.facilityId);
+        if (joinFac) cell.facilityId = joinFac;
         student.makeups.push({
           weekIndex: slot.weekIndex,
           type: 'clinical',
@@ -1095,11 +1146,17 @@ App.Scheduler = (function () {
         });
       } else {
         cell.makeupClinical = true;
+        var w18Fac = slot.facilityId ||
+          (App.ClinicalSites
+            ? App.ClinicalSites.getPrimaryGroupFacility(data, student.clinicalGroup)
+            : student.facilityId);
         student.makeups.push({
           weekIndex: slot.weekIndex,
           type: 'clinical',
-          week18Fallback: !!slot.week18Fallback
+          week18Fallback: !!slot.week18Fallback,
+          facilityId: w18Fac ? App.DataModel.getCanonicalFacilityId(data, w18Fac) : null
         });
+        if (w18Fac) cell.facilityId = App.DataModel.getCanonicalFacilityId(data, w18Fac);
       }
     } else if (type === 'sim') {
       var caps = getSimCaps(data.config);

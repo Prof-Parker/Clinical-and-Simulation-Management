@@ -10,7 +10,7 @@ No Microsoft API is used — you manage `.json` files directly in OneDrive.
 
 1. Install/open the app on your computer (Chrome or Edge recommended)
 2. Set up your semester in **Setup**
-3. Menu → **New semester file** → save as `Spring-2026-tracker.json` in your **OneDrive** folder
+3. Menu → **File Management** → **New OneDrive file** → save as `Spring-2026-tracker.json` in your **OneDrive** folder
 4. Next time: **Connect OneDrive file** → select the same file for automatic saving
 
 ## iPad: open a file from OneDrive
@@ -27,6 +27,14 @@ If the file does not appear, pull down to refresh the OneDrive folder, or open i
 1. Menu → **Export backup**
 2. In the share/save sheet, choose **Save to Files** → **OneDrive**
 3. Replace the existing file or save with a dated name
+
+## iPad: export schedule to Excel
+
+1. Open the **Dashboard** tab and apply any filters you want reflected in the export
+2. On **Master Interactive Schedule**, tap **Export to Excel**
+3. In the share/save sheet, choose **Save to Files** → **OneDrive**
+
+The workbook is for reference only (disclaimer at top of each sheet). Use the app for the current schedule and **Export backup** for full semester data.
 
 ## Tips
 

@@ -83,6 +83,28 @@ var greenSummary = App.ScheduleStatus.summarize(greenSem);
 assert(greenSummary.tier === 'green', 'small non-overlap roster is green (got ' + greenSummary.tier + ')');
 assert(greenSummary.incompleteCount === 0, 'green roster complete');
 
+harness.load('js/orientation.js');
+var orientSem = makeDefaultSemester();
+var c1 = orientSem.students.find(function (s) { return s.clinicalGroup === 'C1'; });
+var orientWeekDate = orientSem.calendar.weeks[4] && orientSem.calendar.weeks[4].startDate;
+var srmc = orientSem.facilities.find(function (f) { return f.name.indexOf('Shasta') >= 0; });
+orientSem.orientations = [{
+  id: 'o1',
+  clinicalGroup: 'C1',
+  date: orientWeekDate,
+  facilityId: srmc.id
+}];
+var ow = App.Orientation.getEffectiveOrientationWeekIndex(orientSem, c1);
+if (ow >= 0 && c1.schedule[ow]) {
+  c1.schedule[ow].clinical = true;
+  var orientSummary = App.ScheduleStatus.summarize(orientSem);
+  assert(orientSummary.tier === 'red', 'orientation conflict forces red tier (got ' + orientSummary.tier + ')');
+  assert(orientSummary.orientationConflicts.length > 0, 'orientation conflicts reported');
+  assert(orientSummary.incompleteCount === 0, 'requirements still met with orient conflict');
+} else {
+  console.error('SKIP: could not set up orient red-tier test');
+}
+
 var blocking = App.Feasibility.checkBlocking(defaultSem);
 assert(blocking.ok, 'checkBlocking ok for successful default generation');
 var info = App.Feasibility.checkInformational(defaultSem);

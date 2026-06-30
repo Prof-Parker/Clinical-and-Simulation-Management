@@ -15,6 +15,8 @@ function loadCore() {
   load('js/data-model.js');
   load('js/roster-balance.js');
   load('js/calendar-engine.js');
+  load('js/orientation.js');
+  load('js/clinical-sites.js');
   load('js/scheduler.js');
   load('js/validator.js');
   load('js/feasibility.js');
