@@ -8,6 +8,12 @@ App.state = {
   fileHandle: null,
   fileName: null,
   saveTimer: null,
+  simFacultyRoot: null,
+  simFacultyFileHandle: null,
+  simFacultyFileName: null,
+  simFacultyDirty: false,
+  simFacultyReady: false,
+  simFacultySaveTimer: null,
   currentTab: 'dashboard',
   listeners: []
 };
@@ -84,6 +90,19 @@ App.notifyChange = function () {
   App.syncSemesterToFile();
   App.state.listeners.forEach(function (fn) { fn(); });
   if (App.Storage && App.Storage.scheduleAutoSave) App.Storage.scheduleAutoSave();
+};
+
+App.notifySimFacultyChange = function () {
+  App.state.simFacultyDirty = true;
+  App.state.listeners.forEach(function (fn) { fn(); });
+  if (App.SimFacultyStorage && App.SimFacultyStorage.scheduleAutoSave) {
+    App.SimFacultyStorage.scheduleAutoSave();
+  }
+};
+
+App.markSimFacultyClean = function () {
+  App.state.simFacultyDirty = false;
+  App.state.listeners.forEach(function (fn) { fn(); });
 };
 
 App.setData = function (data) {

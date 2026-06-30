@@ -1,5 +1,5 @@
 /* Clinical & Simulation Management — app shell service worker */
-var CACHE_NAME = 'clin-sim-v2';
+var CACHE_NAME = 'clin-sim-v5';
 
 var PRECACHE_URLS = [
   './',
@@ -17,12 +17,14 @@ var PRECACHE_URLS = [
   './js/calendar-engine.js',
   './js/scheduler.js',
   './js/validator.js',
+  './js/makeup-display.js',
   './js/storage.js',
   './js/ui/dashboard.js',
   './js/ui/master-calendar.js',
   './js/ui/student-view.js',
   './js/ui/sim-roles.js',
   './js/ui/makeup-finder.js',
+  './js/ui/setup-config.js',
   './js/ui/setup.js',
   './js/ui/date-inputs.js',
   './js/ui/config-modal.js',

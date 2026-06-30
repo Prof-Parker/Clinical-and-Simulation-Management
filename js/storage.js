@@ -45,6 +45,54 @@ App.Storage = (function () {
     });
   }
 
+  function idbClear() {
+    return openIDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).clear();
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+      });
+    });
+  }
+
+  var LEGACY_LOCAL_STORAGE_KEYS = [
+    'nursingWeekDates',
+    'nursingStudentNames',
+    'nursingSimRoles'
+  ];
+
+  function clearLegacyLocalStorage() {
+    LEGACY_LOCAL_STORAGE_KEYS.forEach(function (key) {
+      try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
+    });
+  }
+
+  function clearAndRestoreDefaults() {
+    return idbSet(CACHE_KEY, null).then(function () {
+      return idbSet(HANDLE_KEY, null);
+    }).then(function () {
+      return setMeta({ lastImportedFileName: '', lastSavedAt: '', hasLoadedData: false });
+    }).then(function () {
+      clearLegacyLocalStorage();
+      var fileRoot = App.DataModel.createDefaultFile();
+      var sem = fileRoot.semesters.find(function (s) {
+        return s.id === fileRoot.meta.activeSemesterId;
+      }) || fileRoot.semesters[0];
+      App.CalendarEngine.rebuildWeeks(sem);
+      if (App.Scheduler) App.Scheduler.regenerateAll(sem);
+      App.state.fileHandle = null;
+      App.state.fileName = null;
+      document.documentElement.classList.remove('dark');
+      App.setFileRoot(fileRoot);
+      App.markClean();
+      return cacheData(fileRoot).then(function () {
+        updateStatusUI();
+        return fileRoot;
+      });
+    });
+  }
+
   function getMeta() {
     return idbGet(META_KEY).then(function (m) {
       return m || { lastImportedFileName: '', lastSavedAt: '', hasLoadedData: false };
@@ -70,11 +118,14 @@ App.Storage = (function () {
 
   function serialize(fileRoot) {
     App.syncSemesterToFile();
-    fileRoot.meta.lastModified = new Date().toISOString();
+    var exportRoot = App.SimFacultyData
+      ? App.SimFacultyData.cloneFileRootWithoutRoles(fileRoot)
+      : JSON.parse(JSON.stringify(fileRoot));
+    exportRoot.meta.lastModified = new Date().toISOString();
     if (App.state.data && App.state.data.meta) {
-      App.state.data.meta.lastModified = fileRoot.meta.lastModified;
+      App.state.data.meta.lastModified = exportRoot.meta.lastModified;
     }
-    return JSON.stringify(fileRoot, null, 2);
+    return JSON.stringify(exportRoot, null, 2);
   }
 
   function cacheData(fileRoot) {
@@ -138,7 +189,7 @@ App.Storage = (function () {
         return readFromHandle(handle);
       }).then(function (fileRoot) {
         return setMeta({ lastImportedFileName: handle.name, hasLoadedData: true }).then(function () {
-          return fileRoot;
+          return applyLoadedFileRoot(fileRoot);
         });
       });
     });
@@ -207,6 +258,8 @@ App.Storage = (function () {
       reader.onerror = reject;
       reader.readAsText(file);
     }).then(function (data) {
+      return applyLoadedFileRoot(data);
+    }).then(function (data) {
       return setMeta({
         lastImportedFileName: file.name,
         hasLoadedData: true
@@ -231,34 +284,61 @@ App.Storage = (function () {
     }
   }
 
+  function applyLoadedFileRoot(fileRoot) {
+    if (App.SimFacultyStorage) {
+      App.SimFacultyData.stripRolesFromFileRoot(fileRoot);
+      var migrated = App.SimFacultyStorage.migrateFromSemesterFile(fileRoot);
+      if (migrated) App.state.dirty = true;
+    } else {
+      App.SimFacultyData.stripRolesFromFileRoot(fileRoot);
+    }
+    return fileRoot;
+  }
+
   function updateStatusUI() {
     var el = document.getElementById('fileStatus');
     if (!el) return;
 
-    getMeta().then(function (meta) {
+    Promise.all([
+      getMeta(),
+      App.SimFacultyStorage ? App.SimFacultyStorage._getMeta() : Promise.resolve(null)
+    ]).then(function (results) {
+      var meta = results[0];
+      var facultyMeta = results[1];
       var dirty = App.state.dirty;
       var name = App.state.fileName;
       var savedLabel = formatSavedTime(meta.lastSavedAt);
+      var parts = [];
 
       if (supportsFS() && App.state.fileHandle) {
-        el.textContent = dirty
+        parts.push(dirty
           ? 'Unsaved — ' + (name || 'semester file')
           : 'Connected to OneDrive: ' + (name || 'semester file') +
-            (savedLabel ? ' · saved ' + savedLabel : '');
+            (savedLabel ? ' · saved ' + savedLabel : ''));
         el.className = dirty ? 'file-status dirty' : 'file-status connected';
       } else if (dirty) {
-        el.textContent = 'Unsaved on this device — export backup to OneDrive' +
-          (name ? ' (' + name + ')' : '');
+        parts.push('Unsaved on this device — export backup to OneDrive' +
+          (name ? ' (' + name + ')' : ''));
         el.className = 'file-status dirty';
       } else if (meta.hasLoadedData) {
-        el.textContent = 'Saved on this device' +
+        parts.push('Saved on this device' +
           (name || meta.lastImportedFileName ? ': ' + (name || meta.lastImportedFileName) : '') +
-          (savedLabel ? ' · ' + savedLabel : '');
+          (savedLabel ? ' · ' + savedLabel : ''));
         el.className = 'file-status connected';
       } else {
-        el.textContent = 'Open a semester file from OneDrive to begin';
+        parts.push('Open a semester file from OneDrive to begin');
         el.className = 'file-status';
       }
+
+      if (App.SimFacultyStorage && App.SimFacultyStorage.isReady()) {
+        var facultyName = App.state.simFacultyFileName ||
+          (facultyMeta && facultyMeta.lastImportedFileName) ||
+          'sim faculty file';
+        var facultyDirty = App.state.simFacultyDirty ? ' (unsaved)' : '';
+        parts.push('Sim faculty: ' + facultyName + facultyDirty);
+      }
+
+      el.textContent = parts.join(' · ');
     });
   }
 
@@ -271,7 +351,7 @@ App.Storage = (function () {
 
   function initUnloadWarning() {
     window.addEventListener('beforeunload', function (e) {
-      if (supportsFS() || !App.state.dirty) return;
+      if (supportsFS() || (!App.state.dirty && !App.state.simFacultyDirty)) return;
       e.preventDefault();
       e.returnValue = '';
     });
@@ -341,6 +421,10 @@ App.Storage = (function () {
     cacheData: cacheData,
     shouldShowOnedriveBanner: shouldShowOnedriveBanner,
     configureImportInput: configureImportInput,
-    isIOSDevice: isIOSDevice
+    isIOSDevice: isIOSDevice,
+    clearAndRestoreDefaults: clearAndRestoreDefaults,
+    applyLoadedFileRoot: applyLoadedFileRoot,
+    _idbGet: idbGet,
+    _idbSet: idbSet
   };
 })();

@@ -6,7 +6,7 @@
 ## Scheduling Goals
 -Semester is 18 weeks long including one week for fall or spring break
 -Support for up to 30 students per semester
--Each student is assigned to a clinical group (max 6 students per group)
+-Each student is assigned to a clinical group
 -For weeks with Monday Holidays students will not have simulation or clinical that week
 -Students MUST complete all 10 clinical days and all 5 simulation days
 -Clinical groups MUST remain consistent the entire semester
@@ -28,6 +28,7 @@
 -4 simulation groups
 -Each group will attend simulation every other week
 -Simulation days Mondays and Tuesdays
+
 
 ## App Features
 -Ability to enter and save student names each semester

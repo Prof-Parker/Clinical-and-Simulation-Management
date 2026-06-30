@@ -45,6 +45,25 @@ App.UI.Setup = (function () {
     }
   }
 
+  function renderScheduleWarnings(data) {
+    var panel = document.getElementById('setupScheduleWarnings');
+    if (!panel || !App.Feasibility) return;
+    var result = App.Feasibility.check(data);
+    if (result.ok) {
+      panel.classList.add('hidden');
+      panel.innerHTML = '';
+      return;
+    }
+    panel.classList.remove('hidden');
+    var html = '<strong>Schedule generation warnings</strong>' +
+      '<p class="section-sub" style="margin:0.35rem 0 0.5rem">The schedule may not be able to be generated for all students.</p><ul>';
+    result.issues.forEach(function (issue) {
+      html += '<li>' + App.Feasibility.formatIssue(issue) + '</li>';
+    });
+    html += '</ul>';
+    panel.innerHTML = html;
+  }
+
   function render(data) {
     renderSemesterFields(data);
     renderSections(data);
@@ -52,6 +71,8 @@ App.UI.Setup = (function () {
     renderFaculty(data);
     renderHolidays(data);
     renderRoster(data);
+    renderScheduleWarnings(data);
+    if (App.UI.SetupConfig) App.UI.SetupConfig.render(data);
     if (App.UI.DateInputs) {
       App.UI.DateInputs.init(document.getElementById('view-setup'), data);
     }
@@ -75,15 +96,26 @@ App.UI.Setup = (function () {
     return f ? f.name : 'Unassigned';
   }
 
+  function getCohortFacilityIdForGroup(data, clinicalGroup) {
+    var cohort = data.students.filter(function (s) { return s.clinicalGroup === clinicalGroup; });
+    if (cohort.length) return getCohortFacilityId(cohort, data);
+    return App.DataModel.getDefaultFacilityIdForClinicalGroup(clinicalGroup, data.facilities || []);
+  }
+
   function getCohortFacilityId(cohort, data) {
     if (!cohort.length) {
-      return data.facilities.length ? data.facilities[0].id : null;
+      var unique = App.DataModel.getUniqueFacilitiesForSelect(data);
+      return unique.length ? unique[0].id : null;
     }
     var counts = {};
     cohort.forEach(function (s) {
-      if (s.facilityId) counts[s.facilityId] = (counts[s.facilityId] || 0) + 1;
+      if (s.facilityId) {
+        var canon = App.DataModel.getCanonicalFacilityId(data, s.facilityId);
+        counts[canon] = (counts[canon] || 0) + 1;
+      }
     });
-    var best = cohort[0].facilityId || (data.facilities[0] && data.facilities[0].id);
+    var best = App.DataModel.getCanonicalFacilityId(data, cohort[0].facilityId) ||
+      (App.DataModel.getUniqueFacilitiesForSelect(data)[0] && App.DataModel.getUniqueFacilitiesForSelect(data)[0].id);
     var bestN = 0;
     Object.keys(counts).forEach(function (id) {
       if (counts[id] > bestN) {
@@ -95,13 +127,15 @@ App.UI.Setup = (function () {
   }
 
   function applyGroupFacility(data, clinicalGroup, facilityId) {
+    facilityId = App.DataModel.getCanonicalFacilityId(data, facilityId);
     data.students.forEach(function (s) {
       if (s.clinicalGroup === clinicalGroup) s.facilityId = facilityId;
     });
   }
 
   function cohortFacilitySelectHtml(data, clinicalGroup, selectedId) {
-    return data.facilities.map(function (f) {
+    selectedId = App.DataModel.getCanonicalFacilityId(data, selectedId);
+    return App.DataModel.getUniqueFacilitiesForSelect(data).map(function (f) {
       return '<option value="' + f.id + '"' + (selectedId === f.id ? ' selected' : '') + '>' + escAttr(f.name) + '</option>';
     }).join('');
   }
@@ -147,7 +181,7 @@ App.UI.Setup = (function () {
         return '<option value="' + sg + '"' + (student.simGroup === sg ? ' selected' : '') + '>' + sg + '</option>';
       }).join('') +
       '</select>' +
-      '<span class="setup-facility-readonly" title="Set via cohort clinical site above">' + escAttr(facilityName(data, student.facilityId)) + '</span>' +
+      '<span class="setup-facility-readonly" title="Set via Clinical groups in Facilities &amp; Clinical Groups">' + escAttr(facilityName(data, student.facilityId)) + '</span>' +
       '<button type="button" class="btn btn-icon-remove remove-student-btn" data-student-id="' + student.id + '" aria-label="Remove student" title="Remove student">&times;</button>' +
       '</div>';
   }
@@ -155,12 +189,16 @@ App.UI.Setup = (function () {
   function createNewStudentForGroup(data, clinicalGroup) {
     var groups = App.DataModel.getClinicalGroups(data.config);
     var simGroups = App.DataModel.getSimGroups(data.config);
-    var groupIdx = Math.max(0, groups.indexOf(clinicalGroup));
     var cohort = data.students.filter(function (s) { return s.clinicalGroup === clinicalGroup; });
     var facId = getCohortFacilityId(cohort, data);
     var section = (data.sections && data.sections[0] && data.sections[0].name) ? data.sections[0].name : '';
-    var student = App.DataModel.createStudent('', clinicalGroup, simGroups[groupIdx % simGroups.length], facId, section);
-    student.name = '';
+    var student = App.DataModel.createStudent(
+      App.DataModel.nextDefaultStudentName(data.students),
+      clinicalGroup,
+      App.RosterBalance.simGroupForClinicalCohort(data.students, clinicalGroup, groups, simGroups),
+      facId,
+      section
+    );
     return student;
   }
 
@@ -185,9 +223,7 @@ App.UI.Setup = (function () {
 
   function rebalanceStudents(data, syncCount) {
     var groups = App.DataModel.getClinicalGroups(data.config);
-    var simGroups = App.DataModel.getSimGroups(data.config);
     var maxStudents = data.config.maxStudents || 30;
-    var maxPer = data.config.maxPerClinicalGroup || 6;
     if (!groups.length) return;
 
     if (syncCount) {
@@ -207,28 +243,7 @@ App.UI.Setup = (function () {
       }
     }
 
-    var groupCounts = {};
-    groups.forEach(function (g) { groupCounts[g] = 0; });
-
-    data.students.forEach(function (student, i) {
-      var bestGroup = groups[0];
-      var bestCount = Infinity;
-      groups.forEach(function (g) {
-        var count = groupCounts[g];
-        if (count < bestCount && count < maxPer) {
-          bestCount = count;
-          bestGroup = g;
-        }
-      });
-      if (groupCounts[bestGroup] >= maxPer) {
-        groups.forEach(function (g) {
-          if (groupCounts[g] < groupCounts[bestGroup]) bestGroup = g;
-        });
-      }
-      student.clinicalGroup = bestGroup;
-      groupCounts[bestGroup]++;
-      student.simGroup = simGroups[i % simGroups.length];
-    });
+    App.RosterBalance.rebalance(data.students, data.config);
   }
 
   function updateRebalanceButton(data) {
@@ -239,30 +254,29 @@ App.UI.Setup = (function () {
 
   function renderRoster(data) {
     var container = document.getElementById('setupRoster');
-    container.innerHTML =
+    container.innerHTML = '';
+
+    var maxPer = data.config.maxPerClinicalGroup || 6;
+    var columnHeadersHtml =
       '<div class="setup-roster-columns" aria-hidden="true">' +
       '<span></span><span>Move</span><span>Name</span><span>Section</span><span>Sim</span><span>Site</span><span></span>' +
       '</div>';
 
-    var maxPer = data.config.maxPerClinicalGroup || 6;
-
     App.DataModel.getClinicalGroups(data.config).forEach(function (g) {
       var cohort = data.students.filter(function (s) { return s.clinicalGroup === g; });
-      var cohortFacId = getCohortFacilityId(cohort, data);
+      var clinDay = App.DataModel.getClinicalDayForGroup(g, data.config);
       var groupDiv = document.createElement('div');
       groupDiv.className = 'setup-group';
       groupDiv.innerHTML =
         '<div class="setup-group-header">' +
         '<div class="setup-group-header-main">' +
         '<h4>' + g + ' Cohort</h4>' +
+        '<span class="setup-group-day">' + clinDay + ' clinical</span>' +
         '<span class="setup-group-count">' + cohort.length + ' / ' + maxPer + ' students</span>' +
         '</div>' +
-        '<label class="setup-group-facility-label">Clinical site' +
-        '<select data-cohort-facility="' + g + '" aria-label="' + g + ' clinical site">' +
-        cohortFacilitySelectHtml(data, g, cohortFacId) +
-        '</select></label>' +
         '<button type="button" class="btn btn-sm add-student-btn" data-clinical-group="' + g + '">Add student</button>' +
-        '</div>';
+        '</div>' +
+        columnHeadersHtml;
       var inner = document.createElement('div');
       inner.className = 'setup-group-dropzone';
       inner.setAttribute('data-drop-group', g);
@@ -297,16 +311,11 @@ App.UI.Setup = (function () {
   function renderFacilities(data) {
     var container = document.getElementById('setupFacilities');
     container.innerHTML = '';
-    data.facilities.forEach(function (f) {
+    App.DataModel.getUniqueFacilitiesForSelect(data).forEach(function (f) {
       var canRemove = data.facilities.length > 1;
       container.innerHTML +=
-        '<div class="setup-item-row">' +
-        '<input type="text" data-fac="name" data-fac-id="' + f.id + '" value="' + escAttr(f.name) + '" placeholder="Facility name">' +
-        '<select data-fac="day" data-fac-id="' + f.id + '">' +
-        ['Sat', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(function (d) {
-          return '<option value="' + d + '"' + (f.clinicalDay === d ? ' selected' : '') + '>' + d + '</option>';
-        }).join('') +
-        '</select>' +
+        '<div class="setup-item-row setup-facility-row">' +
+        '<input type="text" data-fac="name" data-fac-id="' + f.id + '" value="' + escAttr(f.name) + '" placeholder="Facility name" aria-label="Facility name">' +
         (canRemove
           ? '<button class="btn btn-icon-remove remove-facility" type="button" data-fac-id="' + f.id + '" aria-label="Remove facility" title="Remove facility">&times;</button>'
           : '<span class="section-sub" style="font-size:0.75rem;white-space:nowrap">Min. 1</span>') +
@@ -423,10 +432,10 @@ App.UI.Setup = (function () {
       });
     });
 
-    document.querySelectorAll('#setupFacilities [data-fac]').forEach(function (el) {
+    document.querySelectorAll('#setupFacilities [data-fac="name"]').forEach(function (el) {
       var f = data.facilities.find(function (fac) { return fac.id === el.dataset.facId; });
       if (!f) return;
-      f[el.dataset.fac === 'name' ? 'name' : 'clinicalDay'] = el.value;
+      f.name = el.value.trim();
     });
     document.querySelectorAll('#setupFaculty [data-faculty]').forEach(function (el) {
       var f = data.faculty[parseInt(el.dataset.idx, 10)];
@@ -445,7 +454,14 @@ App.UI.Setup = (function () {
     });
     collectSemesterMeta(data);
     data.calendar.semesterStartDate = document.getElementById('semesterStartDate').value;
+    App.DataModel.normalizeFacilities(data);
     App.CalendarEngine.rebuildWeeks(data);
+
+    var configBefore = App.DataModel.cloneConfig(data.config);
+    if (App.UI.SetupConfig) {
+      configBefore = App.UI.SetupConfig.collectIntoData(data);
+    }
+    return configBefore;
   }
 
   function removeFacility(data, facId) {
@@ -458,6 +474,7 @@ App.UI.Setup = (function () {
     data.students.forEach(function (s) {
       if (s.facilityId === facId) s.facilityId = fallback.id;
     });
+    App.DataModel.normalizeFacilities(data);
     App.notifyChange();
     App.UI.Setup.render(data);
   }
@@ -515,6 +532,11 @@ App.UI.Setup = (function () {
       return s.clinicalGroup === clinicalGroup && s.id !== studentId;
     });
     student.facilityId = getCohortFacilityId(cohort, data);
+    var groups = App.DataModel.getClinicalGroups(data.config);
+    var simGroups = App.DataModel.getSimGroups(data.config);
+    student.simGroup = App.RosterBalance.simGroupForClinicalCohort(
+      data.students, clinicalGroup, groups, simGroups, studentId
+    );
     App.notifyChange();
     App.UI.Setup.render(data);
   }
@@ -580,12 +602,6 @@ App.UI.Setup = (function () {
         moveStudentToGroup(data, e.target.getAttribute('data-student-id'), target);
         return;
       }
-      if (e.target.hasAttribute('data-cohort-facility')) {
-        var dataFac = App.getData();
-        collectFromForm(dataFac);
-        App.notifyChange();
-        App.UI.Setup.render(dataFac);
-      }
     });
 
     roster.addEventListener('click', function (e) {
@@ -609,8 +625,9 @@ App.UI.Setup = (function () {
 
     document.getElementById('saveSetupBtn').addEventListener('click', function () {
       var data = App.getData();
-      collectFromForm(data);
+      var configBefore = collectFromForm(data);
       App.notifyChange();
+      if (App.UI.SetupConfig) App.UI.SetupConfig.maybeRegenerateAfterChange(data, configBefore);
       App.UI.refresh();
       alert('Setup saved.');
     });
@@ -625,9 +642,19 @@ App.UI.Setup = (function () {
     });
 
     document.getElementById('regenerateSchedulesBtn').addEventListener('click', function () {
-      if (!confirm('Regenerate all student schedules? Manual edits will be lost.')) return;
       var data = App.getData();
       collectFromForm(data);
+      var confirmMsg = 'Regenerate all student schedules? Manual edits will be lost.';
+      if (App.Feasibility) {
+        var feas = App.Feasibility.check(data);
+        if (!feas.ok) {
+          var summary = feas.issues.map(function (i) {
+            return App.Feasibility.formatIssue(i);
+          }).join('\n\n');
+          confirmMsg = 'Schedule warnings detected:\n\n' + summary + '\n\nRegenerate anyway? Manual edits will be lost.';
+        }
+      }
+      if (!confirm(confirmMsg)) return;
       App.Scheduler.regenerateAll(data);
       App.notifyChange();
       App.UI.refresh();
@@ -651,7 +678,7 @@ App.UI.Setup = (function () {
     document.getElementById('addFacilityBtn').addEventListener('click', function () {
       var data = App.getData();
       collectFromForm(data);
-      data.facilities.push({ id: App.DataModel.uid(), name: 'New Facility', clinicalDay: 'Mon' });
+      data.facilities.push({ id: App.DataModel.uid(), name: 'New Facility' });
       App.notifyChange();
       App.UI.Setup.render(data);
     });
@@ -724,6 +751,8 @@ App.UI.Setup = (function () {
     init: init,
     collectFromForm: collectFromForm,
     needsRebalance: needsRebalance,
-    rebalanceStudents: rebalanceStudents
+    rebalanceStudents: rebalanceStudents,
+    getCohortFacilityIdForGroup: getCohortFacilityIdForGroup,
+    cohortFacilitySelectHtml: cohortFacilitySelectHtml
   };
 })();

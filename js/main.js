@@ -151,6 +151,7 @@ App.UI.init = function () {
   App.UI.StudentView.init();
   App.UI.SimRoles.init();
   App.UI.MakeupFinder.init();
+  App.UI.SetupConfig.init();
   App.UI.Setup.init();
   App.UI.ConfigModal.init();
   App.UI.initSemesterSwitcher();
@@ -185,6 +186,30 @@ App.UI.init = function () {
     App.UI.closeMenu();
   });
 
+  document.getElementById('importSimFacultyBtn').addEventListener('click', function () {
+    document.getElementById('importSimFacultyInput').click();
+    App.UI.closeMenu();
+  });
+
+  document.getElementById('importSimFacultyInput').addEventListener('change', function (e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    App.SimFacultyStorage.importFromFile(file).then(function () {
+      App.UI.refresh();
+    }).catch(function () { alert('Invalid sim faculty file.'); });
+    e.target.value = '';
+  });
+
+  document.getElementById('exportSimFacultyBtn').addEventListener('click', function () {
+    if (!App.SimFacultyStorage.isReady()) {
+      alert('Connect or create a sim faculty file first.');
+      App.UI.closeMenu();
+      return;
+    }
+    App.SimFacultyStorage.exportDownload();
+    App.UI.closeMenu();
+  });
+
   document.getElementById('importFileInput').addEventListener('change', function (e) {
     var file = e.target.files[0];
     if (!file) return;
@@ -209,19 +234,28 @@ App.UI.init = function () {
     App.UI.closeMenu();
   });
 
+  document.getElementById('clearStorageBtn').addEventListener('click', function () {
+    App.UI.closeMenu();
+    var msg = 'This will erase all semester data saved on this device and restore the default roster and settings. ' +
+      'Any connected OneDrive file will be disconnected. This cannot be undone.\n\nContinue?';
+    if (!confirm(msg)) return;
+    App.Storage.clearAndRestoreDefaults().then(function () {
+      App.UI.Dashboard.populateFilters(App.getData());
+      App.UI.refresh();
+    });
+  });
+
   document.getElementById('saveBtn').addEventListener('click', function () {
-    App.Storage.saveCurrent().then(function () {
+    Promise.all([
+      App.Storage.saveCurrent(),
+      App.SimFacultyStorage.isReady() ? App.SimFacultyStorage.saveCurrent() : Promise.resolve()
+    ]).then(function () {
       if (App.Storage.supportsFS()) {
-        alert('Saved to connected semester file.');
+        alert('Saved to connected file(s).');
       } else {
         alert('Saved on this device. Export backup to OneDrive when finished.');
       }
     });
-    App.UI.closeMenu();
-  });
-
-  document.getElementById('openConfigBtn').addEventListener('click', function () {
-    App.UI.ConfigModal.open();
     App.UI.closeMenu();
   });
 
@@ -244,9 +278,23 @@ App.UI.init = function () {
       }).catch(function () {});
       App.UI.closeMenu();
     });
+    document.getElementById('openSimFacultyBtn').addEventListener('click', function () {
+      App.SimFacultyStorage.openFilePicker().then(function () {
+        App.UI.refresh();
+      }).catch(function () {});
+      App.UI.closeMenu();
+    });
+    document.getElementById('newSimFacultyBtn').addEventListener('click', function () {
+      App.SimFacultyStorage.createFilePicker().then(function () {
+        App.UI.refresh();
+      }).catch(function () {});
+      App.UI.closeMenu();
+    });
   } else {
     document.getElementById('openFileBtn').classList.add('hidden');
     document.getElementById('newFileBtn').classList.add('hidden');
+    document.getElementById('openSimFacultyBtn').classList.add('hidden');
+    document.getElementById('newSimFacultyBtn').classList.add('hidden');
   }
 
   App.onStateChange(function () { App.Storage.updateStatusUI(); });
@@ -254,6 +302,10 @@ App.UI.init = function () {
 
 App.main = function () {
   App.Storage.init().then(function (fileRoot) {
+    return App.SimFacultyStorage.init(fileRoot).then(function () {
+      return fileRoot;
+    });
+  }).then(function (fileRoot) {
     if (fileRoot.meta.darkMode) document.documentElement.classList.add('dark');
     App.UI.Dashboard.populateFilters(App.getData());
     App.UI.init();

@@ -48,7 +48,9 @@ App.UI.StudentView = (function () {
         if (cell.clinical || cell.clinicalMissed) {
           parts.push('Clinical (' + App.DataModel.getClinicalDayForGroup(student.clinicalGroup, cfg) + ')' + (cell.clinicalMissed ? ' [MISSED]' : ''));
         }
-        if (cell.sim) parts.push('Simulation ' + cell.sim + ' (' + (cell.simDay || 'Mon') + ')');
+        if (cell.sim) parts.push('Simulation ' + cell.sim +
+          (cell.simGuestGroup ? ' (guest ' + cell.simGuestGroup + ', primary ' + student.simGroup + ')' : '') +
+          ' (' + (cell.simDay || 'Mon') + ')');
         activity = parts.join(' + ') || '—';
       }
       html += '<tr class="' + rowCls + '"><td>Week ' + (i + 1) + '</td><td>' +

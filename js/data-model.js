@@ -6,7 +6,7 @@ App.DataModel = (function () {
   var VERSION = 1;
   var CLINICAL_GROUPS = ['C1', 'C2', 'C3', 'C4', 'C5'];
   var SIM_GROUPS = ['SG1', 'SG2', 'SG3', 'SG4'];
-  var WEEKDAY_OPTIONS = ['Sat', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  var WEEKDAY_OPTIONS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   var ROLE_OPTIONS = ['', 'Primary', 'Secondary', 'Evaluator', 'Scribe'];
 
   function uid() {
@@ -15,7 +15,7 @@ App.DataModel = (function () {
 
   function emptyCell() {
     return {
-      clinical: false, clinicalMissed: false, sim: null, simDay: null,
+      clinical: false, clinicalMissed: false, sim: null, simDay: null, simGuestGroup: null,
       makeupClinical: false, inactive: false, simMakeup: false, simOverload: false
     };
   }
@@ -32,9 +32,11 @@ App.DataModel = (function () {
       simDaysRequired: 5,
       maxStudents: 30,
       maxPerClinicalGroup: 6,
+      maxPerClinicalGroupOverload: 7,
       maxPerSimGroup: 8,
       maxStudentsPerSimSession: 8,
       maxStudentsPerSimSessionOverload: 9,
+      simMakeupHeadroomReserved: 1,
       numSimGroups: 4,
       numClinicalGroups: 5,
       clinicalStartWeek: 5,
@@ -70,6 +72,13 @@ App.DataModel = (function () {
     }
     cfg.numClinicalGroups = cfg.clinicalGroups.length;
     cfg.numSimGroups = cfg.simGroups.length;
+    var clinNormal = cfg.maxPerClinicalGroup || 6;
+    if (!cfg.maxPerClinicalGroupOverload) cfg.maxPerClinicalGroupOverload = clinNormal + 1;
+    var simNormal = cfg.maxStudentsPerSimSession || 8;
+    var headroom = parseInt(cfg.simMakeupHeadroomReserved, 10);
+    if (isNaN(headroom) || headroom < 0) headroom = 1;
+    if (headroom >= simNormal) headroom = Math.max(0, simNormal - 1);
+    cfg.simMakeupHeadroomReserved = headroom;
     return cfg;
   }
 
@@ -123,13 +132,117 @@ App.DataModel = (function () {
     syncSemesterStudentsForConfig(semester);
   }
 
+  var DEFAULT_CLINICAL_GROUP_SITE = {
+    C1: 'Shasta Regional Medical Center',
+    C2: 'Shasta Regional Medical Center',
+    C3: 'Shasta Regional Medical Center',
+    C4: 'Saint Elizabeth',
+    C5: 'Saint Elizabeth'
+  };
+
   function defaultFacilities() {
     return [
-      { id: uid(), name: 'Saint Elizabeth', clinicalDay: 'Mon' },
-      { id: uid(), name: 'Regional Medical Center', clinicalDay: 'Mon' },
-      { id: uid(), name: 'Community Hospital', clinicalDay: 'Tue' },
-      { id: uid(), name: 'Sunrise Care', clinicalDay: 'Sat' }
+      { id: uid(), name: 'Shasta Regional Medical Center' },
+      { id: uid(), name: 'Saint Elizabeth' }
     ];
+  }
+
+  function facilityIdByName(facilities, name) {
+    var key = normalizeFacilityName(name);
+    var match = facilities.find(function (f) {
+      return normalizeFacilityName(f.name) === key;
+    });
+    return match ? match.id : (facilities[0] && facilities[0].id);
+  }
+
+  function getDefaultFacilityIdForClinicalGroup(clinicalGroup, facilities) {
+    var siteName = DEFAULT_CLINICAL_GROUP_SITE[clinicalGroup];
+    if (siteName) return facilityIdByName(facilities, siteName);
+    return facilities[0] && facilities[0].id;
+  }
+
+  function normalizeFacilityName(name) {
+    return String(name || '')
+      .trim()
+      .toLowerCase()
+      .replace(/['']/g, '')
+      .replace(/\s+/g, ' ');
+  }
+
+  function findFacilityById(data, facilityId) {
+    if (!data || !data.facilities || !facilityId) return null;
+    return data.facilities.find(function (f) { return f.id === facilityId; }) || null;
+  }
+
+  function getCanonicalFacilityId(data, facilityId) {
+    var fac = findFacilityById(data, facilityId);
+    if (!fac) return facilityId;
+    var key = normalizeFacilityName(fac.name);
+    if (!key) return facilityId;
+    var match = data.facilities.find(function (f) {
+      return normalizeFacilityName(f.name) === key;
+    });
+    return match ? match.id : facilityId;
+  }
+
+  function sameFacilitySite(data, facilityIdA, facilityIdB) {
+    if (!facilityIdA || !facilityIdB) return false;
+    if (facilityIdA === facilityIdB) return true;
+    var a = findFacilityById(data, facilityIdA);
+    var b = findFacilityById(data, facilityIdB);
+    if (!a || !b) return false;
+    return normalizeFacilityName(a.name) === normalizeFacilityName(b.name);
+  }
+
+  function studentAtFacilitySite(data, student, facilityId) {
+    if (!student || !facilityId) return false;
+    return sameFacilitySite(data, student.facilityId, facilityId);
+  }
+
+  function getUniqueFacilitiesForSelect(data) {
+    var seen = {};
+    var list = [];
+    (data.facilities || []).forEach(function (f) {
+      var key = normalizeFacilityName(f.name);
+      if (!key) key = f.id;
+      if (seen[key]) return;
+      seen[key] = true;
+      list.push(f);
+    });
+    return list;
+  }
+
+  function normalizeFacilities(semester) {
+    if (!semester.facilities || !semester.facilities.length) {
+      semester.facilities = defaultFacilities();
+      return;
+    }
+    var canonical = {};
+    var idRemap = {};
+    semester.facilities.forEach(function (f) {
+      if (!f.id) f.id = uid();
+      var name = String(f.name || '').trim() || 'Unnamed facility';
+      var key = normalizeFacilityName(name);
+      if (!key) key = f.id;
+      if (!canonical[key]) {
+        canonical[key] = { id: f.id, name: name };
+      } else {
+        idRemap[f.id] = canonical[key].id;
+        if (name.length > canonical[key].name.length) canonical[key].name = name;
+      }
+    });
+    semester.facilities = Object.keys(canonical).map(function (k) { return canonical[k]; });
+    function remapId(id) {
+      if (!id) return id;
+      while (idRemap[id]) id = idRemap[id];
+      return id;
+    }
+    (semester.students || []).forEach(function (s) {
+      if (s.facilityId) s.facilityId = remapId(s.facilityId);
+      (s.makeups || []).forEach(function (m) {
+        if (m.facilityId) m.facilityId = remapId(m.facilityId);
+      });
+    });
   }
 
   function defaultSections() {
@@ -145,6 +258,25 @@ App.DataModel = (function () {
     return list.map(function (g) {
       return { id: uid(), name: '', clinicalGroup: g };
     });
+  }
+
+  function defaultStudentName(index) {
+    return 'Student ' + (index + 1);
+  }
+
+  function assignDefaultStudentNames(students) {
+    students.forEach(function (s, i) {
+      s.name = defaultStudentName(i);
+    });
+  }
+
+  function nextDefaultStudentName(students) {
+    var max = 0;
+    students.forEach(function (s) {
+      var m = String(s.name || '').match(/^Student (\d+)$/);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    });
+    return defaultStudentName(max > 0 ? max : students.length);
   }
 
   function createStudent(name, clinicalGroup, simGroup, facilityId, section) {
@@ -169,13 +301,14 @@ App.DataModel = (function () {
     var simGroups = cfg.simGroups;
     var idx = 0;
     cfg.clinicalGroups.forEach(function (g, gi) {
+      var simGroup = simGroups[gi % simGroups.length];
+      var facId = getDefaultFacilityIdForClinicalGroup(g, facilities);
       for (var i = 0; i < 6; i++) {
-        var fac = facilities[gi % facilities.length];
         students.push(createStudent(
-          'Student ' + (idx + 1),
+          defaultStudentName(idx),
           g,
-          simGroups[Math.floor(idx / 8) % simGroups.length],
-          fac.id,
+          simGroup,
+          facId,
           sections[idx % sections.length].name
         ));
         idx++;
@@ -209,8 +342,7 @@ App.DataModel = (function () {
       sections: sections,
       facilities: facilities,
       faculty: defaultFaculty(cfg.clinicalGroups),
-      students: students,
-      roles: {}
+      students: students
     };
   }
 
@@ -275,13 +407,16 @@ App.DataModel = (function () {
     normalizeConfig(semester.config);
     if (!semester.config.maxStudentsPerSimSession) semester.config.maxStudentsPerSimSession = 8;
     if (!semester.config.maxStudentsPerSimSessionOverload) semester.config.maxStudentsPerSimSessionOverload = 9;
+    if (!semester.config.maxPerClinicalGroupOverload) {
+      semester.config.maxPerClinicalGroupOverload = (semester.config.maxPerClinicalGroup || 6) + 1;
+    }
     if (!semester.calendar) semester.calendar = { semesterStartDate: new Date().toISOString().slice(0, 10), weeks: [] };
     if (!semester.holidays) semester.holidays = [];
     if (!semester.facilities) semester.facilities = defaultFacilities();
+    normalizeFacilities(semester);
     if (!semester.faculty) semester.faculty = defaultFaculty(getClinicalGroups(semester.config));
     syncSemesterFaculty(semester);
     if (!semester.students) semester.students = [];
-    if (!semester.roles) semester.roles = {};
     if (!semester.sections || !semester.sections.length) {
       var seen = {};
       semester.sections = [];
@@ -436,11 +571,10 @@ App.DataModel = (function () {
     applySemesterSeasonYear(copy, season || 'fall', year || new Date().getFullYear());
     copy.students.forEach(function (s) {
       s.id = uid();
-      s.name = '';
       s.absences = [];
       s.makeups = [];
     });
-    copy.roles = {};
+    assignDefaultStudentNames(copy.students);
     return migrateSemester(copy);
   }
 
@@ -454,7 +588,7 @@ App.DataModel = (function () {
       if (names && names.length === data.semesters[0].students.length) {
         data.semesters[0].students.forEach(function (s, i) { s.name = names[i] || s.name; });
       }
-      if (roles) data.semesters[0].roles = roles;
+      if (roles) data._legacySimRoles = roles;
       return data;
     } catch (e) {
       return null;
@@ -522,10 +656,15 @@ App.DataModel = (function () {
     getFutureSemesters: getFutureSemesters,
     applyConfigToSemester: applyConfigToSemester,
     defaultSections: defaultSections,
+    defaultFacilities: defaultFacilities,
+    getDefaultFacilityIdForClinicalGroup: getDefaultFacilityIdForClinicalGroup,
     createDefaultSemester: createDefaultSemester,
     createDefaultFile: createDefaultFile,
     createNewSemesterFromTemplate: createNewSemesterFromTemplate,
     createStudent: createStudent,
+    defaultStudentName: defaultStudentName,
+    assignDefaultStudentNames: assignDefaultStudentNames,
+    nextDefaultStudentName: nextDefaultStudentName,
     migrate: migrate,
     migrateFile: migrateFile,
     migrateSemester: migrateSemester,
@@ -537,6 +676,13 @@ App.DataModel = (function () {
     migrateFromLegacyLocalStorage: migrateFromLegacyLocalStorage,
     cellToLegacyString: cellToLegacyString,
     getClinicalDayForGroup: getClinicalDayForGroup,
-    countStats: countStats
+    countStats: countStats,
+    normalizeFacilityName: normalizeFacilityName,
+    findFacilityById: findFacilityById,
+    getCanonicalFacilityId: getCanonicalFacilityId,
+    sameFacilitySite: sameFacilitySite,
+    studentAtFacilitySite: studentAtFacilitySite,
+    getUniqueFacilitiesForSelect: getUniqueFacilitiesForSelect,
+    normalizeFacilities: normalizeFacilities
   };
 })();

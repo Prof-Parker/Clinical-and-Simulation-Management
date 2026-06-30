@@ -11,17 +11,19 @@ App.UI.SimRoles = (function () {
     5: { MonA: 12, TueA: 12, MonB: 14, TueB: 14 }
   };
 
+  function facultyReady() {
+    return App.SimFacultyStorage && App.SimFacultyStorage.isReady();
+  }
+
   function getRoles(studentId) {
-    var data = App.getData();
-    if (!data.roles[studentId]) data.roles[studentId] = { flags: { primary: null, secondary: null } };
-    return data.roles[studentId];
+    if (!facultyReady()) return { flags: { primary: null, secondary: null } };
+    return App.SimFacultyStorage.getStudentRoles(studentId);
   }
 
   function getCumulative(studentId) {
-    var data = App.getData();
     var counts = { Primary: 0, Secondary: 0, Evaluator: 0, Scribe: 0 };
-    var rd = data.roles[studentId];
-    if (!rd) return counts;
+    if (!facultyReady()) return counts;
+    var rd = getRoles(studentId);
     Object.keys(rd).forEach(function (simKey) {
       if (simKey === 'flags') return;
       var sim = rd[simKey];
@@ -33,11 +35,28 @@ App.UI.SimRoles = (function () {
     return counts;
   }
 
+  function setBannerVisible(show) {
+    var banner = document.getElementById('simFacultyBanner');
+    if (banner) banner.classList.toggle('hidden', !show);
+  }
+
   function render(data) {
     var simNum = document.getElementById('roleSimSelect').value;
     var groupCode = document.getElementById('roleGroupSelect').value;
     var tbody = document.getElementById('roleTableBody');
+    var tableWrap = document.getElementById('roleTableWrap');
     tbody.innerHTML = '';
+
+    if (!facultyReady()) {
+      setBannerVisible(true);
+      if (tableWrap) tableWrap.classList.add('sim-faculty-disabled');
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-muted)">' +
+        'Connect or create a sim faculty file from the menu to manage role assignments and performance flags.</td></tr>';
+      return;
+    }
+
+    setBannerVisible(false);
+    if (tableWrap) tableWrap.classList.remove('sim-faculty-disabled');
 
     var weekIdx = SIM_WEEKS[simNum][groupCode];
     var targetDay = groupCode.indexOf('Mon') === 0 ? 'Mon' : 'Tue';
@@ -109,19 +128,16 @@ App.UI.SimRoles = (function () {
 
     document.getElementById('roleTableBody').addEventListener('change', function (e) {
       var el = e.target;
+      if (!facultyReady()) return;
       var data = App.getData();
       if (el.classList.contains('role-select')) {
-        var rd = getRoles(el.dataset.student);
-        if (!rd[el.dataset.sim]) rd[el.dataset.sim] = {};
-        rd[el.dataset.sim][el.dataset.iter] = el.value;
-        App.notifyChange();
+        App.SimFacultyStorage.setStudentRoleAssignment(
+          el.dataset.student, el.dataset.sim, el.dataset.iter, el.value
+        );
         App.UI.SimRoles.render(data);
       }
       if (el.classList.contains('flag-select')) {
-        var rdf = getRoles(el.dataset.student);
-        if (!rdf.flags) rdf.flags = { primary: null, secondary: null };
-        rdf.flags[el.dataset.flag] = el.value || null;
-        App.notifyChange();
+        App.SimFacultyStorage.setStudentFlag(el.dataset.student, el.dataset.flag, el.value || null);
         App.UI.SimRoles.render(data);
       }
     });
