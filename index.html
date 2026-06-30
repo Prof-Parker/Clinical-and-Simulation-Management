@@ -96,45 +96,22 @@
         <div id="view-dashboard" class="view-panel active">
             <div id="conflictsPanel" class="conflicts-panel hidden no-print"></div>
 
-            <details class="card no-print dashboard-panel-details" open>
+            <details id="masterSchedulePanel" class="card no-print dashboard-panel-details" open>
                 <summary class="dashboard-panel-summary">
                     <div class="dashboard-panel-summary-text">
-                        <h3 class="section-title" style="margin:0">Simulation Groups &amp; Progression</h3>
-                        <p class="section-sub" style="margin:0.35rem 0 0">Track simulation assignments (Sim 1–5) by student.</p>
-                    </div>
-                    <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
-                </summary>
-                <div class="dashboard-panel-body">
-                    <div class="legend dashboard-panel-legend">
-                        <span class="legend-item"><span class="dot dot-sim-guest"></span> Guest sim group</span>
-                    </div>
-                    <div class="custom-scrollbar">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th class="sticky-col">Student</th>
-                                    <th>Clinical</th>
-                                    <th>Sim Group</th>
-                                    <th style="text-align:center">Sim 1</th>
-                                    <th style="text-align:center">Sim 2</th>
-                                    <th style="text-align:center">Sim 3</th>
-                                    <th style="text-align:center">Sim 4</th>
-                                    <th style="text-align:center">Sim 5</th>
-                                </tr>
-                            </thead>
-                            <tbody id="simTableBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </details>
-
-            <details class="card no-print dashboard-panel-details" open>
-                <summary class="dashboard-panel-summary">
-                    <div class="dashboard-panel-summary-text">
+                        <div id="schedulePanelSemester" class="schedule-panel-semester" aria-hidden="true"></div>
                         <h3 class="section-title" style="margin:0">Master Interactive Schedule</h3>
                         <p class="section-sub" style="margin:0.35rem 0 0">Full 18-week semester. Tap a cell to edit. Tracks <span id="reqClinLabel">10</span> clinical days &amp; <span id="reqSimLabel">5</span> simulations per student.</p>
                     </div>
-                    <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
+                    <div class="dashboard-panel-summary-actions">
+                        <button id="scheduleFullscreenBtn" class="btn btn-sm schedule-fullscreen-btn no-print" type="button" aria-label="Open schedule in fullscreen">Fullscreen</button>
+                        <button id="scheduleFullscreenCloseBtn" class="btn btn-icon schedule-fullscreen-close hidden no-print" type="button" aria-label="Exit fullscreen" title="Exit fullscreen">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/>
+                            </svg>
+                        </button>
+                        <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
+                    </div>
                 </summary>
                 <div class="dashboard-panel-body">
                     <div class="filters dashboard-schedule-filters no-print">
@@ -144,7 +121,7 @@
                         <select id="scheduleSimGroupFilter" aria-label="Filter by simulation group">
                             <option value="all">All Sim Groups</option>
                         </select>
-                        <select id="scheduleFacilityFilter" aria-label="Filter by facility">
+                        <select id="scheduleFacilityFilter" class="schedule-filter-facility" aria-label="Filter by facility">
                             <option value="all">All Facilities</option>
                         </select>
                         <select id="scheduleSectionFilter" aria-label="Filter by section">
@@ -156,6 +133,24 @@
                             <option value="warning">Complete*</option>
                             <option value="pending">Pending</option>
                         </select>
+                        <span class="schedule-filter-divider" aria-hidden="true"></span>
+                        <div class="schedule-nonstd-filters" role="group" aria-label="Non-standard schedule">
+                            <label class="filter-check filter-check-compact" for="scheduleFilterMakeupClean" title="Makeup with no schedule conflict">
+                                <input type="checkbox" id="scheduleFilterMakeupClean">
+                                <span class="dot dot-makeup-clean" aria-hidden="true"></span>
+                                Makeup (no conflict)
+                            </label>
+                            <label class="filter-check filter-check-compact" for="scheduleFilterMakeupConflict" title="Makeup that conflicts with clinical or sim">
+                                <input type="checkbox" id="scheduleFilterMakeupConflict">
+                                <span class="dot dot-makeup-conflict" aria-hidden="true"></span>
+                                Makeup (conflict)
+                            </label>
+                            <label class="filter-check filter-check-compact" for="scheduleFilterGuestSim" title="Attending sim as guest in another group">
+                                <input type="checkbox" id="scheduleFilterGuestSim">
+                                <span class="dot dot-sim-guest" aria-hidden="true"></span>
+                                Guest sim
+                            </label>
+                        </div>
                         <input type="text" id="scheduleStudentSearch" placeholder="Search student..." aria-label="Search students">
                     </div>
                     <div class="legend dashboard-panel-legend">
@@ -185,6 +180,38 @@
                                 </table>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </details>
+
+            <details class="card no-print dashboard-panel-details" open>
+                <summary class="dashboard-panel-summary">
+                    <div class="dashboard-panel-summary-text">
+                        <h3 class="section-title" style="margin:0">Simulation Groups &amp; Progression</h3>
+                        <p class="section-sub" style="margin:0.35rem 0 0">Track simulation assignments (Sim 1–5) by student.</p>
+                    </div>
+                    <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
+                </summary>
+                <div class="dashboard-panel-body">
+                    <div class="legend dashboard-panel-legend">
+                        <span class="legend-item"><span class="dot dot-sim-guest"></span> Guest sim group</span>
+                    </div>
+                    <div class="custom-scrollbar">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="sticky-col">Student</th>
+                                    <th>Clinical</th>
+                                    <th>Sim Group</th>
+                                    <th style="text-align:center">Sim 1</th>
+                                    <th style="text-align:center">Sim 2</th>
+                                    <th style="text-align:center">Sim 3</th>
+                                    <th style="text-align:center">Sim 4</th>
+                                    <th style="text-align:center">Sim 5</th>
+                                </tr>
+                            </thead>
+                            <tbody id="simTableBody"></tbody>
+                        </table>
                     </div>
                 </div>
             </details>
@@ -459,6 +486,7 @@
     <script src="js/scheduler.js"></script>
     <script src="js/validator.js"></script>
     <script src="js/feasibility.js"></script>
+    <script src="js/schedule-status.js"></script>
     <script src="js/makeup-display.js"></script>
     <script src="js/sim-faculty-data.js"></script>
     <script src="js/storage.js"></script>

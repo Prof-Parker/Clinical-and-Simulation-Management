@@ -113,6 +113,9 @@ App.UI.refresh = function () {
 };
 
 App.UI.switchTab = function (tabId) {
+  if (tabId !== 'dashboard' && App.UI.Dashboard && App.UI.Dashboard.setScheduleFullscreen) {
+    App.UI.Dashboard.setScheduleFullscreen(false);
+  }
   App.state.currentTab = tabId;
   document.querySelectorAll('.view-panel').forEach(function (el) {
     el.classList.toggle('active', el.id === 'view-' + tabId);

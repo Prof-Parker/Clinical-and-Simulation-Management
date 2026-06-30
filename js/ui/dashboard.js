@@ -4,6 +4,99 @@ App.UI = App.UI || {};
 
 App.UI.Dashboard = (function () {
   var chartInstance = null;
+  var scheduleFullscreenActive = false;
+
+  function updateSchedulePanelSemester(data) {
+    var el = document.getElementById('schedulePanelSemester');
+    if (!el || !data) return;
+    var parts = App.DataModel.parseSemesterDisplay(data);
+    if (App.UI.buildSemesterLabelHtml) {
+      el.innerHTML = App.UI.buildSemesterLabelHtml(parts);
+    } else {
+      el.textContent = parts.name || 'Semester';
+    }
+  }
+
+  function syncFullscreenScheduleLayout() {
+    var panel = document.getElementById('masterSchedulePanel');
+    if (!panel) return;
+    var body = panel.querySelector('.dashboard-panel-body');
+    var summary = panel.querySelector('.dashboard-panel-summary');
+    if (!body || !summary) return;
+
+    if (!scheduleFullscreenActive) {
+      body.style.removeProperty('height');
+      body.style.removeProperty('max-height');
+      return;
+    }
+
+    var bodyHeight = Math.max(0, panel.clientHeight - summary.offsetHeight);
+    body.style.height = bodyHeight + 'px';
+    body.style.maxHeight = bodyHeight + 'px';
+  }
+
+  function setScheduleFullscreen(active) {
+    var panel = document.getElementById('masterSchedulePanel');
+    var openBtn = document.getElementById('scheduleFullscreenBtn');
+    var closeBtn = document.getElementById('scheduleFullscreenCloseBtn');
+    var semesterEl = document.getElementById('schedulePanelSemester');
+    if (!panel) return;
+
+    scheduleFullscreenActive = !!active;
+    document.documentElement.classList.toggle('schedule-fullscreen-mode', scheduleFullscreenActive);
+
+    if (scheduleFullscreenActive) {
+      panel.setAttribute('open', '');
+      if (semesterEl) semesterEl.setAttribute('aria-hidden', 'false');
+      if (openBtn) openBtn.classList.add('hidden');
+      if (closeBtn) closeBtn.classList.remove('hidden');
+      updateSchedulePanelSemester(App.getData());
+      requestAnimationFrame(function () {
+        syncFullscreenScheduleLayout();
+        syncScheduleTallyScroll();
+        var bodyScroll = document.getElementById('scheduleBodyScroll');
+        if (bodyScroll) bodyScroll.focus();
+      });
+    } else {
+      syncFullscreenScheduleLayout();
+      if (semesterEl) semesterEl.setAttribute('aria-hidden', 'true');
+      if (openBtn) openBtn.classList.remove('hidden');
+      if (closeBtn) closeBtn.classList.add('hidden');
+    }
+  }
+
+  function bindScheduleFullscreen() {
+    var openBtn = document.getElementById('scheduleFullscreenBtn');
+    var closeBtn = document.getElementById('scheduleFullscreenCloseBtn');
+    var panel = document.getElementById('masterSchedulePanel');
+    if (!openBtn || !closeBtn || !panel || panel.dataset.fullscreenBound) return;
+    panel.dataset.fullscreenBound = '1';
+
+    openBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      setScheduleFullscreen(true);
+    });
+
+    closeBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      setScheduleFullscreen(false);
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && scheduleFullscreenActive) {
+        setScheduleFullscreen(false);
+      }
+    });
+
+    window.addEventListener('resize', function () {
+      if (scheduleFullscreenActive) {
+        syncFullscreenScheduleLayout();
+        syncScheduleTallyScroll();
+      }
+    });
+  }
 
   function renderCellHtml(cell, student, data, weekIndex) {
     if (!cell) return '<div class="cell-empty">-</div>';
@@ -66,6 +159,27 @@ App.UI.Dashboard = (function () {
     return 'complete';
   }
 
+  function studentHasMakeupTier(student, tier) {
+    return student.schedule.some(function (cell, weekIndex) {
+      if (!cell) return false;
+      if (cell.makeupClinical &&
+          App.MakeupDisplay.getClinicalMakeupTier(cell, student, weekIndex) === tier) {
+        return true;
+      }
+      if (cell.simMakeup &&
+          App.MakeupDisplay.getSimMakeupTier(cell, student, weekIndex) === tier) {
+        return true;
+      }
+      return false;
+    });
+  }
+
+  function studentHasGuestSim(student) {
+    return student.schedule.some(function (cell) {
+      return cell && cell.simGuestGroup;
+    });
+  }
+
   function getScheduleFilteredStudents(data, validation) {
     var groupEl = document.getElementById('scheduleGroupFilter');
     var simEl = document.getElementById('scheduleSimGroupFilter');
@@ -73,6 +187,9 @@ App.UI.Dashboard = (function () {
     var sectionEl = document.getElementById('scheduleSectionFilter');
     var statusEl = document.getElementById('scheduleStatusFilter');
     var searchEl = document.getElementById('scheduleStudentSearch');
+    var makeupCleanEl = document.getElementById('scheduleFilterMakeupClean');
+    var makeupConflictEl = document.getElementById('scheduleFilterMakeupConflict');
+    var guestSimEl = document.getElementById('scheduleFilterGuestSim');
     if (!groupEl || !simEl || !facEl) return data.students.slice();
     var groupVal = groupEl.value;
     var simVal = simEl.value;
@@ -80,6 +197,10 @@ App.UI.Dashboard = (function () {
     var sectionVal = sectionEl ? sectionEl.value : 'all';
     var statusVal = statusEl ? statusEl.value : 'all';
     var searchVal = searchEl ? (searchEl.value || '').toLowerCase() : '';
+    var wantMakeupClean = makeupCleanEl && makeupCleanEl.checked;
+    var wantMakeupConflict = makeupConflictEl && makeupConflictEl.checked;
+    var wantGuestSim = guestSimEl && guestSimEl.checked;
+    var filterNonStd = wantMakeupClean || wantMakeupConflict || wantGuestSim;
     return data.students.filter(function (s) {
       if (groupVal !== 'all' && s.clinicalGroup !== groupVal) return false;
       if (simVal !== 'all' && s.simGroup !== simVal) return false;
@@ -89,6 +210,13 @@ App.UI.Dashboard = (function () {
       if (statusVal !== 'all' && validation) {
         var vr = validation.students[s.id];
         if (!vr || studentStatusKey(vr) !== statusVal) return false;
+      }
+      if (filterNonStd) {
+        var matches = false;
+        if (wantMakeupClean && studentHasMakeupTier(s, 'clean')) matches = true;
+        if (wantMakeupConflict && studentHasMakeupTier(s, 'conflict')) matches = true;
+        if (wantGuestSim && studentHasGuestSim(s)) matches = true;
+        if (!matches) return false;
       }
       return true;
     });
@@ -114,7 +242,20 @@ App.UI.Dashboard = (function () {
     while (cells.length) tr.appendChild(cells[0]);
   }
 
-  function render(data) {
+  function refreshScheduleView() {
+    var data = App.getData();
+    if (!data) return;
+    render(data, { preserveView: true });
+  }
+
+  function render(data, options) {
+    options = options || {};
+    var preserveView = !!options.preserveView;
+    var panel = preserveView ? document.getElementById('masterSchedulePanel') : null;
+    var bodyScroll = preserveView ? document.getElementById('scheduleBodyScroll') : null;
+    var anchorTop = panel ? panel.getBoundingClientRect().top : null;
+    var bodyScrollTop = bodyScroll ? bodyScroll.scrollTop : 0;
+    var bodyScrollLeft = bodyScroll ? bodyScroll.scrollLeft : 0;
     if (!data) return;
     var validation = App.Validator.validateAll(data);
     var scheduleStudents = getScheduleFilteredStudents(data, validation);
@@ -172,8 +313,27 @@ App.UI.Dashboard = (function () {
 
     renderOccupancy(data, scheduleStudents);
     renderSimTable(data, scheduleStudents);
-    renderSimRoster(data);
-    renderChart(data);
+    if (!preserveView) {
+      renderSimRoster(data);
+      renderChart(data);
+    }
+    updateSchedulePanelSemester(data);
+    if (preserveView) {
+      requestAnimationFrame(function () {
+        if (panel && anchorTop != null) {
+          var delta = panel.getBoundingClientRect().top - anchorTop;
+          if (Math.abs(delta) > 0.5) window.scrollBy(0, delta);
+        }
+        if (bodyScroll) {
+          bodyScroll.scrollTop = bodyScrollTop;
+          bodyScroll.scrollLeft = bodyScrollLeft;
+          syncScheduleTallyScroll();
+        }
+        if (scheduleFullscreenActive) syncFullscreenScheduleLayout();
+      });
+    } else if (scheduleFullscreenActive) {
+      syncScheduleTallyScroll();
+    }
   }
 
   function daySimCount(students, weekIndex, day) {
@@ -421,16 +581,36 @@ App.UI.Dashboard = (function () {
     return d.innerHTML;
   }
 
+  var scheduleSearchDebounce = null;
+
   function init() {
     bindScheduleScrollSync();
+    bindScheduleFullscreen();
     ['scheduleGroupFilter', 'scheduleSimGroupFilter', 'scheduleFacilityFilter',
-      'scheduleSectionFilter', 'scheduleStatusFilter', 'weekFilter'].forEach(function (id) {
+      'scheduleSectionFilter', 'scheduleStatusFilter'].forEach(function (id) {
       var el = document.getElementById(id);
-      if (el) el.addEventListener('change', function () { App.UI.refresh(); });
+      if (el) el.addEventListener('change', refreshScheduleView);
     });
+    ['scheduleFilterMakeupClean', 'scheduleFilterMakeupConflict', 'scheduleFilterGuestSim'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', refreshScheduleView);
+    });
+    var weekFilter = document.getElementById('weekFilter');
+    if (weekFilter) weekFilter.addEventListener('change', function () { App.UI.refresh(); });
     var searchEl = document.getElementById('scheduleStudentSearch');
-    if (searchEl) searchEl.addEventListener('keyup', function () { App.UI.refresh(); });
+    if (searchEl) {
+      searchEl.addEventListener('input', function () {
+        clearTimeout(scheduleSearchDebounce);
+        scheduleSearchDebounce = setTimeout(refreshScheduleView, 200);
+      });
+    }
   }
 
-  return { render: render, populateFilters: populateFilters, init: init, renderCellHtml: renderCellHtml };
+  return {
+    render: render,
+    populateFilters: populateFilters,
+    init: init,
+    renderCellHtml: renderCellHtml,
+    setScheduleFullscreen: setScheduleFullscreen
+  };
 })();
