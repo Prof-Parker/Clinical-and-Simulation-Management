@@ -21,6 +21,7 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="stylesheet" href="css/app.css">
     <link rel="stylesheet" href="css/print.css">
+    <link rel="stylesheet" href="css/audit-print.css">
     <script src="vendor/chart.umd.min.js"></script>
     <script src="vendor/xlsx.full.min.js"></script>
 </head>
@@ -52,6 +53,7 @@
                     <span id="fileStatus" class="file-status">Loading...</span>
                 </div>
                 <div class="semester-display-wrap">
+                    <select id="courseSelect" class="course-select" aria-label="Course"></select>
                     <div id="semesterDisplay" class="semester-display" aria-live="polite">
                         <div class="semester-picker" id="semesterPicker">
                             <button type="button" id="semesterPickerBtn" class="semester-picker-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Select semester">
@@ -94,11 +96,13 @@
                 <input type="file" id="importSimFacultyInput" class="hidden">
             </header>
 
+            <div id="closeoutBanner" class="closeout-banner hidden no-print" role="status"></div>
             <nav class="nav-tabs" aria-label="Main navigation">
                 <button class="nav-tab active" data-tab="dashboard" type="button">Dashboard</button>
                 <button class="nav-tab" data-tab="student" type="button">Student View</button>
                 <button class="nav-tab" data-tab="roles" type="button">Simulation Roles</button>
                 <button class="nav-tab" data-tab="makeup" type="button">Makeup Finder</button>
+                <button class="nav-tab" data-tab="audit" type="button">Audit</button>
                 <button class="nav-tab" data-tab="setup" type="button">Setup</button>
             </nav>
         </div>
@@ -344,9 +348,15 @@
                         <option value="4">Simulation 4</option>
                         <option value="5">Simulation 5</option>
                     </select>
+                    <input type="text" id="makeupAppliedBy" placeholder="Applied by (optional)" title="Recorded on the makeup record for the end-of-semester audit log">
                 </div>
                 <div id="makeupResults"></div>
             </section>
+        </div>
+
+        <!-- AUDIT / CLOSEOUT -->
+        <div id="view-audit" class="view-panel">
+            <div id="auditCloseout"></div>
         </div>
 
         <!-- SETUP -->
@@ -376,15 +386,15 @@
                 </div>
                 <div class="setup-holidays-card setup-semester-holidays">
                     <div class="setup-config-divider"></div>
-                    <div class="setup-config-card-head">
-                        <h3 class="section-title" style="margin:0">Holidays &amp; Breaks</h3>
-                        <button id="addHolidayBtn" class="btn btn-sm" type="button">Add</button>
-                    </div>
+                    <h3 class="section-title" style="margin:0">Holidays &amp; Breaks</h3>
                     <div id="setupHolidays" style="margin-top:1rem"></div>
                 </div>
                 <div id="setupAdvancedPanel" class="setup-advanced-panel hidden">
                     <p id="setupConfigSubtitle" class="section-sub" style="margin:0.5rem 0 0"></p>
                     <p id="setupPendingNewSemesterBanner" class="setup-new-semester-banner hidden">Review scheduling settings, then save and create the new semester.</p>
+                    <label id="setupNewSemesterCourseLabel" class="setup-new-semester-course hidden">New semester course
+                        <select id="setupNewSemesterCourse"></select>
+                    </label>
                     <div class="grid-2 setup-advanced-grid">
                         <label>Clinical days required<input type="number" id="cfgClinDays"></label>
                         <label>Simulation days required<input type="number" id="cfgSimDays"></label>
@@ -397,6 +407,10 @@
                         <label>Clinical start week<input type="number" id="cfgClinStart"></label>
                         <label>Simulation start week<input type="number" id="cfgSimStart"></label>
                     </div>
+                    <div class="setup-config-divider"></div>
+                    <h4 style="margin:0">Clinical site library</h4>
+                    <p class="section-sub">Program-wide catalog of clinical sites shared across courses: full name, short name, and specialty content areas (MS = med-surg, OB = obstetrics, PEDS = pediatrics, MH = mental health). Sites in use by a semester cannot be removed.</p>
+                    <div id="cfgSiteLibrary" class="config-list"></div>
                     <div class="setup-advanced-footer">
                         <button id="setupConfigResetDefaultsBtn" class="btn btn-sm" type="button">Use program defaults</button>
                         <button id="setupConfigApplyFutureBtn" class="btn btn-sm" type="button">Apply to future semesters</button>
@@ -409,10 +423,7 @@
                     <div class="setup-program-grid">
                         <div class="setup-program-column setup-program-left">
                             <div class="setup-program-block setup-sections-block">
-                                <div class="setup-config-card-head">
-                                    <h3 class="section-title" style="margin:0">Registrar Sections</h3>
-                                    <button id="addSectionBtn" class="btn btn-sm" type="button">Add</button>
-                                </div>
+                                <h3 class="section-title" style="margin:0">Registrar Sections</h3>
                                 <p class="section-sub setup-sections-hint">Registrar section codes (e.g. F6011). Sections are assigned per student in the roster&mdash;multiple clinical cohorts may share a section, and students in one cohort may use different sections.</p>
                                 <div id="setupSections"></div>
                             </div>
@@ -420,12 +431,17 @@
                                 <h3 class="section-title" style="margin:0 0 0.75rem">Clinical Faculty</h3>
                                 <div id="setupFaculty"></div>
                             </div>
+                            <div class="setup-program-block setup-course-staff-block">
+                                <h3 class="section-title" style="margin:0 0 0.35rem">Course Staff</h3>
+                                <p class="section-sub setup-sections-hint">Lead course faculty attests makeup records at end-of-semester closeout (see Audit tab). Not the same as per-group clinical faculty above.</p>
+                                <div class="setup-lead-faculty-fields">
+                                    <label>Lead faculty name<input type="text" id="leadFacultyName" placeholder="Required before closeout"></label>
+                                    <label>Lead faculty email<input type="email" id="leadFacultyEmail" placeholder="Optional"></label>
+                                </div>
+                            </div>
                         </div>
                         <div class="setup-program-block setup-facilities-block">
-                            <div class="setup-config-card-head">
-                                <h3 class="section-title" style="margin:0">Facilities &amp; Clinical Groups</h3>
-                                <button id="addFacilityBtn" class="btn btn-sm" type="button">Add facility</button>
-                            </div>
+                            <h3 class="section-title" style="margin:0">Facilities &amp; Clinical Groups</h3>
                             <p class="section-sub setup-sections-hint">One entry per clinical site. A clinical group may use one site all semester or multiple sites (clinical weeks rotate across listed sites in order).</p>
                             <div id="setupFacilities"></div>
                             <div class="setup-config-divider"></div>
@@ -433,20 +449,14 @@
                                 <h4 style="margin:0">Clinical groups</h4>
                             </div>
                             <div id="cfgClinicalGroupsList" class="config-list"></div>
-                            <div class="config-section-header">
-                                <h4 style="margin:0">Simulation days</h4>
-                                <button type="button" class="btn btn-sm add-sim-day">Add day</button>
-                            </div>
+                            <h4 style="margin:0">Simulation days</h4>
                             <p class="section-sub">Days of the week when simulation sessions may be scheduled.</p>
                             <div id="cfgSimDaysList" class="config-list"></div>
                         </div>
                     </div>
                 </section>
                 <section class="card setup-orientations-card" style="padding:1.25rem">
-                    <div style="display:flex;justify-content:space-between;align-items:center">
-                        <h3 class="section-title" style="margin:0">Orientation Days</h3>
-                        <button id="addOrientationBtn" class="btn btn-sm" type="button">Add</button>
-                    </div>
+                    <h3 class="section-title" style="margin:0">Orientation Days</h3>
                     <p class="section-sub" style="margin:0.35rem 0 0">One orientation date per clinical group and site. Master schedule shows &ldquo;Orient SRMC&rdquo; style labels.</p>
                     <div id="setupOrientations" style="margin-top:1rem"></div>
                 </section>
@@ -503,6 +513,8 @@
     </div>
 
     <script src="js/state.js"></script>
+    <script src="js/course-defaults.js"></script>
+    <script src="js/clinical-sites-library.js"></script>
     <script src="js/data-model.js"></script>
     <script src="js/roster-balance.js"></script>
     <script src="js/calendar-engine.js"></script>
@@ -513,6 +525,9 @@
     <script src="js/feasibility.js"></script>
     <script src="js/schedule-status.js"></script>
     <script src="js/makeup-display.js"></script>
+    <script src="js/audit.js"></script>
+    <script src="js/audit-snapshot.js"></script>
+    <script src="js/audit-export.js"></script>
     <script src="js/dashboard-export.js"></script>
     <script src="js/sim-faculty-data.js"></script>
     <script src="js/storage.js"></script>
@@ -522,6 +537,7 @@
     <script src="js/ui/student-view.js"></script>
     <script src="js/ui/sim-roles.js"></script>
     <script src="js/ui/makeup-finder.js"></script>
+    <script src="js/ui/audit-closeout.js"></script>
     <script src="js/ui/setup-config.js"></script>
     <script src="js/ui/setup.js"></script>
     <script src="js/ui/date-inputs.js"></script>

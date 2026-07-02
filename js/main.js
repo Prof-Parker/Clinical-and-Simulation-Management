@@ -52,6 +52,26 @@ App.UI.updateSemesterDisplay = function () {
     wrap.className = 'semester-display season-' + (display.season || 'default');
     label.innerHTML = App.UI.buildSemesterLabelHtml(display);
   }
+  App.UI.updateCourseSelect();
+};
+
+App.UI.updateCourseSelect = function () {
+  var select = document.getElementById('courseSelect');
+  var data = App.getData();
+  if (!select || !App.CourseDefaults) return;
+  var current = (data && data.meta && data.meta.courseId) || '';
+  var courses = App.CourseDefaults.list();
+  var html = '<option value=""' + (current ? '' : ' selected') + '>Course…</option>';
+  courses.forEach(function (c) {
+    html += '<option value="' + c.courseId + '"' + (c.courseId === current ? ' selected' : '') + '>' +
+      c.displayName + '</option>';
+  });
+  // Preserve an unlisted legacy course id rather than silently dropping it.
+  if (current && !courses.some(function (c) { return c.courseId === current; })) {
+    html += '<option value="' + current + '" selected>' + current + '</option>';
+  }
+  select.innerHTML = html;
+  select.disabled = !data;
 };
 
 App.UI.initSemesterSwitcher = function () {
@@ -81,6 +101,20 @@ App.UI.initSemesterSwitcher = function () {
     App.UI.closeSemesterPicker();
     App.UI.ConfigModal.openForNewSemester();
   });
+
+  var courseSelect = document.getElementById('courseSelect');
+  if (courseSelect) {
+    courseSelect.addEventListener('change', function () {
+      var data = App.getData();
+      if (!data) return;
+      // Sets the course id only; course defaults apply at semester creation,
+      // never retroactively to a configured semester.
+      data.meta.courseId = courseSelect.value || '';
+      App.notifyChange();
+      App.UI.updateSemesterDisplay();
+      App.Storage.updateStatusUI();
+    });
+  }
 };
 
 App.UI.closeMenu = function () {
@@ -109,7 +143,33 @@ App.UI.refresh = function () {
   if (tab === 'student') App.UI.StudentView.render(data);
   if (tab === 'roles') App.UI.SimRoles.render(data);
   if (tab === 'makeup') App.UI.MakeupFinder.render(data);
+  if (tab === 'audit') App.UI.AuditCloseout.render(data);
   if (tab === 'setup') App.UI.Setup.render(data);
+  App.UI.updateCloseoutBanner(data);
+};
+
+/**
+ * Audit-phase edit guard: returns true when editing is allowed; otherwise
+ * shows the closeout alert and returns false.
+ */
+App.UI.guardEditable = function (action) {
+  var data = App.getData();
+  if (!data || !App.Audit || App.Audit.canEdit(data, action)) return true;
+  App.UI.showAlert('Semester in closeout',
+    'Semester in closeout — editing disabled. Reopen from the Audit tab if corrections are needed.');
+  return false;
+};
+
+App.UI.updateCloseoutBanner = function (data) {
+  var banner = document.getElementById('closeoutBanner');
+  if (!banner) return;
+  var readOnly = !!(data && App.Audit && App.Audit.isReadOnly(data));
+  banner.classList.toggle('hidden', !readOnly);
+  if (readOnly) {
+    banner.textContent = App.Audit.isLocked(data)
+      ? 'Semester locked — editing disabled. Dashboard, Student View, print, and Excel export remain available.'
+      : 'Audit exported — editing disabled pending signatures. Reopen for corrections from the Audit tab if changes are needed.';
+  }
 };
 
 App.UI.switchTab = function (tabId) {
@@ -213,6 +273,7 @@ App.UI.init = function () {
   App.UI.StudentView.init();
   App.UI.SimRoles.init();
   App.UI.MakeupFinder.init();
+  App.UI.AuditCloseout.init();
   App.UI.SetupConfig.init();
   App.UI.Setup.init();
   App.UI.ConfigModal.init();

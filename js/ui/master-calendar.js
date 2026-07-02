@@ -25,6 +25,7 @@ App.UI.MasterCalendar = (function () {
   }
 
   function openCellEditor(studentId, weekIndex) {
+    if (!App.UI.guardEditable('masterCell')) return;
     var data = App.getData();
     var student = data.students.find(function (s) { return s.id === studentId; });
     if (!student) return;

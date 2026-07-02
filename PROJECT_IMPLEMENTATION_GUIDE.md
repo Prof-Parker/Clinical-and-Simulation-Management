@@ -24,6 +24,8 @@ index.html
 ├── css/app.css              UI + print styles
 ├── js/
 │   ├── state.js             App.state, semester switching, dirty flags
+│   ├── course-defaults.js   Per-course default config templates (App.CourseDefaults)
+│   ├── clinical-sites-library.js  Program-wide site library: shortName + content tags (App.SiteLibrary)
 │   ├── data-model.js        Schema, defaults, migration, student/semester shapes
 │   ├── calendar-engine.js   18-week calendar, holidays, inactive weeks
 │   ├── scheduler.js         Clinical + sim generation, makeup slots (core logic)
@@ -31,11 +33,14 @@ index.html
 │   ├── validator.js         Post-generation validation + dashboard status
 │   ├── feasibility.js       Pre-generation “can this config work?” warnings
 │   ├── makeup-display.js    Tier CSS/classes for makeup UI
+│   ├── audit.js             Audit lifecycle phases + edit gating (App.Audit)
+│   ├── audit-snapshot.js    Canonical semester payload + SHA-256 snapshot hash
+│   ├── audit-export.js      Audit PDF export via hidden print DOM (css/audit-print.css)
 │   ├── storage.js           Semester JSON: IDB cache + File System Access API
 │   ├── sim-faculty-data.js  Sim roles schema (separate from semester file)
 │   ├── sim-faculty-storage.js  Sim faculty JSON persistence
-│   ├── main.js              Boot, menu, tab routing
-│   └── ui/                    Dashboard, setup, roles, makeup, student view, etc.
+│   ├── main.js              Boot, menu, tab routing, closeout banner
+│   └── ui/                    Dashboard, setup, roles, makeup, audit closeout, student view, etc.
 └── tests/                   Node vm harness (no browser)
 ```
 
@@ -47,10 +52,11 @@ index.html
 
 | File | Typical name | Contents |
 |------|----------------|----------|
-| **Semester file** | `regn-tracker.json` | Roster, schedule, config, calendar, facilities, faculty — **no sim roles** |
-| **Sim faculty file** | `regn-tracker-sim-faculty.json` | Role assignments (Primary/Secondary/Evaluator/Scribe) + performance flags (Strong/Weaker) |
+| **Semester file** | `{S\|F}{year}_{courseId}.json` (e.g. `F2026_REGN15P.json`); legacy `regn-tracker.json` | Roster, schedule, config, calendar, facilities, faculty, audit meta — **no sim roles** |
+| **Sim faculty file** | `{S\|F}{year}_{courseId}_Faculty.json` (e.g. `F2026_REGN15P_Faculty.json`); legacy `regn-tracker-sim-faculty.json` | Role assignments (Primary/Secondary/Evaluator/Scribe) + performance flags (Strong/Weaker) |
+| **Audit PDF** | `{Season}-{Year}-{courseId}-Audit-v{n}.pdf` (e.g. `Fall-2026-REGN15P-Audit-v1.pdf`) | Signed end-of-semester audit record (official record after closeout) |
 
-Schedulers can use only the semester file. The sim faculty team connects both. On load, embedded `semester.roles` (legacy) migrate into the faculty file and are stripped from the master export.
+Course-aware names are suggested automatically when `meta.courseId` and semester season/year are set (header course dropdown / Setup); legacy names still load and migrate. Schedulers can use only the semester file. The sim faculty team connects both. On load, embedded `semester.roles` (legacy) migrate into the faculty file and are stripped from the master export. Sim role edits remain allowed after audit export/lock — the audit lifecycle covers the semester file only (see [docs/AUDIT_TRACKING_IMPLEMENTATION.md](docs/AUDIT_TRACKING_IMPLEMENTATION.md)).
 
 ### Semester file shape (simplified)
 
@@ -194,8 +200,10 @@ Tests in `tests/scheduling-rules.test.js` assert program calendar, guest spread,
 | Student calendar + print | Student View | `js/ui/student-view.js` |
 | Simulation roles + flags | Simulation Roles | `js/ui/sim-roles.js` + sim faculty storage |
 | Makeup search | Makeup Finder | `js/ui/makeup-finder.js` |
+| Audit lifecycle, attestation, audit PDF | Audit | `js/ui/audit-closeout.js`, `js/audit.js`, `js/audit-export.js` |
 | Roster, holidays, facilities, rebalance | Setup | `js/ui/setup.js`, `setup-config.js` |
-| Advanced caps / days / headroom | Setup → Advanced | `js/ui/setup-config.js` |
+| Advanced caps / days / headroom / site library | Setup → Advanced | `js/ui/setup-config.js` |
+| Course selection | Header dropdown | `js/main.js`, `js/course-defaults.js` |
 | Semester add/switch | Header picker | `js/main.js`, `js/ui/config-modal.js` |
 | Dark mode | Menu | `App.UI.toggleDarkMode` |
 
@@ -251,6 +259,12 @@ When changing sim faculty data:
 
 **Do not** commit real student JSON to git (see `README.md` FERPA section).
 
+When implementing audit / closeout:
+
+- Read [docs/AUDIT_TRACKING_IMPLEMENTATION.md](docs/AUDIT_TRACKING_IMPLEMENTATION.md) for schema, UI, and phases.
+- Process SOP for staff: [docs/AUDIT_TRACKING_OPERATIONS.md](docs/AUDIT_TRACKING_OPERATIONS.md).
+- Workflow diagram: [audit_tracking_workflow.md](audit_tracking_workflow.md).
+
 ---
 
 ## 11. Related files
@@ -261,6 +275,9 @@ When changing sim faculty data:
 | [`Scheduling_rules.md`](Scheduling_rules.md) | Scheduling algorithm contract |
 | [`README.md`](README.md) | Install, OneDrive workflow, Pages deploy |
 | [`TODO.md`](TODO.md) | Maintainer task list |
+| [`audit_tracking_workflow.md`](audit_tracking_workflow.md) | Audit closeout process diagram |
+| [`docs/AUDIT_TRACKING_IMPLEMENTATION.md`](docs/AUDIT_TRACKING_IMPLEMENTATION.md) | Audit feature technical spec |
+| [`docs/AUDIT_TRACKING_OPERATIONS.md`](docs/AUDIT_TRACKING_OPERATIONS.md) | Audit closeout SOP for staff |
 
 ---
 

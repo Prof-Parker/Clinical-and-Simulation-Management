@@ -60,7 +60,7 @@ App.switchSemester = function (semesterId) {
   App.UI.refresh();
 };
 
-App.addSemester = function (season, year) {
+App.addSemester = function (season, year, courseId) {
   if (!App.state.fileRoot || !App.state.data) return null;
   App.syncSemesterToFile();
   var cur = App.state.data.meta;
@@ -69,11 +69,19 @@ App.addSemester = function (season, year) {
     ? cur.semesterYear
     : (nextSeason === 'spring' && cur.semesterSeason === 'fall' ? cur.semesterYear + 1 : cur.semesterYear));
   var newSem = App.DataModel.createNewSemesterFromTemplate(App.state.data, nextSeason, nextYear);
-  App.DataModel.applyConfigToSemester(
-    newSem,
-    App.DataModel.getSchedulingDefaults(App.state.fileRoot),
-    false
-  );
+  var curCourse = cur.courseId || '';
+  var nextCourse = courseId !== undefined ? (courseId || '') : curCourse;
+  if (App.CourseDefaults && nextCourse && nextCourse !== curCourse) {
+    // Different course: apply that course's default configuration.
+    App.CourseDefaults.applyToSemester(newSem, nextCourse);
+  } else {
+    newSem.meta.courseId = nextCourse;
+    App.DataModel.applyConfigToSemester(
+      newSem,
+      App.DataModel.getSchedulingDefaults(App.state.fileRoot),
+      false
+    );
+  }
   App.Scheduler.regenerateAll(newSem);
   App.state.fileRoot.semesters.push(newSem);
   App.state.fileRoot.meta.activeSemesterId = newSem.id;

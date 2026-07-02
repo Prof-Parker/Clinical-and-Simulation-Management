@@ -132,10 +132,17 @@ App.SimFacultyStorage = (function () {
     });
   }
 
+  function suggestedFacultyFileName() {
+    var token = App.Storage && App.Storage.semesterFileToken
+      ? App.Storage.semesterFileToken()
+      : null;
+    return token ? token + '_Faculty.json' : 'regn-tracker-sim-faculty.json';
+  }
+
   function createFilePicker() {
     if (!supportsFS()) return Promise.reject(new Error('FS API unavailable'));
     return window.showSaveFilePicker({
-      suggestedName: 'regn-tracker-sim-faculty.json',
+      suggestedName: suggestedFacultyFileName(),
       types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
     }).then(function (handle) {
       App.state.simFacultyFileHandle = handle;
@@ -209,7 +216,7 @@ App.SimFacultyStorage = (function () {
     var blob = new Blob([serialize(facultyRoot)], { type: 'application/json' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = App.state.simFacultyFileName || 'regn-tracker-sim-faculty.json';
+    a.download = App.state.simFacultyFileName || suggestedFacultyFileName();
     a.click();
     URL.revokeObjectURL(a.href);
     cacheData(facultyRoot);

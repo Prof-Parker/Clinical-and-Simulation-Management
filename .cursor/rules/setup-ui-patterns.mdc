@@ -1,0 +1,76 @@
+---
+description: Setup and list UI patterns — add/remove rows, checkboxes, dialogs
+globs: index.html,js/ui/**,css/app.css
+alwaysApply: false
+---
+
+# Setup UI Patterns
+
+Follow these conventions when adding or changing Setup tab UI (and similar list editors elsewhere).
+
+## Add buttons — bottom of list
+
+Place **Add** actions at the **bottom** of the list container, not in section headers.
+
+```html
+<div id="exampleList">
+  <!-- row markup -->
+  <div class="config-list-add-row">
+    <button type="button" class="btn btn-sm add-example">Add item</button>
+  </div>
+</div>
+```
+
+- Container class: `config-list-add-row` (use `clin-groups-add-row` too when inside a CSS grid that needs `grid-column: 1 / -1`).
+- Button: `btn btn-sm` plus a semantic action class (e.g. `add-holiday`, `add-facility`, `add-site-lib`, `add-clin-group`).
+- Render the add row in JS after list rows so it stays on the last line as items grow.
+- Wire clicks with **delegated** listeners on the list container (`e.target.closest('.add-example')`), not `getElementById` on a re-rendered button.
+- Disable during closeout via `#view-setup .config-list-add-row .btn` in `updateReadOnlyButtons`.
+
+Reference: `renderClinicalGroupsList`, `renderHolidays`, `renderFacilities`, `renderSiteLibrary`, `renderSections`, `renderOrientations`, `renderSimDaysList`.
+
+## Remove buttons
+
+```html
+<button type="button" class="btn btn-icon-remove remove-example"
+  aria-label="Remove example" title="Remove example">&times;</button>
+```
+
+- Always include `aria-label` and `title`.
+- Use delegated click on the list container with `e.target.closest('.remove-example')`.
+- When a minimum of one row is required, show a muted `Min. 1` hint instead of a remove button.
+- For select-based rows (facilities, sim days, clinical groups), use `config-list-row` so the control and remove button share one grid row.
+
+## Checkboxes
+
+Use `label.filter-check` for all checkbox labels (filters, toggles, tag pickers):
+
+```html
+<label class="filter-check site-lib-tag">
+  <input type="checkbox" data-site-lib-tag="MS" checked> MS
+</label>
+```
+
+- Do not style raw `<input type="checkbox">` without the `filter-check` wrapper.
+- Checkbox sizing and accent color come from `label.filter-check input[type="checkbox"]` in `css/app.css`.
+- Optional compact variant: `filter-check filter-check-compact` (dashboard filters).
+
+## Dialogs — not native alert/confirm
+
+Use `#dialogModal` helpers from `App.UI` in `js/main.js`:
+
+| Need | API |
+|------|-----|
+| OK only | `App.UI.showAlert(title, message, onOk?)` |
+| Confirm / cancel | `App.UI.showConfirm(title, message, onConfirm, options?)` |
+| Custom form body | `App.UI.showDialog(title, bodyHtml, onSave)` |
+
+Never use `window.alert`, `window.confirm`, or `window.prompt`.
+
+- Confirm destructive actions (remove student, regenerate schedules) with `showConfirm`.
+- Informational outcomes use `showAlert`.
+- Complex single-field or multi-control edits use `showDialog` (see master calendar cell editor).
+
+## Section headers
+
+Section titles live in headers **without** add buttons when the list uses the bottom add-row pattern. Keep explanatory copy in `section-sub` paragraphs above the list.

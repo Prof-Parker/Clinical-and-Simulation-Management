@@ -1,5 +1,5 @@
 /* Clinical & Simulation Management — app shell service worker */
-var CACHE_NAME = 'clin-sim-v7';
+var CACHE_NAME = 'clin-sim-v8';
 
 var PRECACHE_URLS = [
   './',
@@ -7,6 +7,7 @@ var PRECACHE_URLS = [
   './manifest.webmanifest',
   './css/app.css',
   './css/print.css',
+  './css/audit-print.css',
   './vendor/chart.umd.min.js',
   './vendor/xlsx.full.min.js',
   './icons/icon-192.png',
@@ -14,6 +15,8 @@ var PRECACHE_URLS = [
   './icons/icon-180.png',
   './icons/favicon.svg',
   './js/state.js',
+  './js/course-defaults.js',
+  './js/clinical-sites-library.js',
   './js/data-model.js',
   './js/roster-balance.js',
   './js/calendar-engine.js',
@@ -24,6 +27,9 @@ var PRECACHE_URLS = [
   './js/feasibility.js',
   './js/schedule-status.js',
   './js/makeup-display.js',
+  './js/audit.js',
+  './js/audit-snapshot.js',
+  './js/audit-export.js',
   './js/dashboard-export.js',
   './js/sim-faculty-data.js',
   './js/storage.js',
@@ -33,6 +39,7 @@ var PRECACHE_URLS = [
   './js/ui/student-view.js',
   './js/ui/sim-roles.js',
   './js/ui/makeup-finder.js',
+  './js/ui/audit-closeout.js',
   './js/ui/setup-config.js',
   './js/ui/setup.js',
   './js/ui/date-inputs.js',

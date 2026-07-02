@@ -767,7 +767,7 @@ App.Scheduler = (function () {
     }
 
     if (options.week18Fallback) {
-      student.makeups.push({
+      student.makeups.push(withProvenance({
         weekIndex: wi,
         type: 'sim',
         simNum: simNum,
@@ -775,7 +775,7 @@ App.Scheduler = (function () {
         mixedSim: !!options.mixedSim,
         replacesWeek18Sim: !!options.replacesWeek18Sim,
         clinicalConflict: conflict
-      });
+      }, ''));
     }
 
     return true;
@@ -888,7 +888,7 @@ App.Scheduler = (function () {
         if (conflictFac) {
           cell.facilityId = App.DataModel.getCanonicalFacilityId(data, conflictFac);
         }
-        student.makeups.push({
+        student.makeups.push(withProvenance({
           weekIndex: target,
           type: 'clinical',
           clinicalConflict: true,
@@ -898,7 +898,7 @@ App.Scheduler = (function () {
           joinedDay: clinDay,
           hostGroup: student.clinicalGroup,
           week18Fallback: target === 17
-        });
+        }, ''));
         break;
       }
     });
@@ -1122,7 +1122,16 @@ App.Scheduler = (function () {
     return slots;
   }
 
-  function applyMakeupSlot(data, studentId, slot, type) {
+  // Provenance fields for makeup records (spec §4.3). Auto-generated makeups
+  // pass appliedByName '' — only Makeup Finder applies carry a user name.
+  function withProvenance(record, appliedByName) {
+    record.id = App.DataModel.uid();
+    record.appliedAt = new Date().toISOString();
+    record.appliedByName = appliedByName || '';
+    return record;
+  }
+
+  function applyMakeupSlot(data, studentId, slot, type, appliedByName) {
     var student = data.students.find(function (s) { return s.id === studentId; });
     if (!student) return { clinicalConflictApplied: false };
     var cell = student.schedule[slot.weekIndex];
@@ -1136,26 +1145,26 @@ App.Scheduler = (function () {
         cell.makeupClinical = true;
         var joinFac = App.DataModel.getCanonicalFacilityId(data, slot.facilityId);
         if (joinFac) cell.facilityId = joinFac;
-        student.makeups.push({
+        student.makeups.push(withProvenance({
           weekIndex: slot.weekIndex,
           type: 'clinical',
           facilityId: App.DataModel.getCanonicalFacilityId(data, slot.facilityId),
           joinedDay: slot.day,
           hostGroup: slot.hostGroup,
           overload: !!slot.overload
-        });
+        }, appliedByName));
       } else {
         cell.makeupClinical = true;
         var w18Fac = slot.facilityId ||
           (App.ClinicalSites
             ? App.ClinicalSites.getPrimaryGroupFacility(data, student.clinicalGroup)
             : student.facilityId);
-        student.makeups.push({
+        student.makeups.push(withProvenance({
           weekIndex: slot.weekIndex,
           type: 'clinical',
           week18Fallback: !!slot.week18Fallback,
           facilityId: w18Fac ? App.DataModel.getCanonicalFacilityId(data, w18Fac) : null
-        });
+        }, appliedByName));
         if (w18Fac) cell.facilityId = App.DataModel.getCanonicalFacilityId(data, w18Fac);
       }
     } else if (type === 'sim') {
@@ -1183,14 +1192,14 @@ App.Scheduler = (function () {
       cell.simDay = slot.day;
       cell.simMakeup = true;
       cell.simOverload = !!slot.overload;
-      student.makeups.push({
+      student.makeups.push(withProvenance({
         weekIndex: slot.weekIndex,
         type: 'sim',
         simNum: slot.simNum,
         overload: !!slot.overload,
         clinicalConflict: clinicalConflictApplied,
         week18Fallback: !!slot.week18Fallback
-      });
+      }, appliedByName));
       App.notifyChange();
       return { clinicalConflictApplied: clinicalConflictApplied };
     }

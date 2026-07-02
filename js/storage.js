@@ -196,10 +196,27 @@ App.Storage = (function () {
     });
   }
 
+  // {S|F}{year}_{courseId} token, e.g. F2026_REGN15P (spec §2.2). Null when
+  // course or season/year are unknown so callers can fall back to legacy names.
+  function semesterFileToken() {
+    var data = App.getData();
+    if (!data || !data.meta) return null;
+    var season = data.meta.semesterSeason;
+    var year = data.meta.semesterYear;
+    var courseId = data.meta.courseId;
+    if (!season || !year || !courseId) return null;
+    return (season === 'fall' ? 'F' : 'S') + year + '_' + courseId;
+  }
+
+  function suggestedSemesterFileName() {
+    var token = semesterFileToken();
+    return token ? token + '.json' : 'regn-tracker.json';
+  }
+
   function createFilePicker() {
     if (!supportsFS()) return Promise.reject(new Error('FS API unavailable'));
     return window.showSaveFilePicker({
-      suggestedName: 'regn-tracker.json',
+      suggestedName: suggestedSemesterFileName(),
       types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
     }).then(function (handle) {
       App.state.fileHandle = handle;
@@ -274,7 +291,7 @@ App.Storage = (function () {
     var blob = new Blob([serialize(fileRoot)], { type: 'application/json' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = App.state.fileName || 'regn-tracker.json';
+    a.download = App.state.fileName || suggestedSemesterFileName();
     a.click();
     URL.revokeObjectURL(a.href);
     cacheData(fileRoot);
@@ -423,6 +440,8 @@ App.Storage = (function () {
     shouldShowOnedriveBanner: shouldShowOnedriveBanner,
     configureImportInput: configureImportInput,
     isIOSDevice: isIOSDevice,
+    semesterFileToken: semesterFileToken,
+    suggestedSemesterFileName: suggestedSemesterFileName,
     clearAndRestoreDefaults: clearAndRestoreDefaults,
     applyLoadedFileRoot: applyLoadedFileRoot,
     _idbGet: idbGet,

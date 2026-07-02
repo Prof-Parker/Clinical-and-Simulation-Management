@@ -43,6 +43,33 @@ App.UI.Setup = (function () {
     finalizeBtn.title = finalizeBtn.disabled ? 'This semester has been finalized' : '';
   }
 
+  function guardSetupEdit() {
+    return App.UI.guardEditable('setup');
+  }
+
+  function updateReadOnlyButtons(data) {
+    var readOnly = !!(App.Audit && App.Audit.isReadOnly(data));
+    ['saveSetupBtn', 'regenerateSchedulesBtn', 'rebalanceStudentsBtn'].forEach(function (id) {
+      var btn = document.getElementById(id);
+      if (!btn) return;
+      btn.disabled = readOnly;
+      if (readOnly) btn.title = 'Semester in closeout — editing disabled';
+      else if (btn.title === 'Semester in closeout — editing disabled') btn.title = '';
+    });
+    document.querySelectorAll('#view-setup .config-list-add-row .btn').forEach(function (btn) {
+      btn.disabled = readOnly;
+      if (readOnly) btn.title = 'Semester in closeout — editing disabled';
+      else if (btn.title === 'Semester in closeout — editing disabled') btn.title = '';
+    });
+    if (readOnly) {
+      var finalizeBtn = document.getElementById('finalizeSemesterBtn');
+      if (finalizeBtn) {
+        finalizeBtn.disabled = true;
+        finalizeBtn.title = 'Semester in closeout — editing disabled';
+      }
+    }
+  }
+
   function markSetupDraft(data) {
     if (!data || !data.meta || !data.meta.finalized) return;
     data.meta.finalized = false;
@@ -185,6 +212,7 @@ App.UI.Setup = (function () {
     renderSections(data);
     renderFacilities(data);
     renderFaculty(data);
+    renderLeadFaculty(data);
     renderHolidays(data);
     renderOrientations(data);
     renderRoster(data);
@@ -195,6 +223,7 @@ App.UI.Setup = (function () {
     }
     updateAllHolidayWeekHints(data);
     updateAllOrientationWeekHints(data);
+    updateReadOnlyButtons(data);
   }
 
   function sectionSelectHtml(data, student) {
@@ -507,8 +536,43 @@ App.UI.Setup = (function () {
         '</div>';
     });
     if (!data.sections.length) {
-      container.innerHTML = '<p class="section-sub">No sections defined. Add registrar section codes above.</p>';
+      container.innerHTML = '<p class="section-sub setup-list-empty-hint">No sections defined.</p>';
     }
+    container.innerHTML += configListAddRow('add-section', 'Add');
+  }
+
+  function facilitySiteSelectHtml(data, facility) {
+    var sites = App.SiteLibrary ? App.SiteLibrary.list() : [];
+    var selectedSiteId = facility.siteId || null;
+    if (!selectedSiteId && App.SiteLibrary) {
+      var match = App.SiteLibrary.matchByName(facility.name);
+      if (match) selectedSiteId = match.id;
+    }
+    var html = '';
+    var listed = false;
+    sites.forEach(function (s) {
+      var sel = s.id === selectedSiteId;
+      if (sel) listed = true;
+      var label = s.name + (s.shortName ? ' (' + s.shortName + ')' : '');
+      html += '<option value="' + s.id + '"' + (sel ? ' selected' : '') + '>' + escAttr(label) + '</option>';
+    });
+    if (!listed) {
+      html = '<option value="" selected>' + escAttr(facility.name) + ' (unlisted)</option>' + html;
+    }
+    return html;
+  }
+
+  function facilityTagsHtml(facility) {
+    var tags = (facility.contentTags && facility.contentTags.length) ? facility.contentTags : ['MS'];
+    return '<span class="setup-facility-tags" title="Specialty content areas (edit in Advanced Configuration)">' +
+      tags.map(function (t) { return '<span class="content-tag-badge">' + escHtml(t) + '</span>'; }).join('') +
+      '</span>';
+  }
+
+  function configListAddRow(actionClass, label) {
+    return '<div class="config-list-add-row">' +
+      '<button type="button" class="btn btn-sm ' + actionClass + '">' + label + '</button>' +
+      '</div>';
   }
 
   function renderFacilities(data) {
@@ -517,13 +581,16 @@ App.UI.Setup = (function () {
     App.DataModel.getUniqueFacilitiesForSelect(data).forEach(function (f) {
       var canRemove = data.facilities.length > 1;
       container.innerHTML +=
-        '<div class="setup-item-row setup-facility-row">' +
-        '<input type="text" data-fac="name" data-fac-id="' + f.id + '" value="' + escAttr(f.name) + '" placeholder="Facility name" aria-label="Facility name">' +
+        '<div class="config-list-row setup-facility-row">' +
+        '<select data-fac="site" data-fac-id="' + f.id + '" aria-label="Clinical site">' +
+        facilitySiteSelectHtml(data, f) + '</select>' +
+        facilityTagsHtml(f) +
         (canRemove
           ? '<button class="btn btn-icon-remove remove-facility" type="button" data-fac-id="' + f.id + '" aria-label="Remove facility" title="Remove facility">&times;</button>'
           : '<span class="section-sub" style="font-size:0.75rem;white-space:nowrap">Min. 1</span>') +
         '</div>';
     });
+    container.innerHTML += configListAddRow('add-facility', 'Add facility');
   }
 
   function renderFaculty(data) {
@@ -536,6 +603,14 @@ App.UI.Setup = (function () {
         '<input type="text" data-faculty="name" data-idx="' + i + '" value="' + escAttr(f.name) + '" placeholder="Faculty name">' +
         '</div>';
     });
+  }
+
+  function renderLeadFaculty(data) {
+    var lead = (data.meta && data.meta.leadFaculty) || { name: '', email: '' };
+    var nameEl = document.getElementById('leadFacultyName');
+    var emailEl = document.getElementById('leadFacultyEmail');
+    if (nameEl) nameEl.value = lead.name || '';
+    if (emailEl) emailEl.value = lead.email || '';
   }
 
   function semesterWeekHintText(data, dateStr) {
@@ -625,8 +700,9 @@ App.UI.Setup = (function () {
         '</div>';
     });
     if (!holidays.length) {
-      container.innerHTML = '<p class="section-sub">No holidays or breaks defined. Click Add above.</p>';
+      container.innerHTML = '<p class="section-sub setup-list-empty-hint">No holidays or breaks defined.</p>';
     }
+    container.innerHTML += configListAddRow('add-holiday', 'Add');
   }
 
   function orientationFacilitySelectHtml(data, selectedId) {
@@ -717,8 +793,9 @@ App.UI.Setup = (function () {
         '</div>';
     });
     if (!orientations.length) {
-      container.innerHTML = '<p class="section-sub">No orientation days defined. Click Add above.</p>';
+      container.innerHTML = '<p class="section-sub setup-list-empty-hint">No orientation days defined.</p>';
     }
+    container.innerHTML += configListAddRow('add-orientation', 'Add');
   }
 
   function escAttr(s) {
@@ -769,15 +846,27 @@ App.UI.Setup = (function () {
       });
     });
 
-    document.querySelectorAll('#setupFacilities [data-fac="name"]').forEach(function (el) {
+    document.querySelectorAll('#setupFacilities [data-fac="site"]').forEach(function (el) {
       var f = data.facilities.find(function (fac) { return fac.id === el.dataset.facId; });
       if (!f) return;
-      f.name = el.value.trim();
+      var site = el.value && App.SiteLibrary ? App.SiteLibrary.getById(el.value) : null;
+      if (site) {
+        f.siteId = site.id;
+        f.name = site.name;
+        f.shortName = site.shortName;
+        f.contentTags = site.contentTags.slice();
+      }
+      // Empty value = unlisted legacy facility; keep its current name.
     });
     document.querySelectorAll('#setupFaculty [data-faculty]').forEach(function (el) {
       var f = data.faculty[parseInt(el.dataset.idx, 10)];
       if (f) f.name = el.value;
     });
+    if (!data.meta.leadFaculty) data.meta.leadFaculty = { name: '', email: '' };
+    var leadNameEl = document.getElementById('leadFacultyName');
+    var leadEmailEl = document.getElementById('leadFacultyEmail');
+    if (leadNameEl) data.meta.leadFaculty.name = leadNameEl.value.trim();
+    if (leadEmailEl) data.meta.leadFaculty.email = leadEmailEl.value.trim();
     document.querySelectorAll('#setupHolidays [data-hol]').forEach(function (el) {
       var h = data.holidays[parseInt(el.dataset.idx, 10)];
       if (!h) return;
@@ -967,6 +1056,7 @@ App.UI.Setup = (function () {
       zone.classList.remove('drag-over');
       var id = dragStudentId || e.dataTransfer.getData('text/plain');
       if (!id) return;
+      if (!guardSetupEdit()) return;
       var data = App.getData();
       collectFromForm(data);
       moveStudentToGroup(data, id, zone.getAttribute('data-drop-group'));
@@ -976,6 +1066,7 @@ App.UI.Setup = (function () {
       if (e.target.hasAttribute('data-cohort-section-bulk')) {
         var sectionName = e.target.value;
         if (!sectionName) return;
+        if (!guardSetupEdit()) return;
         var data = App.getData();
         collectFromForm(data);
         applyCohortSection(data, e.target.getAttribute('data-cohort-section-bulk'), sectionName);
@@ -986,6 +1077,7 @@ App.UI.Setup = (function () {
       if (e.target.classList.contains('move-cohort-select')) {
         var target = e.target.value;
         if (!target) return;
+        if (!guardSetupEdit()) return;
         var data = App.getData();
         collectFromForm(data);
         moveStudentToGroup(data, e.target.getAttribute('data-student-id'), target);
@@ -996,11 +1088,13 @@ App.UI.Setup = (function () {
     roster.addEventListener('click', function (e) {
       var addBtn = e.target.closest('.add-student-btn');
       if (addBtn) {
+        if (!guardSetupEdit()) return;
         addStudent(App.getData(), addBtn.getAttribute('data-clinical-group'));
         return;
       }
       var removeBtn = e.target.closest('.remove-student-btn');
       if (removeBtn) {
+        if (!guardSetupEdit()) return;
         App.UI.showConfirm('Remove student?', 'Remove this student from the roster?', function () {
           removeStudent(App.getData(), removeBtn.getAttribute('data-student-id'));
         }, { confirmLabel: 'Remove' });
@@ -1019,6 +1113,7 @@ App.UI.Setup = (function () {
     document.getElementById('semesterYearSelect').addEventListener('change', updateStartDateFromSeasonYear);
 
     document.getElementById('saveSetupBtn').addEventListener('click', function () {
+      if (!guardSetupEdit()) return;
       var data = App.getData();
       var configBefore = collectFromForm(data);
       App.notifyChange();
@@ -1029,6 +1124,7 @@ App.UI.Setup = (function () {
     });
 
     document.getElementById('finalizeSemesterBtn').addEventListener('click', function () {
+      if (!guardSetupEdit()) return;
       var data = App.getData();
       collectFromForm(data);
       data.meta.finalized = true;
@@ -1038,6 +1134,7 @@ App.UI.Setup = (function () {
     });
 
     document.getElementById('regenerateSchedulesBtn').addEventListener('click', function () {
+      if (!App.UI.guardEditable('regenerate')) return;
       var data = App.getData();
       collectFromForm(data);
       var confirmMsg = 'Regenerate all student schedules? Manual edits will be lost.';
@@ -1078,42 +1175,92 @@ App.UI.Setup = (function () {
     updateSetupStickyOffset();
     window.addEventListener('resize', updateSetupStickyOffset);
 
-    document.getElementById('addSectionBtn').addEventListener('click', function () {
-      var data = App.getData();
-      collectFromForm(data);
-      if (!data.sections) data.sections = [];
-      data.sections.push({ id: App.DataModel.uid(), name: '' });
-      markSetupDraft(data);
-      App.notifyChange();
-      App.UI.Setup.render(data);
-    });
-
     document.getElementById('setupSections').addEventListener('click', function (e) {
+      if (e.target.closest('.add-section')) {
+        if (!guardSetupEdit()) return;
+        var data = App.getData();
+        collectFromForm(data);
+        if (!data.sections) data.sections = [];
+        data.sections.push({ id: App.DataModel.uid(), name: '' });
+        markSetupDraft(data);
+        App.notifyChange();
+        App.UI.Setup.render(data);
+        return;
+      }
       var btn = e.target.closest('.remove-section');
       if (!btn) return;
+      if (!guardSetupEdit()) return;
       removeSection(App.getData(), btn.dataset.secId);
     });
 
-    document.getElementById('addFacilityBtn').addEventListener('click', function () {
+    document.getElementById('setupFacilities').addEventListener('click', function (e) {
+      if (e.target.closest('.add-facility')) {
+        if (!guardSetupEdit()) return;
+        var data = App.getData();
+        collectFromForm(data);
+        var newFac = null;
+        if (App.SiteLibrary) {
+          var unused = App.SiteLibrary.list().find(function (s) {
+            return !data.facilities.some(function (f) {
+              return f.siteId === s.id ||
+                App.DataModel.normalizeFacilityName(f.name) === App.SiteLibrary.normalizeName(s.name);
+            });
+          });
+          if (!unused) {
+            App.UI.showAlert('No sites available',
+              'All library sites are already in use for this semester. Add a new site to the clinical site library in Advanced Configuration first.');
+            return;
+          }
+          newFac = {
+            id: App.DataModel.uid(),
+            siteId: unused.id,
+            name: unused.name,
+            shortName: unused.shortName,
+            contentTags: unused.contentTags.slice()
+          };
+        } else {
+          newFac = { id: App.DataModel.uid(), name: 'New Facility' };
+        }
+        data.facilities.push(newFac);
+        markSetupDraft(data);
+        App.notifyChange();
+        App.UI.Setup.render(data);
+        return;
+      }
+      var btn = e.target.closest('.remove-facility');
+      if (!btn) return;
+      if (!guardSetupEdit()) return;
+      removeFacility(App.getData(), btn.dataset.facId);
+    });
+
+    document.getElementById('setupFacilities').addEventListener('change', function (e) {
+      if (e.target.getAttribute('data-fac') !== 'site') return;
+      if (!guardSetupEdit()) return;
       var data = App.getData();
       collectFromForm(data);
-      data.facilities.push({ id: App.DataModel.uid(), name: 'New Facility' });
       markSetupDraft(data);
       App.notifyChange();
       App.UI.Setup.render(data);
     });
 
-    document.getElementById('setupFacilities').addEventListener('click', function (e) {
-      var btn = e.target.closest('.remove-facility');
+    document.getElementById('setupHolidays').addEventListener('click', function (e) {
+      if (e.target.closest('.add-holiday')) {
+        if (!guardSetupEdit()) return;
+        var data = App.getData();
+        collectFromForm(data);
+        if (!data.holidays) data.holidays = [];
+        data.holidays.push({ id: App.DataModel.uid(), date: '', label: '', type: 'holiday' });
+        markSetupDraft(data);
+        App.notifyChange();
+        App.UI.Setup.render(data);
+        return;
+      }
+      var btn = e.target.closest('.remove-holiday');
       if (!btn) return;
-      removeFacility(App.getData(), btn.dataset.facId);
-    });
-
-    document.getElementById('addHolidayBtn').addEventListener('click', function () {
+      if (!guardSetupEdit()) return;
       var data = App.getData();
       collectFromForm(data);
-      if (!data.holidays) data.holidays = [];
-      data.holidays.push({ id: App.DataModel.uid(), date: '', label: '', type: 'holiday' });
+      data.holidays.splice(parseInt(btn.dataset.idx, 10), 1);
       markSetupDraft(data);
       App.notifyChange();
       App.UI.Setup.render(data);
@@ -1149,36 +1296,27 @@ App.UI.Setup = (function () {
       updateHolidayWeekHint(App.getData(), e.target);
     });
 
-    document.getElementById('setupHolidays').addEventListener('click', function (e) {
-      var btn = e.target.closest('.remove-holiday');
-      if (!btn) return;
-      var data = App.getData();
-      collectFromForm(data);
-      data.holidays.splice(parseInt(btn.dataset.idx, 10), 1);
-      markSetupDraft(data);
-      App.notifyChange();
-      App.UI.Setup.render(data);
-    });
-
-    document.getElementById('addOrientationBtn').addEventListener('click', function () {
-      var data = App.getData();
-      collectFromForm(data);
-      if (!data.orientations) data.orientations = [];
-      var next = nextOrientationDefault(data);
-      data.orientations.push({
-        id: App.DataModel.uid(),
-        clinicalGroup: next.clinicalGroup,
-        date: '',
-        facilityId: next.facilityId
-      });
-      markSetupDraft(data);
-      App.notifyChange();
-      App.UI.Setup.render(data);
-    });
-
     document.getElementById('setupOrientations').addEventListener('click', function (e) {
+      if (e.target.closest('.add-orientation')) {
+        if (!guardSetupEdit()) return;
+        var data = App.getData();
+        collectFromForm(data);
+        if (!data.orientations) data.orientations = [];
+        var next = nextOrientationDefault(data);
+        data.orientations.push({
+          id: App.DataModel.uid(),
+          clinicalGroup: next.clinicalGroup,
+          date: '',
+          facilityId: next.facilityId
+        });
+        markSetupDraft(data);
+        App.notifyChange();
+        App.UI.Setup.render(data);
+        return;
+      }
       var btn = e.target.closest('.remove-orientation');
       if (!btn) return;
+      if (!guardSetupEdit()) return;
       var data = App.getData();
       collectFromForm(data);
       data.orientations.splice(parseInt(btn.dataset.idx, 10), 1);
@@ -1198,6 +1336,7 @@ App.UI.Setup = (function () {
     });
 
     document.getElementById('rebalanceStudentsBtn').addEventListener('click', function () {
+      if (!guardSetupEdit()) return;
       var data = App.getData();
       collectFromForm(data);
       var syncCount = data.students.length !== (data.config.maxStudents || 30);

@@ -303,9 +303,32 @@ App.DataModel = (function () {
     return list;
   }
 
+  // Match semester facilities to the program site library (spec §4.2):
+  // resolve siteId by id or normalized name, copy shortName/contentTags,
+  // and default contentTags to ["MS"] for backward compatibility.
+  function linkFacilitiesToSiteLibrary(facilities) {
+    (facilities || []).forEach(function (f) {
+      if (App.SiteLibrary) {
+        var site = (f.siteId && App.SiteLibrary.getById(f.siteId)) ||
+          App.SiteLibrary.matchByName(f.name);
+        if (site) {
+          f.siteId = site.id;
+          if (!f.shortName) f.shortName = site.shortName;
+          if (!f.contentTags || !f.contentTags.length) f.contentTags = site.contentTags.slice();
+        }
+        f.contentTags = App.SiteLibrary.normalizeTags(f.contentTags);
+      } else if (!f.contentTags || !f.contentTags.length) {
+        f.contentTags = ['MS'];
+      }
+      if (f.siteId === undefined) f.siteId = null;
+      if (f.shortName === undefined) f.shortName = '';
+    });
+  }
+
   function normalizeFacilities(semester) {
     if (!semester.facilities || !semester.facilities.length) {
       semester.facilities = defaultFacilities();
+      linkFacilitiesToSiteLibrary(semester.facilities);
       return;
     }
     var canonical = {};
@@ -316,13 +339,25 @@ App.DataModel = (function () {
       var key = normalizeFacilityName(name);
       if (!key) key = f.id;
       if (!canonical[key]) {
-        canonical[key] = { id: f.id, name: name };
+        canonical[key] = {
+          id: f.id,
+          name: name,
+          siteId: f.siteId || null,
+          shortName: f.shortName || '',
+          contentTags: f.contentTags
+        };
       } else {
         idRemap[f.id] = canonical[key].id;
         if (name.length > canonical[key].name.length) canonical[key].name = name;
+        if (!canonical[key].siteId && f.siteId) canonical[key].siteId = f.siteId;
+        if (!canonical[key].shortName && f.shortName) canonical[key].shortName = f.shortName;
+        if ((!canonical[key].contentTags || !canonical[key].contentTags.length) && f.contentTags) {
+          canonical[key].contentTags = f.contentTags;
+        }
       }
     });
     semester.facilities = Object.keys(canonical).map(function (k) { return canonical[k]; });
+    linkFacilitiesToSiteLibrary(semester.facilities);
     function remapId(id) {
       if (!id) return id;
       while (idRemap[id]) id = idRemap[id];
@@ -415,6 +450,44 @@ App.DataModel = (function () {
     };
   }
 
+  var AUDIT_PHASES = ['setup', 'active', 'makeup_review', 'audit_exported', 'locked'];
+
+  // Backfill audit/closeout meta fields (spec: docs/AUDIT_TRACKING_IMPLEMENTATION.md §4.1).
+  // Legacy mapping: finalized === true -> auditPhase 'active'; never auto-lock.
+  function ensureAuditMeta(meta) {
+    if (meta.courseId === undefined) meta.courseId = '';
+    if (!meta.auditPhase || AUDIT_PHASES.indexOf(meta.auditPhase) < 0) {
+      meta.auditPhase = meta.finalized === true ? 'active' : 'setup';
+    }
+    if (!meta.leadFaculty || typeof meta.leadFaculty !== 'object') {
+      meta.leadFaculty = { name: '', email: '' };
+    }
+    if (meta.leadFaculty.name === undefined) meta.leadFaculty.name = '';
+    if (meta.leadFaculty.email === undefined) meta.leadFaculty.email = '';
+    if (!meta.makeupAttestation || typeof meta.makeupAttestation !== 'object') {
+      meta.makeupAttestation = { attestedAt: null, attestedByName: '', attestedByEmail: '', notes: '' };
+    }
+    if (meta.makeupAttestation.attestedAt === undefined) meta.makeupAttestation.attestedAt = null;
+    if (meta.makeupAttestation.attestedByName === undefined) meta.makeupAttestation.attestedByName = '';
+    if (meta.makeupAttestation.attestedByEmail === undefined) meta.makeupAttestation.attestedByEmail = '';
+    if (meta.makeupAttestation.notes === undefined) meta.makeupAttestation.notes = '';
+    if (!meta.auditExport || typeof meta.auditExport !== 'object') {
+      meta.auditExport = { exportedAt: null, exportedByName: '', snapshotHash: '', appVersion: '', exportVersion: 0 };
+    }
+    if (meta.auditExport.exportedAt === undefined) meta.auditExport.exportedAt = null;
+    if (meta.auditExport.exportedByName === undefined) meta.auditExport.exportedByName = '';
+    if (meta.auditExport.snapshotHash === undefined) meta.auditExport.snapshotHash = '';
+    if (meta.auditExport.appVersion === undefined) meta.auditExport.appVersion = '';
+    if (!meta.auditExport.exportVersion) meta.auditExport.exportVersion = 0;
+    if (!meta.lock || typeof meta.lock !== 'object') {
+      meta.lock = { lockedAt: null, lockedByName: '', lockedReason: 'semester_complete' };
+    }
+    if (meta.lock.lockedAt === undefined) meta.lock.lockedAt = null;
+    if (meta.lock.lockedByName === undefined) meta.lock.lockedByName = '';
+    if (!meta.lock.lockedReason) meta.lock.lockedReason = 'semester_complete';
+    return meta;
+  }
+
   function createDefaultSemester() {
     var facilities = defaultFacilities();
     var sections = defaultSections();
@@ -445,7 +518,7 @@ App.DataModel = (function () {
 
     return {
       id: uid(),
-      meta: {
+      meta: ensureAuditMeta({
         version: VERSION,
         semesterSeason: season,
         semesterYear: year,
@@ -453,7 +526,7 @@ App.DataModel = (function () {
         finalized: false,
         configCustomized: false,
         lastModified: new Date().toISOString()
-      },
+      }),
       config: cfg,
       calendar: {
         semesterStartDate: iso,
@@ -556,6 +629,13 @@ App.DataModel = (function () {
       if (!s.id) s.id = uid();
       if (!s.absences) s.absences = [];
       if (!s.makeups) s.makeups = [];
+      s.makeups.forEach(function (m) {
+        // Provenance backfill (spec §4.3): legacy records get an id but keep
+        // appliedAt null since the original apply time is unknown.
+        if (!m.id) m.id = uid();
+        if (m.appliedAt === undefined) m.appliedAt = null;
+        if (m.appliedByName === undefined) m.appliedByName = '';
+      });
       if (s.orientationWeekIndex !== undefined && s.orientationWeekIndex !== null) {
         var ow = parseInt(s.orientationWeekIndex, 10);
         s.orientationWeekIndex = (ow >= 0 && ow < 18) ? ow : null;
@@ -569,6 +649,7 @@ App.DataModel = (function () {
     semester.meta.version = VERSION;
     if (semester.meta.configCustomized === undefined) semester.meta.configCustomized = false;
     if (semester.meta.finalized === undefined) semester.meta.finalized = false;
+    ensureAuditMeta(semester.meta);
     var parsed = parseSemesterDisplay(semester);
     if (!semester.meta.semesterSeason && parsed.season) {
       semester.meta.semesterSeason = parsed.season;
@@ -694,6 +775,11 @@ App.DataModel = (function () {
     copy.id = uid();
     copy.meta.lastModified = new Date().toISOString();
     copy.meta.finalized = false;
+    // Fresh audit lifecycle for the new semester (keep courseId and leadFaculty from template).
+    copy.meta.auditPhase = 'setup';
+    copy.meta.makeupAttestation = { attestedAt: null, attestedByName: '', attestedByEmail: '', notes: '' };
+    copy.meta.auditExport = { exportedAt: null, exportedByName: '', snapshotHash: '', appVersion: '', exportVersion: 0 };
+    copy.meta.lock = { lockedAt: null, lockedByName: '', lockedReason: 'semester_complete' };
     applySemesterSeasonYear(copy, season || 'fall', year || new Date().getFullYear());
     copy.students.forEach(function (s) {
       s.id = uid();
@@ -760,6 +846,8 @@ App.DataModel = (function () {
   return {
     FILE_VERSION: FILE_VERSION,
     VERSION: VERSION,
+    AUDIT_PHASES: AUDIT_PHASES,
+    ensureAuditMeta: ensureAuditMeta,
     CLINICAL_GROUPS: CLINICAL_GROUPS,
     SIM_GROUPS: SIM_GROUPS,
     WEEKDAY_OPTIONS: WEEKDAY_OPTIONS,
@@ -812,6 +900,7 @@ App.DataModel = (function () {
     sameFacilitySite: sameFacilitySite,
     studentAtFacilitySite: studentAtFacilitySite,
     getUniqueFacilitiesForSelect: getUniqueFacilitiesForSelect,
-    normalizeFacilities: normalizeFacilities
+    normalizeFacilities: normalizeFacilities,
+    linkFacilitiesToSiteLibrary: linkFacilitiesToSiteLibrary
   };
 })();

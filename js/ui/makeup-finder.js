@@ -133,7 +133,28 @@ App.UI.MakeupFinder = (function () {
     results._slots = slots;
   }
 
+  var APPLIED_BY_KEY = 'regnMakeupAppliedBy';
+
+  function getAppliedByName() {
+    var el = document.getElementById('makeupAppliedBy');
+    return el ? el.value.trim() : '';
+  }
+
+  function initAppliedByField() {
+    var el = document.getElementById('makeupAppliedBy');
+    if (!el) return;
+    try {
+      el.value = localStorage.getItem(APPLIED_BY_KEY) || '';
+    } catch (err) { /* localStorage unavailable */ }
+    el.addEventListener('input', function () {
+      try {
+        localStorage.setItem(APPLIED_BY_KEY, el.value.trim());
+      } catch (err) { /* localStorage unavailable */ }
+    });
+  }
+
   function init() {
+    initAppliedByField();
     document.getElementById('makeupStudentSelect').addEventListener('change', function () {
       if (requiredClinicalMakeup) requiredClinicalMakeup = null;
       App.UI.refresh();
@@ -146,10 +167,11 @@ App.UI.MakeupFinder = (function () {
     document.getElementById('makeupResults').addEventListener('click', function (e) {
       var btn = e.target.closest('.apply-makeup');
       if (!btn) return;
+      if (!App.UI.guardEditable('makeup')) return;
       var results = document.getElementById('makeupResults');
       var slot = results._slots[parseInt(btn.dataset.idx, 10)];
       var applyType = btn.dataset.type;
-      var applyResult = App.Scheduler.applyMakeupSlot(App.getData(), btn.dataset.student, slot, applyType);
+      var applyResult = App.Scheduler.applyMakeupSlot(App.getData(), btn.dataset.student, slot, applyType, getAppliedByName());
       if (applyResult && applyResult.clinicalConflictApplied) {
         requestClinicalMakeup(btn.dataset.student);
         return;

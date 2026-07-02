@@ -36,6 +36,14 @@ If the file does not appear, pull down to refresh the OneDrive folder, or open i
 
 The workbook is for reference only (disclaimer at top of each sheet). Use the app for the current schedule and **Export backup** for full semester data.
 
+## Audit closeout (end of semester)
+
+At semester end, the program exports an **audit PDF**, obtains **digital signatures** outside the app (Adobe Acrobat or college e-sign), and files the signed PDF in a **master repository** folder on OneDrive. The signed PDF is the official clinical-hours record; the working `.json` file is operational data only.
+
+Full checklist and roles: [AUDIT_TRACKING_OPERATIONS.md](AUDIT_TRACKING_OPERATIONS.md)
+
+Process diagram: [audit_tracking_workflow.md](../audit_tracking_workflow.md)
+
 ## Tips
 
 - One `.json` file holds all semesters in the app

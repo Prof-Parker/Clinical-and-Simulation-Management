@@ -183,7 +183,7 @@ App.UI.SetupConfig = (function () {
       html += renderGroupWeekPlan(data, g);
       html += '</div>';
     });
-    html += '<div class="clin-groups-add-row">' +
+    html += '<div class="config-list-add-row clin-groups-add-row">' +
       '<button type="button" class="btn btn-sm add-clin-group">Add group</button>' +
       '</div>';
     return html;
@@ -201,9 +201,13 @@ App.UI.SetupConfig = (function () {
   function renderSimDaysList(cfg) {
     var days = App.DataModel.getSimDays(cfg);
     var canRemove = days.length > 1;
-    return days.map(function (d) {
+    var rowsHtml = days.map(function (d) {
       return simDayRow(d, canRemove);
     }).join('');
+    return rowsHtml +
+      '<div class="config-list-add-row">' +
+      '<button type="button" class="btn btn-sm add-sim-day">Add day</button>' +
+      '</div>';
   }
 
   function readFormIntoConfig(cfg, data) {
@@ -286,6 +290,66 @@ App.UI.SetupConfig = (function () {
     refreshDynamicLists(data);
   }
 
+  function escAttrLocal(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function siteLibraryRow(site, referenced) {
+    var tagsHtml = App.SiteLibrary.ALLOWED_TAGS.map(function (tag) {
+      var checked = site.contentTags.indexOf(tag) >= 0 ? ' checked' : '';
+      return '<label class="filter-check site-lib-tag">' +
+        '<input type="checkbox" data-site-lib-tag="' + tag + '"' + checked + '> ' + tag + '</label>';
+    }).join('');
+    var removeHtml = referenced
+      ? '<span class="section-sub site-lib-in-use" title="Referenced by a semester facility list">In use</span>'
+      : '<button type="button" class="btn btn-icon-remove remove-site-lib" data-site-id="' + site.id + '" aria-label="Remove site" title="Remove site">&times;</button>';
+    return '<div class="site-lib-row" data-site-lib-row data-site-id="' + site.id + '">' +
+      '<input type="text" data-site-lib="name" value="' + escAttrLocal(site.name) + '" placeholder="Site name" aria-label="Site name">' +
+      '<input type="text" data-site-lib="short" value="' + escAttrLocal(site.shortName) + '" placeholder="Short" maxlength="10" aria-label="Short name">' +
+      '<span class="site-lib-tags">' + tagsHtml + '</span>' +
+      removeHtml +
+      '</div>';
+  }
+
+  function renderSiteLibrary() {
+    var container = document.getElementById('cfgSiteLibrary');
+    if (!container || !App.SiteLibrary) return;
+    var fileRoot = App.getFileRoot();
+    var rowsHtml = App.SiteLibrary.list().map(function (site) {
+      return siteLibraryRow(site, App.SiteLibrary.isSiteReferenced(fileRoot, site.id));
+    }).join('');
+    container.innerHTML = rowsHtml +
+      '<div class="config-list-add-row">' +
+      '<button type="button" class="btn btn-sm add-site-lib">Add site</button>' +
+      '</div>';
+  }
+
+  // Read the library editor rows back into fileRoot.meta.siteLibrary.
+  function collectSiteLibraryFromDom() {
+    var container = document.getElementById('cfgSiteLibrary');
+    if (!container || !App.SiteLibrary) return;
+    var rows = container.querySelectorAll('[data-site-lib-row]');
+    if (!rows.length) return;
+    var sites = [];
+    rows.forEach(function (row) {
+      var tags = [];
+      row.querySelectorAll('[data-site-lib-tag]').forEach(function (cb) {
+        if (cb.checked) tags.push(cb.getAttribute('data-site-lib-tag'));
+      });
+      sites.push({
+        id: row.getAttribute('data-site-id'),
+        name: row.querySelector('[data-site-lib="name"]').value,
+        shortName: row.querySelector('[data-site-lib="short"]').value,
+        contentTags: tags
+      });
+    });
+    App.SiteLibrary.replaceAll(sites);
+  }
+
   function renderAdvancedFields(cfg) {
     var set = function (id, val) {
       var el = document.getElementById(id);
@@ -314,8 +378,24 @@ App.UI.SetupConfig = (function () {
   function updateNewSemesterBanner() {
     var banner = document.getElementById('setupPendingNewSemesterBanner');
     var saveAddBtn = document.getElementById('setupSaveAddSemesterBtn');
+    var courseLabel = document.getElementById('setupNewSemesterCourseLabel');
     if (banner) banner.classList.toggle('hidden', !pendingNewSemester);
     if (saveAddBtn) saveAddBtn.classList.toggle('hidden', !pendingNewSemester);
+    if (courseLabel) {
+      courseLabel.classList.toggle('hidden', !pendingNewSemester);
+      if (pendingNewSemester) populateNewSemesterCourseSelect();
+    }
+  }
+
+  function populateNewSemesterCourseSelect() {
+    var select = document.getElementById('setupNewSemesterCourse');
+    if (!select || !App.CourseDefaults) return;
+    var data = App.getData();
+    var current = (data && data.meta && data.meta.courseId) || 'REGN15P';
+    select.innerHTML = App.CourseDefaults.list().map(function (c) {
+      return '<option value="' + c.courseId + '"' + (c.courseId === current ? ' selected' : '') + '>' +
+        c.displayName + '</option>';
+    }).join('');
   }
 
   function render(data) {
@@ -325,6 +405,7 @@ App.UI.SetupConfig = (function () {
     App.DataModel.migrateClinicalGroupFacilities(data);
     renderAdvancedFields(cfg);
     refreshDynamicLists(data);
+    renderSiteLibrary();
     updateSubtitle(data);
     updateNewSemesterBanner();
   }
@@ -361,10 +442,12 @@ App.UI.SetupConfig = (function () {
   }
 
   function collectIntoData(data) {
+    collectSiteLibraryFromDom();
     var draft = draftConfigFromForm(data.config, data);
     var before = applyConfigToData(data, draft);
     data.meta.configCustomized = true;
     if (App.ClinicalSites) App.ClinicalSites.applyPrimarySitesToStudents(data);
+    App.DataModel.linkFacilitiesToSiteLibrary(data.facilities);
     return before;
   }
 
@@ -454,11 +537,13 @@ App.UI.SetupConfig = (function () {
       ? App.UI.Setup.collectFromForm(data)
       : collectIntoData(data);
     App.DataModel.setSchedulingDefaults(App.getFileRoot(), data.config);
+    var courseSelect = document.getElementById('setupNewSemesterCourse');
+    var courseId = courseSelect ? courseSelect.value : undefined;
     pendingNewSemester = false;
     updateNewSemesterBanner();
     App.notifyChange();
     maybeRegenerateAfterChange(data, before);
-    App.addSemester();
+    App.addSemester(undefined, undefined, courseId);
     App.UI.switchTab('setup');
     App.UI.refresh();
   }
@@ -512,6 +597,34 @@ App.UI.SetupConfig = (function () {
   }
 
   function handleSetupClick(e) {
+    if (e.target.classList.contains('add-site-lib')) {
+      if (!App.SiteLibrary) return;
+      collectSiteLibraryFromDom();
+      App.SiteLibrary.upsertSite({ name: 'New Site', shortName: '', contentTags: ['MS'] });
+      renderSiteLibrary();
+      if (App.UI.Setup && App.UI.Setup.markSetupDraft) App.UI.Setup.markSetupDraft(App.getData());
+      App.notifyChange();
+      return;
+    }
+
+    if (e.target.closest('.remove-site-lib')) {
+      if (!App.SiteLibrary) return;
+      var siteBtnLib = e.target.closest('.remove-site-lib');
+      var libSiteId = siteBtnLib.getAttribute('data-site-id');
+      collectSiteLibraryFromDom();
+      if (App.SiteLibrary.isSiteReferenced(App.getFileRoot(), libSiteId)) {
+        App.UI.showAlert('Site in use',
+          'This site is referenced by a semester facility list and cannot be removed. Remove it from all semesters first.');
+        renderSiteLibrary();
+        return;
+      }
+      App.SiteLibrary.removeSite(libSiteId);
+      renderSiteLibrary();
+      if (App.UI.Setup && App.UI.Setup.markSetupDraft) App.UI.Setup.markSetupDraft(App.getData());
+      App.notifyChange();
+      return;
+    }
+
     if (e.target.classList.contains('add-clin-site-range')) {
       var dataRange = App.getData();
       if (App.UI.Setup && App.UI.Setup.collectFromForm) App.UI.Setup.collectFromForm(dataRange);

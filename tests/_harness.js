@@ -12,6 +12,8 @@ function load(relativePath) {
 }
 
 function loadCore() {
+  load('js/course-defaults.js');
+  load('js/clinical-sites-library.js');
   load('js/data-model.js');
   load('js/roster-balance.js');
   load('js/calendar-engine.js');
