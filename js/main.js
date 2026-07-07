@@ -19,102 +19,65 @@ App.UI.buildSemesterLabelHtml = function (parts) {
   return html;
 };
 
-App.UI.closeSemesterPicker = function () {
-  var menu = document.getElementById('semesterPickerMenu');
-  var btn = document.getElementById('semesterPickerBtn');
-  if (menu) menu.classList.add('hidden');
-  if (btn) btn.setAttribute('aria-expanded', 'false');
+App.UI.updateCourseStatusLine = function () {
+  var el = document.getElementById('courseStatusLine');
+  var data = App.getData();
+  if (!el) return;
+  if (!data || !data.meta) {
+    el.textContent = 'No semester file connected';
+    return;
+  }
+  var parts = App.DataModel.parseSemesterDisplay(data);
+  var seasonLabel = parts.season === 'fall' ? 'Fall' : (parts.season === 'spring' ? 'Spring' : '');
+  var courseId = data.meta.courseId || '—';
+  var phase = App.Audit ? App.Audit.getPhase(data) : 'setup';
+  el.textContent = (seasonLabel ? seasonLabel + ' ' : '') + (parts.year || '') +
+    ' · ' + courseId + ' · ' + phase.replace(/_/g, ' ');
+};
+
+App.UI.updateUserStatusLine = function () {
+  var el = document.getElementById('userStatusLine');
+  if (!el || !App.UserSession) return;
+  var session = App.UserSession.getSession();
+  if (!session) {
+    el.textContent = '';
+    return;
+  }
+  el.textContent = session.name + ' (' + App.UserTemplate.roleDisplayName(session.role) + ')';
 };
 
 App.UI.updateSemesterDisplay = function () {
-  var wrap = document.getElementById('semesterDisplay');
-  var label = document.getElementById('semesterPickerLabel');
-  var menu = document.getElementById('semesterPickerMenu');
-  var fileRoot = App.getFileRoot();
-  if (!wrap || !label || !menu || !fileRoot) return;
-
-  var activeId = fileRoot.meta.activeSemesterId;
-  menu.innerHTML = '';
-  fileRoot.semesters.forEach(function (sem) {
-    var parts = App.DataModel.parseSemesterDisplay(sem);
-    var li = document.createElement('li');
-    li.className = 'semester-picker-option';
-    li.setAttribute('role', 'option');
-    li.setAttribute('aria-selected', sem.id === activeId ? 'true' : 'false');
-    li.dataset.semesterId = sem.id;
-    li.innerHTML = App.UI.buildSemesterLabelHtml(parts);
-    menu.appendChild(li);
-  });
-
-  var active = App.getData();
-  if (active) {
-    var display = App.DataModel.parseSemesterDisplay(active);
-    wrap.className = 'semester-display season-' + (display.season || 'default');
-    label.innerHTML = App.UI.buildSemesterLabelHtml(display);
-  }
-  App.UI.updateCourseSelect();
+  App.UI.updateCourseStatusLine();
 };
 
-App.UI.updateCourseSelect = function () {
-  var select = document.getElementById('courseSelect');
-  var data = App.getData();
-  if (!select || !App.CourseDefaults) return;
-  var current = (data && data.meta && data.meta.courseId) || '';
-  var courses = App.CourseDefaults.list();
-  var html = '<option value=""' + (current ? '' : ' selected') + '>Course…</option>';
-  courses.forEach(function (c) {
-    html += '<option value="' + c.courseId + '"' + (c.courseId === current ? ' selected' : '') + '>' +
-      c.displayName + '</option>';
-  });
-  // Preserve an unlisted legacy course id rather than silently dropping it.
-  if (current && !courses.some(function (c) { return c.courseId === current; })) {
-    html += '<option value="' + current + '" selected>' + current + '</option>';
-  }
-  select.innerHTML = html;
-  select.disabled = !data;
-};
-
-App.UI.initSemesterSwitcher = function () {
-  var btn = document.getElementById('semesterPickerBtn');
-  var menu = document.getElementById('semesterPickerMenu');
-
-  btn.addEventListener('click', function (e) {
-    e.stopPropagation();
-    var open = menu.classList.toggle('hidden');
-    btn.setAttribute('aria-expanded', open ? 'false' : 'true');
-  });
-
+App.UI.initSemesterMenu = function () {
+  var menu = document.getElementById('semesterSwitchMenu');
+  if (!menu) return;
   menu.addEventListener('click', function (e) {
-    var opt = e.target.closest('.semester-picker-option');
-    if (!opt) return;
+    var opt = e.target.closest('[data-semester-id]');
+    if (!opt || !App.getFileRoot()) return;
     if (opt.dataset.semesterId !== App.getFileRoot().meta.activeSemesterId) {
       App.switchSemester(opt.dataset.semesterId);
     }
-    App.UI.closeSemesterPicker();
+    App.UI.closeMenu();
   });
+};
 
-  document.addEventListener('click', function (e) {
-    if (!e.target.closest('#semesterPicker')) App.UI.closeSemesterPicker();
-  });
-
-  document.getElementById('addSemesterBtn').addEventListener('click', function () {
-    App.UI.closeSemesterPicker();
-    App.UI.ConfigModal.openForNewSemester();
-  });
-
-  var courseSelect = document.getElementById('courseSelect');
-  if (courseSelect) {
-    courseSelect.addEventListener('change', function () {
-      var data = App.getData();
-      if (!data) return;
-      // Sets the course id only; course defaults apply at semester creation,
-      // never retroactively to a configured semester.
-      data.meta.courseId = courseSelect.value || '';
-      App.notifyChange();
-      App.UI.updateSemesterDisplay();
-      App.Storage.updateStatusUI();
-    });
+App.UI.refreshSemesterSwitchMenu = function () {
+  var menu = document.getElementById('semesterSwitchMenu');
+  var fileRoot = App.getFileRoot();
+  if (!menu || !fileRoot) return;
+  if (!App.Permissions.canAction('semester.switch') || fileRoot.semesters.length < 2) {
+    menu.innerHTML = '';
+    return;
   }
+  var activeId = fileRoot.meta.activeSemesterId;
+  menu.innerHTML = fileRoot.semesters.map(function (sem) {
+    var parts = App.DataModel.parseSemesterDisplay(sem);
+    var label = App.UI.buildSemesterLabelHtml(parts);
+    return '<button type="button" class="menu-item menu-item-nested" role="menuitem" data-semester-id="' +
+      sem.id + '"' + (sem.id === activeId ? ' aria-current="true"' : '') + '>' + label + '</button>';
+  }).join('');
 };
 
 App.UI.closeMenu = function () {
@@ -130,13 +93,18 @@ App.UI.toggleMenu = function () {
   if (!dropdown || !toggle) return;
   var open = dropdown.classList.toggle('hidden');
   toggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+  if (!open) {
+    App.UI.refreshSemesterSwitchMenu();
+    if (App.Permissions && App.Permissions.applyMenuGating) App.Permissions.applyMenuGating();
+  }
 };
 
 App.UI.refresh = function () {
   var data = App.getData();
-  if (!data) return;
   App.Storage.updateStatusUI();
   App.UI.updateSemesterDisplay();
+  App.UI.updateUserStatusLine();
+  if (!data) return;
   App.UI.Dashboard.populateFilters(data);
   var tab = App.state.currentTab;
   if (tab === 'dashboard') App.UI.Dashboard.render(data);
@@ -145,14 +113,25 @@ App.UI.refresh = function () {
   if (tab === 'makeup') App.UI.MakeupFinder.render(data);
   if (tab === 'audit') App.UI.AuditCloseout.render(data);
   if (tab === 'setup') App.UI.Setup.render(data);
+  if (tab === 'playground' && App.UI.Playground) App.UI.Playground.render();
+  if (tab === 'users' && App.UI.UsersAdmin) App.UI.UsersAdmin.render();
+  if (tab === 'clinical-sites' && App.UI.ClinicalSitesTab) App.UI.ClinicalSitesTab.render();
+  if (tab === 'theory' && App.UI.TheoryStub) App.UI.TheoryStub.render();
   App.UI.updateCloseoutBanner(data);
+  if (App.Permissions) App.Permissions.apply();
 };
 
-/**
- * Audit-phase edit guard: returns true when editing is allowed; otherwise
- * shows the closeout alert and returns false.
- */
 App.UI.guardEditable = function (action) {
+  if (App.Permissions && App.UserSession && App.UserSession.isValidated()) {
+    if (action === 'masterCell' && App.Permissions.isDashboardReadOnly()) return false;
+    if (action === 'setup') {
+      if (!App.Permissions.canAction('setup.edit') &&
+          !App.Permissions.canAction('setup.saveDraft') &&
+          !App.Permissions.canAction('proposals.submit')) return false;
+    }
+    if (action === 'regenerate' && !App.Permissions.canAction('setup.edit')) return false;
+    if (action === 'makeup' && !App.Permissions.canAction('setup.edit')) return false;
+  }
   var data = App.getData();
   if (!data || !App.Audit || App.Audit.canEdit(data, action)) return true;
   App.UI.showAlert('Semester in closeout',
@@ -173,6 +152,10 @@ App.UI.updateCloseoutBanner = function (data) {
 };
 
 App.UI.switchTab = function (tabId) {
+  if (App.Permissions && !App.Permissions.canTab(tabId)) {
+    App.UI.showAlert('Not permitted', 'Your role cannot access this tab.');
+    return;
+  }
   if (tabId !== 'dashboard' && App.UI.Dashboard && App.UI.Dashboard.setScheduleFullscreen) {
     App.UI.Dashboard.setScheduleFullscreen(false);
   }
@@ -277,7 +260,15 @@ App.UI.init = function () {
   App.UI.SetupConfig.init();
   App.UI.Setup.init();
   App.UI.ConfigModal.init();
-  App.UI.initSemesterSwitcher();
+  if (App.UI.SetupProposals) App.UI.SetupProposals.init();
+  if (App.UI.Playground) App.UI.Playground.init();
+  if (App.UI.NewSemesterBatch) App.UI.NewSemesterBatch.init();
+  if (App.UI.UsersAdmin) App.UI.UsersAdmin.init();
+  if (App.UI.ClinicalSitesTab) App.UI.ClinicalSitesTab.init();
+  if (App.UI.PlaygroundImport) App.UI.PlaygroundImport.init();
+  if (App.UI.TheoryStub) App.UI.TheoryStub.init();
+  App.UI.initSemesterMenu();
+  if (App.UserSession) App.UserSession.initGateUI();
   if (App.getData() && App.UI.DateInputs) {
     App.UI.DateInputs.init(document.getElementById('view-setup'), App.getData());
   }
@@ -307,6 +298,46 @@ App.UI.init = function () {
     App.UI.toggleDarkMode();
     App.UI.closeMenu();
   });
+
+  var loadUserMenuBtn = document.getElementById('loadUserFileMenuBtn');
+  if (loadUserMenuBtn) {
+    loadUserMenuBtn.addEventListener('click', function () {
+      App.UserStorage.openFilePicker().then(function () {
+        return App.UserSession.validateAndSetSession();
+      }).then(function (r) {
+        if (r.ok) {
+          App.Permissions.apply();
+          App.UI.updateUserStatusLine();
+        }
+      }).catch(function () {});
+      App.UI.closeMenu();
+    });
+  }
+
+  var loadRegistryMenuBtn = document.getElementById('loadRegistryMenuBtn');
+  if (loadRegistryMenuBtn) {
+    loadRegistryMenuBtn.addEventListener('click', function () {
+      App.UsersRegistryStorage.openFilePicker().then(function () {
+        return App.UserSession.validateAndSetSession();
+      }).then(function (r) {
+        if (r.ok) {
+          App.Permissions.apply();
+          App.UI.refresh();
+        } else if (App.UsersRegistryStorage.isReady()) {
+          App.UI.refresh();
+        }
+      }).catch(function () {});
+      App.UI.closeMenu();
+    });
+  }
+
+  var logoutUserMenuBtn = document.getElementById('logoutUserMenuBtn');
+  if (logoutUserMenuBtn) {
+    logoutUserMenuBtn.addEventListener('click', function () {
+      App.UI.closeMenu();
+      App.UserSession.logout();
+    });
+  }
 
   document.getElementById('importBtn').addEventListener('click', function () {
     document.getElementById('importFileInput').click();
@@ -376,7 +407,9 @@ App.UI.init = function () {
   document.getElementById('saveBtn').addEventListener('click', function () {
     Promise.all([
       App.Storage.saveCurrent(),
-      App.SimFacultyStorage.isReady() ? App.SimFacultyStorage.saveCurrent() : Promise.resolve()
+      App.SimFacultyStorage.isReady() ? App.SimFacultyStorage.saveCurrent() : Promise.resolve(),
+      App.ClinicalSitesLibraryStorage && App.ClinicalSitesLibraryStorage.isReady()
+        ? App.ClinicalSitesLibraryStorage.saveCurrent() : Promise.resolve()
     ]).then(function () {
       if (App.Storage.supportsFS()) {
         App.UI.showAlert('Saved', 'Saved to connected file(s).');
@@ -397,6 +430,10 @@ App.UI.init = function () {
       App.UI.closeMenu();
     });
     document.getElementById('newFileBtn').addEventListener('click', function () {
+      if (!App.Permissions.guard('semester.batchCreate') && !App.Permissions.canAction('*')) {
+        App.UI.closeMenu();
+        return;
+      }
       App.Storage.createFilePicker().then(function (fileRoot) {
         var sem = App.getData();
         if (sem) App.Scheduler.regenerateAll(sem);
@@ -419,25 +456,39 @@ App.UI.init = function () {
       App.UI.closeMenu();
     });
   } else {
-    document.getElementById('openFileBtn').classList.add('hidden');
-    document.getElementById('newFileBtn').classList.add('hidden');
-    document.getElementById('openSimFacultyBtn').classList.add('hidden');
-    document.getElementById('newSimFacultyBtn').classList.add('hidden');
+    ['openFileBtn', 'newFileBtn', 'openSimFacultyBtn', 'newSimFacultyBtn'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.classList.add('hidden');
+    });
   }
 
   App.onStateChange(function () { App.Storage.updateStatusUI(); });
+  if (App.Permissions) App.Permissions.apply();
 };
 
 App.main = function () {
-  App.Storage.init().then(function (fileRoot) {
-    return App.SimFacultyStorage.init(fileRoot).then(function () {
-      return fileRoot;
+  App.UserSession.init().then(function (sessionResult) {
+    if (sessionResult.needsGate) {
+      App.UserSession.showGateModal(sessionResult.error);
+    }
+    return App.Storage.init();
+  }).then(function (fileRoot) {
+    return App.ClinicalSitesLibraryStorage.init().then(function () {
+      if (fileRoot && App.ClinicalSitesLibraryStorage.migrateFromSemesterOverlay(fileRoot)) {
+        App.ClinicalSitesLibraryStorage.saveCurrent();
+      }
+      return App.SimFacultyStorage.init(fileRoot).then(function () {
+        return fileRoot;
+      });
     });
   }).then(function (fileRoot) {
     if (App.Theme) App.Theme.init(fileRoot);
     App.UI.Dashboard.populateFilters(App.getData());
     App.UI.init();
-    App.UI.switchTab('dashboard');
+    if (App.UserSession.isValidated()) {
+      App.UserSession.hideGateModal();
+      App.UI.switchTab('dashboard');
+    }
   });
 };
 

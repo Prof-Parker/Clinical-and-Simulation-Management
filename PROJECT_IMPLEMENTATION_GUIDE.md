@@ -36,6 +36,15 @@ index.html
 │   ├── audit.js             Audit lifecycle phases + edit gating (App.Audit)
 │   ├── audit-snapshot.js    Canonical semester payload + SHA-256 snapshot hash
 │   ├── audit-export.js      Audit PDF export via hidden print DOM (css/audit-print.css)
+│   ├── user-template.js     Role capability matrix (App.UserTemplate)
+│   ├── user-data.js         User/registry schemas + key hash validation
+│   ├── user-storage.js      user.json persistence
+│   ├── users-registry-storage.js  users-registry.json persistence
+│   ├── user-session.js      Validated session + boot gate
+│   ├── permissions.js       Tab/menu/action gating (App.Permissions)
+│   ├── proposals.js         Setup proposal workflow
+│   ├── playground-storage.js  Playground file helpers
+│   ├── clinical-sites-library-storage.js  Standalone clinical-sites-library.json
 │   ├── storage.js           Semester JSON: IDB cache + File System Access API
 │   ├── sim-faculty-data.js  Sim roles schema (separate from semester file)
 │   ├── sim-faculty-storage.js  Sim faculty JSON persistence
@@ -46,13 +55,23 @@ index.html
 
 **Runtime model:** `App.state.fileRoot` holds all semesters; `App.state.data` is the active semester. UI modules call `App.notifyChange()` (semester file) or `App.notifySimFacultyChange()` (faculty file).
 
+**Boot order:** `App.UserSession.init()` (user.json + users-registry.json validation) → `App.Storage.init()` → `App.ClinicalSitesLibraryStorage.init()` → `App.SimFacultyStorage.init()` → `App.UI.init()`. Until the user session validates, `#userGateModal` blocks the app shell.
+
+**Local testing:** `node scripts/seed-mock-onedrive.js` creates gitignored `mock-onedrive/` fixtures. See [docs/MOCK_ONEDRIVE.md](docs/MOCK_ONEDRIVE.md).
+
+**Role gating:** `App.Permissions.canTab()` / `canAction()` combined with `App.Audit.canEdit()` via `App.UI.guardEditable()`. Spec: [docs/Design Docs/User_roles_design.md](docs/Design%20Docs/User_roles_design.md).
+
 ---
 
 ## 3. Data files (FERPA split)
 
 | File | Typical name | Contents |
 |------|----------------|----------|
-| **Semester file** | `{S\|F}{year}_{courseId}.json` (e.g. `F2026_REGN15P.json`); legacy `regn-tracker.json` | Roster, schedule, config, calendar, facilities, faculty, audit meta — **no sim roles** |
+| **User file** | `*.user.json` | userId, name, email, key (tamper deterrence) |
+| **Users registry** | `users-registry.json` | Authoritative roles + key hashes |
+| **Clinical sites library** | `clinical-sites-library.json` | Program-wide site catalog |
+| **Playground** | `user_{token}_playground.json` | Isolated semester experiments |
+| **Semester file** | `{S\|F}{year}_{courseId}.json` (e.g. `F2026_REGN15P.json`); legacy `regn-tracker.json` | Roster, schedule, config, calendar, facilities, faculty, audit meta, **proposals** — **no sim roles** |
 | **Sim faculty file** | `{S\|F}{year}_{courseId}_Faculty.json` (e.g. `F2026_REGN15P_Faculty.json`); legacy `regn-tracker-sim-faculty.json` | Role assignments (Primary/Secondary/Evaluator/Scribe) + performance flags (Strong/Weaker) |
 | **Audit PDF** | `{Season}-{Year}-{courseId}-Audit-v{n}.pdf` (e.g. `Fall-2026-REGN15P-Audit-v1.pdf`) | Signed end-of-semester audit record (official record after closeout) |
 
@@ -110,19 +129,21 @@ From `js/data-model.js` `defaultConfig()`:
 | Concept | Default |
 |---------|---------|
 | Clinical groups | C1–C5 on Sat / Mon / Mon / Mon / Tue |
-| Sim groups | SG1–SG4, Mon or Tue primary pattern |
-| Sim weekdays | Mon, Tue |
+| Sim groups | SG1–SG4; primary weekday + even/odd pattern per group (`simGroupDays`, `simGroupPattern` in Setup) |
+| Sim weekdays | Mon, Tue (program-wide `simDays` list) |
 | Clinical start | Week 5 (Saturday for C1) |
-| Sim start | Week 5 (program blocks) |
-| Caps | 6/clinical group (7 overload), 8/sim session (9 overload) |
+| Sim start | Week 5 (program blocks); drives `getSimWeekPatterns()` |
+| Caps | 6/clinical group (7 overload), 8/sim session (9 overload) — session cap is program-wide per weekday |
 | Makeup headroom | `simMakeupHeadroomReserved: 1` (soft preference during initial gen) |
+| Makeup target weeks | Optional `clinicalMakeupPrimaryWeek`, `clinicalMakeupFallbackWeek`, `simMakeupLastResortWeek`; blank = last active weeks via `CalendarEngine.resolveMakeupWeeks()` |
 
 **Facilities:** Students attend clinical at the site assigned per week (`cell.facilityId`). Multi-site groups may use **round-robin** (default) or optional **`clinicalGroupSiteWeeks`** ranges (facility + start/end week index). `student.facilityId` holds the primary/home site.
 
-**Sim group patterns** (`js/scheduler.js` → `SIM_GROUP_SCHEDULE`):
+**Sim group patterns** (`js/scheduler.js` → `getSimGroupSchedule()` reading semester config):
 
-- SG1/SG2: even block weeks (4,6,8,10,12,14,16) — Mon / Tue
-- SG3/SG4: odd block weeks (5,7,9,11,13,15,17) — Mon / Tue
+- Each sim group: primary weekday from `simGroupDays`, even/odd block weeks from `simGroupPattern` and `simStartWeek`
+- Default SG1/SG2: even pattern; SG3/SG4: odd pattern (Mon/Tue respectively)
+- When clinical and sim group **counts match**, `regenerateAll()` forces C*n*→SG*n* alignment
 
 Program calendar pairs even+odd weeks into **sim blocks** (Sim 1 = weeks 5–6, Sim 2 = 7–8, …) via `buildProgramSimCalendar()`.
 
@@ -133,12 +154,12 @@ Program calendar pairs even+odd weeks into **sim blocks** (Sim 1 = weeks 5–6, 
 `App.Scheduler.regenerateAll(data)` runs in order:
 
 1. **Calendar** — `App.CalendarEngine.rebuildWeeks`; mark inactive weeks.
-2. **Assignments** — sim groups (`roster-balance.js`), facilities.
+2. **Assignments** — sim groups (`roster-balance.js`; force C*n*→SG*n* when group counts match), facilities.
 3. **Clear** schedules and sim makeup records.
 4. **Program sim calendar** — `buildProgramSimCalendar` → `data._simCalendar` (block weeks per scenario).
 5. **Clinical** — `scheduleClinicalForStudent` per student from `clinicalStartWeek` on group weekday.
 6. **Simulations** — `scheduleSimsForAllStudents` with placement tiers (below).
-7. **Conflict makeups** — clinical missed for sim → target week 17, week 18 last resort; same facility.
+7. **Conflict makeups** — clinical missed for sim → primary/fallback makeup weeks (`resolveMakeupWeeks`); same facility.
 8. **Other makeups** — `scheduleMissedMakeups` for absence-driven gaps.
 
 Single-student regen: `regenerateStudent()` clears that student’s sims and re-runs sim + makeup steps.

@@ -21,3 +21,9 @@ desktop.ini
 
 # Prototype files
 Clinical Schedule.html
+
+# Local mock OneDrive (FERPA / test data — never commit)
+mock-onedrive/
+
+# Design Docs
+docs/Design Docs/

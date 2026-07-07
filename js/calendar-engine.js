@@ -126,6 +126,36 @@ App.CalendarEngine = (function () {
     return weeks;
   }
 
+  function resolveConfiguredMakeupWeek(data, weekNum1Based) {
+    if (weekNum1Based == null || weekNum1Based === '' || isNaN(weekNum1Based)) return null;
+    var wi = parseInt(weekNum1Based, 10) - 1;
+    if (wi < 0 || wi >= 18) return null;
+    if (!isWeekInactive(data, wi)) return wi;
+    for (var d = 1; d < 18; d++) {
+      if (wi - d >= 0 && !isWeekInactive(data, wi - d)) return wi - d;
+      if (wi + d < 18 && !isWeekInactive(data, wi + d)) return wi + d;
+    }
+    return null;
+  }
+
+  function resolveMakeupWeeks(data) {
+    var cfg = data.config || {};
+    var active = [];
+    for (var i = 0; i < 18; i++) {
+      if (!isWeekInactive(data, i)) active.push(i);
+    }
+    var fallback = active.length ? active[active.length - 1] : 17;
+    var primary = active.length > 1 ? active[active.length - 2] : fallback;
+    var primaryWi = resolveConfiguredMakeupWeek(data, cfg.clinicalMakeupPrimaryWeek);
+    var fallbackWi = resolveConfiguredMakeupWeek(data, cfg.clinicalMakeupFallbackWeek);
+    var simLastWi = resolveConfiguredMakeupWeek(data, cfg.simMakeupLastResortWeek);
+    return {
+      clinicalPrimary: primaryWi != null ? primaryWi : primary,
+      clinicalFallback: fallbackWi != null ? fallbackWi : fallback,
+      simLastResort: simLastWi != null ? simLastWi : fallback
+    };
+  }
+
   return {
     parseDate: parseDate,
     toISO: toISO,
@@ -137,6 +167,7 @@ App.CalendarEngine = (function () {
     getWeekDisplay: getWeekDisplay,
     formatDisplayDate: formatDisplayDate,
     getActiveSchedulingWeeks: getActiveSchedulingWeeks,
-    getClinicalEligibleWeeks: getClinicalEligibleWeeks
+    getClinicalEligibleWeeks: getClinicalEligibleWeeks,
+    resolveMakeupWeeks: resolveMakeupWeeks
   };
 })();

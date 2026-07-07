@@ -147,18 +147,79 @@ App.Storage = (function () {
     }, 600);
   }
 
-  function saveCurrent() {
+  function saveCurrent(forceOverwrite) {
     var fileRoot = App.getFileRoot();
     if (!fileRoot) return Promise.resolve();
-    return cacheData(fileRoot).then(function () {
-      if (App.state.fileHandle && supportsFS()) {
-        return writeToHandle(App.state.fileHandle, fileRoot).then(function () {
+    if (!App.state.fileHandle || !supportsFS()) {
+      return cacheData(fileRoot).then(function () {
+        updateStatusUI();
+      });
+    }
+    return readFromHandle(App.state.fileHandle).then(function (remote) {
+      var remoteRev = (remote.meta && remote.meta.revision) || 1;
+      var localRev = (fileRoot.meta && fileRoot.meta.revision) || App.state.fileLoadedRevision || 1;
+      if (!forceOverwrite && App.state.fileLoadedRevision != null && remoteRev > App.state.fileLoadedRevision) {
+        return new Promise(function (resolve) {
+          App.UI.showConfirm('File changed on disk',
+            'The semester file was modified elsewhere. Reload remote copy and lose local unsaved edits?',
+            function () {
+              App.setFileRoot(remote);
+              App.state.fileLoadedRevision = remoteRev;
+              App.markClean();
+              App.UI.refresh();
+              resolve();
+            },
+            { confirmLabel: 'Reload', cancelLabel: 'Keep editing' }
+          );
+        });
+      }
+      if (remote && remote.semesters && fileRoot.semesters) {
+        remote.semesters.forEach(function (remoteSem) {
+          var localSem = fileRoot.semesters.find(function (s) { return s.id === remoteSem.id; });
+          if (localSem && localSem.proposals && App.Proposals) {
+            remoteSem.proposals = App.Proposals.mergeProposalLists(localSem.proposals, remoteSem.proposals);
+          }
+        });
+        fileRoot.semesters.forEach(function (localSem) {
+          var idx = remote.semesters.findIndex(function (s) { return s.id === localSem.id; });
+          if (idx >= 0) remote.semesters[idx] = localSem;
+          else remote.semesters.push(localSem);
+        });
+        fileRoot = remote;
+        fileRoot.meta = fileRoot.meta || {};
+        fileRoot.meta.activeSemesterId = App.state.fileRoot.meta.activeSemesterId;
+      }
+      fileRoot.meta.revision = Math.max(remoteRev, localRev) + 1;
+      App.state.fileLoadedRevision = fileRoot.meta.revision;
+      App.syncSemesterToFile();
+      return writeToHandle(App.state.fileHandle, fileRoot).then(function () {
+        App.state.fileRoot = fileRoot;
+        var activeId = fileRoot.meta.activeSemesterId;
+        var sem = fileRoot.semesters.find(function (s) { return s.id === activeId; });
+        if (sem) App.state.data = sem;
+        return cacheData(fileRoot).then(function () {
           App.markClean();
           updateStatusUI();
-        }).catch(function () { updateStatusUI(); });
-      }
-      updateStatusUI();
+        });
+      });
+    }).catch(function () {
+      return cacheData(fileRoot).then(function () { updateStatusUI(); });
     });
+  }
+
+  function writeFileRootToHandle(handle, fileRoot) {
+    if (!fileRoot.meta) fileRoot.meta = {};
+    if (!fileRoot.meta.revision) fileRoot.meta.revision = 1;
+    return writeToHandle(handle, fileRoot);
+  }
+
+  function semesterFileTokenFromMeta(season, year, courseId) {
+    if (!season || !year || !courseId) return null;
+    return (season === 'fall' ? 'F' : 'S') + year + '_' + courseId;
+  }
+
+  function supportsDirectoryPicker() {
+    return typeof window.showDirectoryPicker === 'function';
   }
 
   function writeToHandle(handle, data) {
@@ -303,6 +364,9 @@ App.Storage = (function () {
   }
 
   function applyLoadedFileRoot(fileRoot) {
+    if (!fileRoot.meta) fileRoot.meta = {};
+    if (!fileRoot.meta.revision) fileRoot.meta.revision = 1;
+    App.state.fileLoadedRevision = fileRoot.meta.revision;
     if (App.SimFacultyStorage) {
       App.SimFacultyData.stripRolesFromFileRoot(fileRoot);
       var migrated = App.SimFacultyStorage.migrateFromSemesterFile(fileRoot);
@@ -444,6 +508,12 @@ App.Storage = (function () {
     suggestedSemesterFileName: suggestedSemesterFileName,
     clearAndRestoreDefaults: clearAndRestoreDefaults,
     applyLoadedFileRoot: applyLoadedFileRoot,
+    writeFileRootToHandle: writeFileRootToHandle,
+    readFromHandle: readFromHandle,
+    writeToHandle: writeToHandle,
+    serialize: serialize,
+    semesterFileTokenFromMeta: semesterFileTokenFromMeta,
+    supportsDirectoryPicker: supportsDirectoryPicker,
     _idbGet: idbGet,
     _idbSet: idbSet
   };

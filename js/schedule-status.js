@@ -28,10 +28,10 @@ App.ScheduleStatus = (function () {
     return App.Scheduler.buildProgramSimCalendar(data, data.config);
   }
 
-  function isSubstitutionPlacement(student, cell, weekIndex, calendar, simGroups) {
+  function isSubstitutionPlacement(student, cell, weekIndex, calendar, simGroups, data) {
     if (!cell || !cell.sim) return false;
     if (cell.simGuestGroup || cell.simOverload) return true;
-    var primary = App.Scheduler.getStudentSimSlot(student, cell.sim, calendar, simGroups);
+    var primary = App.Scheduler.getStudentSimSlot(student, cell.sim, calendar, simGroups, data);
     if (!primary) return false;
     return primary.weekIndex !== weekIndex || primary.day !== (cell.simDay || 'Mon');
   }
@@ -61,7 +61,7 @@ App.ScheduleStatus = (function () {
           overloadStudents[student.id] = true;
           hasSubstitution = true;
         }
-        if (cell.sim && isSubstitutionPlacement(student, cell, weekIndex, calendar, simGroups)) {
+        if (cell.sim && isSubstitutionPlacement(student, cell, weekIndex, calendar, simGroups, data)) {
           if (!cell.simGuestGroup && !cell.simOverload) {
             nonPrimaryStudents[student.id] = true;
             hasNonPrimary = true;

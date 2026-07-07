@@ -41,6 +41,20 @@ Reference: `renderClinicalGroupsList`, `renderHolidays`, `renderFacilities`, `re
 - When a minimum of one row is required, show a muted `Min. 1` hint instead of a remove button.
 - For select-based rows (facilities, sim days, clinical groups), use `config-list-row` so the control and remove button share one grid row.
 
+## Dropdowns (select)
+
+Use the shared `.select-control` class for toolbar and filter dropdowns (header course picker, dashboard filters, and similar compact selects outside full-width form layouts).
+
+```html
+<select class="select-control" aria-label="Filter by clinical group">…</select>
+```
+
+- Tokens: `background: var(--bg)`, `color: var(--text)`, `border: 1px solid var(--border)` — works in light and dark mode via `html.dark` CSS variables.
+- Do **not** use undefined tokens such as `var(--card)` or `var(--surface)` on selects.
+- Full-width form fields inherit global `input, select, textarea` styles (`width: 100%`); add `select-control` when `width: auto` is needed.
+- Dashboard filter selects inside `.filters` / `.dashboard-schedule-filters` already match this pattern; new header/toolbar selects should use `select-control` explicitly.
+- Always set `aria-label` (or an associated `<label>`).
+
 ## Checkboxes
 
 Use `label.filter-check` for all checkbox labels (filters, toggles, tag pickers):
@@ -70,6 +84,25 @@ Never use `window.alert`, `window.confirm`, or `window.prompt`.
 - Confirm destructive actions (remove student, regenerate schedules) with `showConfirm`.
 - Informational outcomes use `showAlert`.
 - Complex single-field or multi-control edits use `showDialog` (see master calendar cell editor).
+
+## Read-only and auto-filled form fields
+
+Use `.setup-autofill-field` for inputs populated from registry or other sources and not edited directly (e.g. lead faculty email after picking a user).
+
+```html
+<input type="text" id="leadFacultyEmail" class="setup-autofill-field" readonly aria-label="Lead faculty email">
+```
+
+- **Always set both** `background` and `color` using theme tokens — never a hard-coded light gray alone.
+- Required tokens (defined in `:root` and `html.dark` in `css/app.css`):
+  - `background: var(--surface-alt)`
+  - `color: var(--text)`
+  - `border-color: var(--border)`
+- Do **not** use `var(--surface-alt, #f3f4f6)` or other light-only fallbacks; undefined tokens silently break dark mode (light text on a light background).
+- Set `readonly` in JS when the value is registry-driven; remove the class and `readonly` when the field becomes editable again.
+- Prefer `type="text"` over `type="email"` for auto-filled values that may not be full addresses (avoids browser validation styling quirks).
+
+Reference: `#leadFacultyEmail` in Setup → Course Staff (`js/ui/setup.js` → `renderLeadFaculty`).
 
 ## Section headers
 

@@ -55,7 +55,8 @@ App.Feasibility = (function () {
     var simDays = App.DataModel.getSimDays(cfg);
     var simGroups = App.DataModel.getSimGroups(cfg);
     var weeks = App.CalendarEngine.getActiveSchedulingWeeks(data);
-    var slotsPerPattern = App.Scheduler.SIM_GROUP_SCHEDULE.SG1.weeks.length;
+    var patterns = App.Scheduler.getSimWeekPatterns(cfg);
+    var slotsPerPattern = patterns.evenWeeks.length;
     return weeks.length * simDays.length * simGroups.length * 0.5 + slotsPerPattern * simDays.length;
   }
 
@@ -264,6 +265,21 @@ App.Feasibility = (function () {
           overlapIds.length,
           overlapIds,
           'day_overlap_risk',
+          'informational'
+        ));
+      }
+
+      var clinicalGroups = App.DataModel.getClinicalGroups(cfg);
+      var simGroups = App.DataModel.getSimGroups(cfg);
+      if (clinicalGroups.length !== simGroups.length) {
+        issues.push(makeIssue(
+          'clinical_sim_group_count_mismatch',
+          'Clinical and simulation group alignment',
+          clinicalGroups.length + ' clinical groups but ' + simGroups.length +
+            ' simulation groups — regenerate will not force Cn→SGn alignment',
+          0,
+          [],
+          'clinical_sim_group_count_mismatch',
           'informational'
         ));
       }

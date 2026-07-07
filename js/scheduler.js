@@ -9,6 +9,35 @@ App.Scheduler = (function () {
     SG4: { weeks: [5, 7, 9, 11, 13, 15, 17], day: 'Tue' }
   };
 
+  function getSimWeekPatterns(cfg) {
+    var start = (cfg.simStartWeek || 5) - 1;
+    var evenWeeks = [];
+    var oddWeeks = [];
+    for (var i = 0; i < 9; i++) {
+      var ew = start + i * 2;
+      var ow = start + 1 + i * 2;
+      if (ew < 18) evenWeeks.push(ew);
+      if (ow < 18) oddWeeks.push(ow);
+    }
+    return { evenWeeks: evenWeeks, oddWeeks: oddWeeks };
+  }
+
+  function getSimGroupSchedule(hostSimGroup, simGroups, cfg) {
+    if (!cfg) cfg = App.DataModel.defaultConfig();
+    var patterns = getSimWeekPatterns(cfg);
+    var day = App.DataModel.getSimGroupDay(hostSimGroup, cfg);
+    var pattern = App.DataModel.getSimGroupPattern(hostSimGroup, cfg);
+    return {
+      weeks: (pattern === 'odd' ? patterns.oddWeeks : patterns.evenWeeks).slice(),
+      day: day
+    };
+  }
+
+  function usesOddPatternWeek(simGroup, simGroups, cfg) {
+    if (!cfg) cfg = App.DataModel.defaultConfig();
+    return App.DataModel.getSimGroupPattern(simGroup, cfg) === 'odd';
+  }
+
   function alternateSimDay(day, cfg) {
     var simDays = App.DataModel.getSimDays(cfg);
     if (simDays.length < 2) return day;
@@ -21,7 +50,10 @@ App.Scheduler = (function () {
     var clinicalGroups = App.DataModel.getClinicalGroups(config);
     var simGroups = App.DataModel.getSimGroups(config);
     if (App.RosterBalance) {
-      App.RosterBalance.assignSimGroupsByClinicalCohort(students, clinicalGroups, simGroups);
+      var forceAlign = App.RosterBalance.shouldForceClinicalSimAlignment(clinicalGroups, simGroups);
+      App.RosterBalance.assignSimGroupsByClinicalCohort(
+        students, clinicalGroups, simGroups, { force: forceAlign }
+      );
       return;
     }
     students.forEach(function (s, i) {
@@ -107,8 +139,9 @@ App.Scheduler = (function () {
   function getExistingSimSessions(data, simNum) {
     var cfg = data.config;
     var calendar = data._simCalendar || buildProgramSimCalendar(data, cfg);
+    var makeupWeeks = App.CalendarEngine.resolveMakeupWeeks(data);
     var map = {};
-    for (var w = 0; w < 17; w++) {
+    for (var w = 0; w < makeupWeeks.simLastResort; w++) {
       if (getWeekSimNumber(calendar, w) !== simNum) continue;
       if (App.CalendarEngine.isWeekInactive(data, w)) continue;
       App.DataModel.getSimDays(cfg).forEach(function (day) {
@@ -130,8 +163,9 @@ App.Scheduler = (function () {
   function getExistingClinicalAtFacility(data, facilityId, excludeStudentId) {
     if (!facilityId) return [];
     var cfg = data.config;
+    var makeupWeeks = App.CalendarEngine.resolveMakeupWeeks(data);
     var sessions = {};
-    for (var w = 0; w < 17; w++) {
+    for (var w = 0; w < makeupWeeks.simLastResort; w++) {
       if (App.CalendarEngine.isWeekInactive(data, w)) continue;
       data.students.forEach(function (s) {
         if (s.id === excludeStudentId) return;
@@ -187,7 +221,8 @@ App.Scheduler = (function () {
   }
 
   function getWeek18ClinicalSlot(data, student) {
-    var wi = 17;
+    var makeupWeeks = App.CalendarEngine.resolveMakeupWeeks(data);
+    var wi = makeupWeeks.clinicalFallback;
     if (App.CalendarEngine.isWeekInactive(data, wi)) return null;
     var cell = student.schedule[wi];
     if (!cell || cell.inactive) return null;
@@ -197,10 +232,10 @@ App.Scheduler = (function () {
       : student.facilityId;
     return {
       weekIndex: wi,
-      week: 18,
+      week: wi + 1,
       week18Fallback: true,
       facilityId: facId ? App.DataModel.getCanonicalFacilityId(data, facId) : null,
-      reason: 'Week 18 makeup clinical at ' + getFacilityName(data, facId) + ' — last resort'
+      reason: 'Week ' + (wi + 1) + ' makeup clinical at ' + getFacilityName(data, facId) + ' — last resort'
     };
   }
 
@@ -214,18 +249,20 @@ App.Scheduler = (function () {
 
   function getWeek18SimFallback(data, cfg, targetSimNum, student) {
     var slots = [];
-    var wi = 17;
+    var makeupWeeks = App.CalendarEngine.resolveMakeupWeeks(data);
+    var wi = makeupWeeks.simLastResort;
     if (App.CalendarEngine.isWeekInactive(data, wi)) return slots;
     var cell = student.schedule[wi];
     if (!cell || cell.inactive) return slots;
 
     if (cell.sim && cell.sim !== targetSimNum) {
-      var sch = SIM_GROUP_SCHEDULE[student.simGroup] || SIM_GROUP_SCHEDULE.SG1;
+      var simGroups = App.DataModel.getSimGroups(cfg);
+      var sch = getSimGroupSchedule(student.simGroup, simGroups, cfg);
       var simDays = App.DataModel.getSimDays(cfg);
       var day = simDays.indexOf(sch.day) >= 0 ? sch.day : simDays[0];
       slots.push({
         weekIndex: wi,
-        week: 18,
+        week: wi + 1,
         day: day,
         simNum: targetSimNum,
         week18Fallback: true,
@@ -233,7 +270,7 @@ App.Scheduler = (function () {
         overload: false,
         clinicalConflict: !!(cell.clinical && !cell.clinicalMissed),
         replacesWeek18Sim: true,
-        reason: 'Week 18 mixed sim makeup — replaces Sim ' + cell.sim + ' (last resort, not preferred)'
+        reason: 'Week ' + (wi + 1) + ' mixed sim makeup — replaces Sim ' + cell.sim + ' (last resort, not preferred)'
       });
       return slots;
     }
@@ -242,14 +279,14 @@ App.Scheduler = (function () {
       if (cell.sim === targetSimNum && cell.simDay === d) return;
       slots.push({
         weekIndex: wi,
-        week: 18,
+        week: wi + 1,
         day: d,
         simNum: targetSimNum,
         week18Fallback: true,
         mixedSim: true,
         overload: false,
         clinicalConflict: !!(cell.clinical && !cell.clinicalMissed),
-        reason: 'Week 18 mixed sim makeup — last resort (not preferred)'
+        reason: 'Week ' + (wi + 1) + ' mixed sim makeup — last resort (not preferred)'
       });
     });
     return slots;
@@ -363,10 +400,6 @@ App.Scheduler = (function () {
       nonOverlap.forEach(function (d) {
         if (ordered.indexOf(d) < 0) ordered.push(d);
       });
-      if (!ordered.length) {
-        if (primary !== clinDay && ordered.indexOf(primary) < 0) ordered.push(primary);
-        if (alt !== clinDay && alt !== primary && ordered.indexOf(alt) < 0) ordered.push(alt);
-      }
       return ordered;
     }
     nonOverlap.forEach(function (d) {
@@ -378,7 +411,33 @@ App.Scheduler = (function () {
     return ordered;
   }
 
+  function daySimAtNormalCap(data, weekIndex, day, cfg) {
+    return getDaySimAttendanceCount(data, weekIndex, day) >= getSimCaps(cfg).normal;
+  }
+
+  function compareCandidatesByDayPreference(student, data, a, b, cfg, simGroups) {
+    if (a.weekIndex !== b.weekIndex) return null;
+    var aFull = daySimAtNormalCap(data, a.weekIndex, a.day, cfg);
+    var bFull = daySimAtNormalCap(data, b.weekIndex, b.day, cfg);
+    if (!aFull && !bFull) {
+      var sch = getSimGroupSchedule(student.simGroup, simGroups, cfg);
+      var order = simDaysOrderForWeek(student, a.weekIndex, sch, cfg);
+      var ia = order.indexOf(a.day);
+      var ib = order.indexOf(b.day);
+      if (ia < 0) ia = 99;
+      if (ib < 0) ib = 99;
+      if (ia !== ib) return ia - ib;
+      return 0;
+    }
+    if (aFull !== bFull) return (aFull ? 1 : 0) - (bFull ? 1 : 0);
+    return null;
+  }
+
   function compareCandidatesByLoad(student, data, a, b, cfg) {
+    var simGroups = App.DataModel.getSimGroups(cfg);
+    var dayPref = compareCandidatesByDayPreference(student, data, a, b, cfg, simGroups);
+    if (dayPref != null && dayPref !== 0) return dayPref;
+
     var sa = candidateLoadScore(data, a.weekIndex, a.day, cfg);
     var sb = candidateLoadScore(data, b.weekIndex, b.day, cfg);
     if (sa !== sb) return sa - sb;
@@ -400,14 +459,10 @@ App.Scheduler = (function () {
     });
   }
 
-  function usesOddPatternWeek(simGroup, simGroups) {
-    var sch = getSimGroupSchedule(simGroup, simGroups);
-    return sch.weeks[0] === SIM_GROUP_SCHEDULE.SG3.weeks[0];
-  }
-
   function buildProgramSimCalendar(data, cfg) {
-    var evenWeeks = SIM_GROUP_SCHEDULE.SG1.weeks.slice();
-    var oddWeeks = SIM_GROUP_SCHEDULE.SG3.weeks.slice();
+    var patterns = getSimWeekPatterns(cfg);
+    var evenWeeks = patterns.evenWeeks.slice();
+    var oddWeeks = patterns.oddWeeks.slice();
     var needed = cfg.simDaysRequired || 5;
     var blocks = [];
     var weekToSim = {};
@@ -438,52 +493,64 @@ App.Scheduler = (function () {
     return calendar && calendar.weekToSim ? calendar.weekToSim[weekIndex] : null;
   }
 
-  function getStudentSimSlot(student, simNum, calendar, simGroups) {
-    var candidates = getStudentSimSlotCandidates(student, simNum, calendar, simGroups, null);
+  function getStudentSimSlot(student, simNum, calendar, simGroups, data) {
+    var cfg = data && data.config ? data.config : App.DataModel.defaultConfig();
+    var candidates = getStudentSimSlotCandidates(student, data, simNum, calendar, simGroups, cfg);
     return candidates.length ? candidates[0] : null;
   }
 
-  function getStudentSimSlotCandidates(student, simNum, calendar, simGroups, cfg) {
+  function getStudentSimSlotCandidates(student, data, simNum, calendar, simGroups, cfg) {
     var block = calendar.blocks[simNum - 1];
     if (!block) return [];
-    var sch = getSimGroupSchedule(student.simGroup, simGroups);
-    var odd = usesOddPatternWeek(student.simGroup, simGroups);
+    if (!cfg) cfg = App.DataModel.defaultConfig();
+    var sch = getSimGroupSchedule(student.simGroup, simGroups, cfg);
+    var odd = usesOddPatternWeek(student.simGroup, simGroups, cfg);
     var primaryWi = odd ? block.oddWeekIndex : block.evenWeekIndex;
-    var weeksToTry = [];
-    if (primaryWi != null && primaryWi < 18) weeksToTry.push(primaryWi);
-    block.weeks.forEach(function (wi) {
-      if (weeksToTry.indexOf(wi) < 0) weeksToTry.push(wi);
-    });
     var slots = [];
-    weeksToTry.forEach(function (wi) {
-      var days = cfg
-        ? simDaysOrderForWeek(student, wi, sch, cfg)
-        : [sch.day, alternateSimDay(sch.day, cfg)].filter(function (d, i, arr) {
-          return arr.indexOf(d) === i;
-        });
+
+    function pushWeekSlots(wi, tier) {
+      if (wi == null || wi >= 18) return;
+      if (App.CalendarEngine.isWeekInactive(data, wi)) return;
+      var days = simDaysOrderForWeek(student, wi, sch, cfg);
+      var cell = student.schedule[wi];
+      var clinDay = getStudentClinicalDay(student, cfg);
+      if (wouldSimClinicalConflict(cell, student, cfg, clinDay)) {
+        days = days.filter(function (d) { return d !== clinDay; });
+      }
       days.forEach(function (day) {
         slots.push({
           weekIndex: wi,
           day: day,
           simNum: simNum,
-          hostSimGroup: student.simGroup
+          hostSimGroup: student.simGroup,
+          tier: tier
         });
       });
+    }
+
+    if (primaryWi != null) pushWeekSlots(primaryWi, 'primary');
+    block.weeks.forEach(function (wi) {
+      if (wi !== primaryWi) pushWeekSlots(wi, 'primaryAlt');
     });
     return slots;
   }
 
-  function buildGuestFallbackSlots(student, block, simNum, simGroups, cfg) {
+  function buildGuestFallbackSlots(student, data, block, simNum, simGroups, cfg) {
     var slots = [];
     simGroups.forEach(function (sg) {
       if (sg === student.simGroup) return;
-      var sch = getSimGroupSchedule(sg, simGroups);
+      var sch = getSimGroupSchedule(sg, simGroups, cfg);
       block.weeks.forEach(function (wi) {
-        slots.push({ weekIndex: wi, day: sch.day, simNum: simNum, hostSimGroup: sg, tier: 'guest' });
-        var alt = alternateSimDay(sch.day, cfg);
-        if (alt !== sch.day) {
-          slots.push({ weekIndex: wi, day: alt, simNum: simNum, hostSimGroup: sg, tier: 'guest' });
+        if (App.CalendarEngine.isWeekInactive(data, wi)) return;
+        var days = simDaysOrderForWeek(student, wi, sch, cfg);
+        var cell = student.schedule[wi];
+        var clinDay = getStudentClinicalDay(student, cfg);
+        if (wouldSimClinicalConflict(cell, student, cfg, clinDay)) {
+          days = days.filter(function (d) { return d !== clinDay; });
         }
+        days.forEach(function (day) {
+          slots.push({ weekIndex: wi, day: day, simNum: simNum, hostSimGroup: sg, tier: 'guest' });
+        });
       });
     });
     return slots;
@@ -574,12 +641,12 @@ App.Scheduler = (function () {
     var block = calendar.blocks[simNum - 1];
     if (!block) return 0;
     var placeOpts = getSimSchedulingOptions(data);
-    getStudentSimSlotCandidates(student, simNum, calendar, simGroups, cfg).forEach(function (slot) {
+    getStudentSimSlotCandidates(student, data, simNum, calendar, simGroups, cfg).forEach(function (slot) {
       if (canPlaceSimSlot(student, data, slot.weekIndex, simNum, slot.day, slot.hostSimGroup, state, placeOpts)) {
         count++;
       }
     });
-    buildGuestFallbackSlots(student, block, simNum, simGroups, cfg).forEach(function (slot) {
+    buildGuestFallbackSlots(student, data, block, simNum, simGroups, cfg).forEach(function (slot) {
       if (canPlaceSimSlot(student, data, slot.weekIndex, simNum, slot.day, slot.hostSimGroup, state, placeOpts)) {
         count++;
       }
@@ -646,23 +713,27 @@ App.Scheduler = (function () {
     var simGroups = App.DataModel.getSimGroups(cfg);
     var block = calendar.blocks[simNum - 1];
     var primary = [];
+    var primaryAlt = [];
     var guest = [];
     var overload = [];
+    var conflictAllow = [];
     var w18 = [];
 
-    getStudentSimSlotCandidates(student, simNum, calendar, simGroups, cfg).forEach(function (slot) {
-      primary.push({
+    getStudentSimSlotCandidates(student, data, simNum, calendar, simGroups, cfg).forEach(function (slot) {
+      var entry = {
         weekIndex: slot.weekIndex,
         day: slot.day,
         simNum: simNum,
         hostSimGroup: slot.hostSimGroup,
-        tier: 'primary'
-      });
+        tier: slot.tier || 'primary'
+      };
+      if (entry.tier === 'primaryAlt') primaryAlt.push(entry);
+      else primary.push(entry);
     });
 
     if (block) {
       guest = sortGuestSlotsByExistingSessions(data,
-        buildGuestFallbackSlots(student, block, simNum, simGroups, cfg)
+        buildGuestFallbackSlots(student, data, block, simNum, simGroups, cfg)
       );
     }
 
@@ -671,6 +742,22 @@ App.Scheduler = (function () {
         overload.push(slot);
       }
     });
+
+    if (state.simClinicalConflicts < 1 && block) {
+      var clinDay = getStudentClinicalDay(student, cfg);
+      block.weeks.forEach(function (wi) {
+        if (App.CalendarEngine.isWeekInactive(data, wi)) return;
+        var cell = student.schedule[wi];
+        if (!wouldSimClinicalConflict(cell, student, cfg, clinDay)) return;
+        conflictAllow.push({
+          weekIndex: wi,
+          day: clinDay,
+          simNum: simNum,
+          hostSimGroup: student.simGroup,
+          tier: 'conflictAllow'
+        });
+      });
+    }
 
     if (!blockHasRegularCapacity(data, calendar, simNum, cfg) &&
         !shouldDeferWeek18(student, data, calendar, simNum, cfg)) {
@@ -689,15 +776,18 @@ App.Scheduler = (function () {
     }
 
     primary = sortCandidatesWithinTier(student, data, primary, cfg);
+    primaryAlt = sortCandidatesWithinTier(student, data, primaryAlt, cfg);
     guest = sortCandidatesWithinTier(student, data, guest, cfg);
     overload = sortCandidatesWithinTier(student, data, overload, cfg);
+    conflictAllow = sortCandidatesWithinTier(student, data, conflictAllow, cfg);
     w18 = sortCandidatesWithinTier(student, data, w18, cfg);
 
-    return primary.concat(guest).concat(overload).concat(w18);
+    return primary.concat(primaryAlt).concat(guest).concat(overload)
+      .concat(conflictAllow).concat(w18);
   }
 
   function compareSimPlacementTier(a, b) {
-    var order = { primary: 0, guest: 1, overload: 2, week18: 3 };
+    var order = { primary: 0, primaryAlt: 1, guest: 2, overload: 3, conflictAllow: 4, week18: 5 };
     var ta = order[a.tier] != null ? order[a.tier] : 99;
     var tb = order[b.tier] != null ? order[b.tier] : 99;
     if (ta !== tb) return ta - tb;
@@ -781,14 +871,6 @@ App.Scheduler = (function () {
     return true;
   }
 
-  function getSimGroupSchedule(hostSimGroup, simGroups) {
-    if (SIM_GROUP_SCHEDULE[hostSimGroup]) return SIM_GROUP_SCHEDULE[hostSimGroup];
-    var idx = simGroups.indexOf(hostSimGroup);
-    var keys = ['SG1', 'SG2', 'SG3', 'SG4'];
-    var key = keys[Math.max(0, idx) % keys.length];
-    return SIM_GROUP_SCHEDULE[key];
-  }
-
   function getSimPlacements(student) {
     var list = [];
     student.schedule.forEach(function (cell, wi) {
@@ -844,8 +926,8 @@ App.Scheduler = (function () {
       var guestA = getGuestCountFromSchedule(a);
       var guestB = getGuestCountFromSchedule(b);
       if (guestA !== guestB) return guestA - guestB;
-      var aOdd = usesOddPatternWeek(a.simGroup, simGroups) ? 0 : 1;
-      var bOdd = usesOddPatternWeek(b.simGroup, simGroups) ? 0 : 1;
+      var aOdd = usesOddPatternWeek(a.simGroup, simGroups, cfg) ? 0 : 1;
+      var bOdd = usesOddPatternWeek(b.simGroup, simGroups, cfg) ? 0 : 1;
       if (aOdd !== bOdd) return aOdd - bOdd;
       if (a.simGroup !== b.simGroup) return a.simGroup < b.simGroup ? -1 : 1;
       return a.id < b.id ? -1 : 1;
@@ -874,10 +956,12 @@ App.Scheduler = (function () {
     if (!state || !state.conflictWeeks.length) return;
     var cfg = data.config;
     var clinDay = getStudentClinicalDay(student, cfg);
+    var makeupWeeks = App.CalendarEngine.resolveMakeupWeeks(data);
+    var targets = [makeupWeeks.clinicalPrimary, makeupWeeks.clinicalFallback];
     state.conflictWeeks.forEach(function (missedWi) {
-      for (var ti = 0; ti < 2; ti++) {
-        var target = ti === 0 ? 16 : 17;
-        if (target === missedWi) continue;
+      for (var ti = 0; ti < targets.length; ti++) {
+        var target = targets[ti];
+        if (target == null || target === missedWi) continue;
         var cell = student.schedule[target];
         if (!cell || cell.inactive) continue;
         if (cell.sim || cell.clinical || cell.makeupClinical) continue;
@@ -897,7 +981,7 @@ App.Scheduler = (function () {
             : null,
           joinedDay: clinDay,
           hostGroup: student.clinicalGroup,
-          week18Fallback: target === 17
+          week18Fallback: target === makeupWeeks.clinicalFallback
         }, ''));
         break;
       }
@@ -909,6 +993,7 @@ App.Scheduler = (function () {
     var needed = cfg.clinicalDaysRequired || 10;
     var clinStart = (cfg.clinicalStartWeek || 5) - 1;
     var weeks = App.CalendarEngine.getClinicalEligibleWeeks(data, clinStart);
+    var makeupWeeks = App.CalendarEngine.resolveMakeupWeeks(data);
 
     for (var i = 0; i < weeks.length && countedClinicals(student) < needed; i++) {
       var wi = weeks[i];
@@ -920,7 +1005,7 @@ App.Scheduler = (function () {
       assignClinicalCellFacility(data, student, cell, wi, ordinal);
     }
 
-    for (var j = 17; j >= clinStart && countedClinicals(student) < needed; j--) {
+    for (var j = makeupWeeks.clinicalFallback; j >= clinStart && countedClinicals(student) < needed; j--) {
       if (App.CalendarEngine.isWeekInactive(data, j)) continue;
       var c = student.schedule[j];
       if (c.inactive || c.sim || c.clinical || c.makeupClinical) continue;
@@ -937,8 +1022,9 @@ App.Scheduler = (function () {
   function scheduleMissedMakeups(student, data) {
     var needed = data.config.clinicalDaysRequired || 10;
     var clinStart = (data.config.clinicalStartWeek || 5) - 1;
+    var makeupWeeks = App.CalendarEngine.resolveMakeupWeeks(data);
     var shortfall = needed - countedClinicals(student);
-    for (var j = 17; j >= clinStart && shortfall > 0; j--) {
+    for (var j = makeupWeeks.clinicalFallback; j >= clinStart && shortfall > 0; j--) {
       if (App.CalendarEngine.isWeekInactive(data, j)) continue;
       var c = student.schedule[j];
       if (c.inactive || c.sim || c.clinical || c.makeupClinical) continue;
@@ -1217,7 +1303,9 @@ App.Scheduler = (function () {
     var w18 = buildSimPlacementCandidates(student, data, calendar, targetSimNum, state)
       .filter(function (c) { return c.tier === 'week18'; });
     if (!w18.length) return null;
-    var sch = SIM_GROUP_SCHEDULE[student.simGroup] || SIM_GROUP_SCHEDULE.SG1;
+    var cfg = data.config;
+    var simGroups = App.DataModel.getSimGroups(cfg);
+    var sch = getSimGroupSchedule(student.simGroup, simGroups, cfg);
     var preferred = w18.filter(function (s) { return s.day === sch.day; })[0];
     var pick = preferred || w18[0];
     return candidateToMakeupSlot(student, data, pick, targetSimNum);
@@ -1242,6 +1330,7 @@ App.Scheduler = (function () {
 
   return {
     SIM_GROUP_SCHEDULE: SIM_GROUP_SCHEDULE,
+    getSimWeekPatterns: getSimWeekPatterns,
     buildProgramSimCalendar: buildProgramSimCalendar,
     getStudentSimSlot: getStudentSimSlot,
     getStudentSimSlotCandidates: getStudentSimSlotCandidates,

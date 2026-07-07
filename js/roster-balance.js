@@ -11,6 +11,19 @@ App.RosterBalance = (function () {
     return map;
   }
 
+  function shouldForceClinicalSimAlignment(clinicalGroups, simGroups) {
+    return clinicalGroups.length === simGroups.length && clinicalGroups.length > 0;
+  }
+
+  function buildStrictClinicalToSimMap(clinicalGroups, simGroups) {
+    var map = {};
+    if (!shouldForceClinicalSimAlignment(clinicalGroups, simGroups)) return map;
+    clinicalGroups.forEach(function (g, i) {
+      map[g] = simGroups[i];
+    });
+    return map;
+  }
+
   function simGroupForClinicalCohort(students, clinicalGroup, clinicalGroups, simGroups, excludeStudentId) {
     var cohort = students.filter(function (s) {
       return s.clinicalGroup === clinicalGroup && s.id !== excludeStudentId;
@@ -63,7 +76,9 @@ App.RosterBalance = (function () {
     options = options || {};
     var force = !!options.force;
     if (!simGroups.length) return;
-    var map = buildClinicalToSimMap(clinicalGroups, simGroups);
+    var map = shouldForceClinicalSimAlignment(clinicalGroups, simGroups) && force
+      ? buildStrictClinicalToSimMap(clinicalGroups, simGroups)
+      : buildClinicalToSimMap(clinicalGroups, simGroups);
 
     students.forEach(function (s) {
       if (!force && s.simGroup && simGroups.indexOf(s.simGroup) >= 0) return;
@@ -82,6 +97,8 @@ App.RosterBalance = (function () {
 
   return {
     buildClinicalToSimMap: buildClinicalToSimMap,
+    buildStrictClinicalToSimMap: buildStrictClinicalToSimMap,
+    shouldForceClinicalSimAlignment: shouldForceClinicalSimAlignment,
     simGroupForClinicalCohort: simGroupForClinicalCohort,
     assignClinicalGroups: assignClinicalGroups,
     assignSimGroupsByClinicalCohort: assignSimGroupsByClinicalCohort,

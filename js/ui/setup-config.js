@@ -3,6 +3,41 @@ var App = App || {};
 App.UI = App.UI || {};
 
 App.UI.SetupConfig = (function () {
+  function resolveSetupData() {
+    if (App.UI.Setup && App.UI.Setup.resolveSetupData) return App.UI.Setup.resolveSetupData();
+    if (App.SetupDraft && App.SetupDraft.resolveData) return App.SetupDraft.resolveData();
+    return App.getData();
+  }
+
+  function finishSetupEdit(data, opts) {
+    opts = opts || {};
+    if (App.SetupDraft && App.SetupDraft.persistAfterEdit) {
+      App.SetupDraft.persistAfterEdit(data, opts);
+      return;
+    }
+    if (App.UI.Setup && App.UI.Setup.setupAfterChange) {
+      App.UI.Setup.setupAfterChange(data, opts);
+      return;
+    }
+    App.notifyChange();
+    if (App.UI.Setup) App.UI.Setup.render(data);
+  }
+
+  function touchSetupEdit(data) {
+    if (App.UI.Setup && App.UI.Setup.markSetupDraft) App.UI.Setup.markSetupDraft(data);
+    if (App.SetupDraft && App.SetupDraft.usesDraftMode()) App.SetupDraft.markDirty();
+  }
+
+  function collectFormInto(data) {
+    if (App.UI.Setup && App.UI.Setup.collectFromFormInto) {
+      return App.UI.Setup.collectFromFormInto(data);
+    }
+    if (App.UI.Setup && App.UI.Setup.collectFromForm) {
+      return App.UI.Setup.collectFromForm(data);
+    }
+    return null;
+  }
+
   var dayOptions = App.DataModel.WEEKDAY_OPTIONS;
   var pendingNewSemester = false;
 
@@ -210,6 +245,48 @@ App.UI.SetupConfig = (function () {
       '</div>';
   }
 
+  function patternSelectHtml(selected) {
+    return '<option value="even"' + (selected === 'even' ? ' selected' : '') + '>Even weeks</option>' +
+      '<option value="odd"' + (selected === 'odd' ? ' selected' : '') + '>Odd weeks</option>';
+  }
+
+  function simGroupRow(group, day, pattern, canRemove) {
+    return '<div class="config-list-row" data-sim-group-row="' + group + '">' +
+      '<span class="config-group-label">' + group + '</span>' +
+      '<select data-sim-group="day" class="clin-day-select" aria-label="' + group + ' primary weekday">' +
+      daySelectHtml(day) + '</select>' +
+      '<select data-sim-group="pattern" aria-label="' + group + ' week pattern">' +
+      patternSelectHtml(pattern) + '</select>' +
+      (canRemove
+        ? '<button type="button" class="btn btn-icon-remove remove-sim-group" aria-label="Remove simulation group" title="Remove simulation group">&times;</button>'
+        : '<span class="section-sub" style="font-size:0.75rem">Min. 1</span>') +
+      '</div>';
+  }
+
+  function renderSimGroupsList(cfg) {
+    var groups = App.DataModel.getSimGroups(cfg);
+    var canRemove = groups.length > 1;
+    var html = groups.map(function (g) {
+      return simGroupRow(
+        g,
+        App.DataModel.getSimGroupDay(g, cfg),
+        App.DataModel.getSimGroupPattern(g, cfg),
+        canRemove
+      );
+    }).join('');
+    return html +
+      '<div class="config-list-add-row">' +
+      '<button type="button" class="btn btn-sm add-sim-group">Add group</button>' +
+      '</div>';
+  }
+
+  function readOptionalWeekInput(id) {
+    var el = document.getElementById(id);
+    if (!el || el.value === '') return null;
+    var n = parseInt(el.value, 10);
+    return isNaN(n) ? null : n;
+  }
+
   function readFormIntoConfig(cfg, data) {
     cfg.clinicalDaysRequired = parseInt(document.getElementById('cfgClinDays').value, 10);
     cfg.simDaysRequired = parseInt(document.getElementById('cfgSimDays').value, 10);
@@ -221,6 +298,9 @@ App.UI.SetupConfig = (function () {
     cfg.simMakeupHeadroomReserved = parseInt(document.getElementById('cfgSimHeadroom').value, 10);
     cfg.clinicalStartWeek = parseInt(document.getElementById('cfgClinStart').value, 10);
     cfg.simStartWeek = parseInt(document.getElementById('cfgSimStart').value, 10);
+    cfg.clinicalMakeupPrimaryWeek = readOptionalWeekInput('cfgClinMakeupPrimary');
+    cfg.clinicalMakeupFallbackWeek = readOptionalWeekInput('cfgClinMakeupFallback');
+    cfg.simMakeupLastResortWeek = readOptionalWeekInput('cfgSimMakeupLastResort');
 
     cfg.clinicalGroups = [];
     cfg.clinicalGroupDays = {};
@@ -245,6 +325,18 @@ App.UI.SetupConfig = (function () {
       cfg.simDays.push(row.querySelector('[data-sim-day="value"]').value);
     });
 
+    cfg.simGroups = [];
+    cfg.simGroupDays = {};
+    cfg.simGroupPattern = {};
+    document.querySelectorAll('#cfgSimGroupsList [data-sim-group-row]').forEach(function (row) {
+      var g = row.getAttribute('data-sim-group-row');
+      cfg.simGroups.push(g);
+      var dayEl = row.querySelector('[data-sim-group="day"]');
+      var patEl = row.querySelector('[data-sim-group="pattern"]');
+      cfg.simGroupDays[g] = dayEl ? dayEl.value : 'Mon';
+      cfg.simGroupPattern[g] = patEl ? patEl.value : 'even';
+    });
+
     var normalized = App.DataModel.normalizeConfig(cfg);
     if (data && App.ClinicalSites) {
       data.config = normalized;
@@ -260,9 +352,11 @@ App.UI.SetupConfig = (function () {
 
   function refreshDynamicLists(data) {
     var clinList = document.getElementById('cfgClinicalGroupsList');
+    var simGroupsList = document.getElementById('cfgSimGroupsList');
     var simList = document.getElementById('cfgSimDaysList');
     var cfg = data.config;
     if (clinList) clinList.innerHTML = renderClinicalGroupsList(data);
+    if (simGroupsList) simGroupsList.innerHTML = renderSimGroupsList(cfg);
     if (simList) simList.innerHTML = renderSimDaysList(cfg);
     updateAllWeekRangeHints(data);
   }
@@ -315,8 +409,13 @@ App.UI.SetupConfig = (function () {
       '</div>';
   }
 
+  function siteLibraryContainer() {
+    return document.getElementById('clinicalSitesTabLibrary') ||
+      document.getElementById('cfgSiteLibrary');
+  }
+
   function renderSiteLibrary() {
-    var container = document.getElementById('cfgSiteLibrary');
+    var container = siteLibraryContainer();
     if (!container || !App.SiteLibrary) return;
     var fileRoot = App.getFileRoot();
     var rowsHtml = App.SiteLibrary.list().map(function (site) {
@@ -330,7 +429,7 @@ App.UI.SetupConfig = (function () {
 
   // Read the library editor rows back into fileRoot.meta.siteLibrary.
   function collectSiteLibraryFromDom() {
-    var container = document.getElementById('cfgSiteLibrary');
+    var container = siteLibraryContainer();
     if (!container || !App.SiteLibrary) return;
     var rows = container.querySelectorAll('[data-site-lib-row]');
     if (!rows.length) return;
@@ -365,6 +464,9 @@ App.UI.SetupConfig = (function () {
     set('cfgSimHeadroom', cfg.simMakeupHeadroomReserved != null ? cfg.simMakeupHeadroomReserved : 1);
     set('cfgClinStart', cfg.clinicalStartWeek);
     set('cfgSimStart', cfg.simStartWeek);
+    set('cfgClinMakeupPrimary', cfg.clinicalMakeupPrimaryWeek != null ? cfg.clinicalMakeupPrimaryWeek : '');
+    set('cfgClinMakeupFallback', cfg.clinicalMakeupFallbackWeek != null ? cfg.clinicalMakeupFallbackWeek : '');
+    set('cfgSimMakeupLastResort', cfg.simMakeupLastResortWeek != null ? cfg.simMakeupLastResortWeek : '');
   }
 
   function updateSubtitle(data) {
@@ -467,6 +569,9 @@ App.UI.SetupConfig = (function () {
     var structureChanged =
       JSON.stringify(before.clinicalGroups) !== JSON.stringify(cfg.clinicalGroups) ||
       JSON.stringify(before.clinicalGroupDays) !== JSON.stringify(cfg.clinicalGroupDays) ||
+      JSON.stringify(before.simGroups) !== JSON.stringify(cfg.simGroups) ||
+      JSON.stringify(before.simGroupDays) !== JSON.stringify(cfg.simGroupDays) ||
+      JSON.stringify(before.simGroupPattern) !== JSON.stringify(cfg.simGroupPattern) ||
       JSON.stringify(before.simDays) !== JSON.stringify(cfg.simDays) ||
       facilitiesStructureChanged(before, cfg) ||
       siteWeeksStructureChanged(before, cfg);
@@ -476,7 +581,7 @@ App.UI.SetupConfig = (function () {
 
     if (reqsChanged || structureChanged) {
       var msg = structureChanged
-        ? 'Clinical groups, sites, week ranges, or simulation days changed. Regenerate all schedules for this semester?'
+        ? 'Clinical groups, simulation groups, sites, week ranges, or simulation days changed. Regenerate all schedules for this semester?'
         : 'Day requirements changed. Regenerate all schedules for this semester?';
       App.UI.showConfirm('Regenerate schedules?', msg, function () {
         App.Scheduler.regenerateAll(data);
@@ -515,7 +620,7 @@ App.UI.SetupConfig = (function () {
     App.UI.showConfirm('Apply settings?', message, function () {
       applyConfigToData(data, draft);
       data.meta.configCustomized = true;
-      if (App.UI.Setup && App.UI.Setup.markSetupDraft) App.UI.Setup.markSetupDraft(data);
+      if (App.UI.Setup && App.UI.Setup.markSetupDraft) touchSetupEdit(data);
       App.DataModel.setSchedulingDefaults(fileRoot, data.config);
       future.forEach(function (sem) {
         App.DataModel.applyConfigToSemester(sem, data.config, true);
@@ -534,7 +639,7 @@ App.UI.SetupConfig = (function () {
   function saveAndAddSemester() {
     var data = App.getData();
     var before = App.UI.Setup && App.UI.Setup.collectFromForm
-      ? App.UI.Setup.collectFromForm(data)
+      ? collectFormInto(data)
       : collectIntoData(data);
     App.DataModel.setSchedulingDefaults(App.getFileRoot(), data.config);
     var courseSelect = document.getElementById('setupNewSemesterCourse');
@@ -602,7 +707,7 @@ App.UI.SetupConfig = (function () {
       collectSiteLibraryFromDom();
       App.SiteLibrary.upsertSite({ name: 'New Site', shortName: '', contentTags: ['MS'] });
       renderSiteLibrary();
-      if (App.UI.Setup && App.UI.Setup.markSetupDraft) App.UI.Setup.markSetupDraft(App.getData());
+      if (App.UI.Setup && App.UI.Setup.markSetupDraft) touchSetupEdit(App.getData());
       App.notifyChange();
       return;
     }
@@ -620,27 +725,27 @@ App.UI.SetupConfig = (function () {
       }
       App.SiteLibrary.removeSite(libSiteId);
       renderSiteLibrary();
-      if (App.UI.Setup && App.UI.Setup.markSetupDraft) App.UI.Setup.markSetupDraft(App.getData());
+      if (App.UI.Setup && App.UI.Setup.markSetupDraft) touchSetupEdit(App.getData());
       App.notifyChange();
       return;
     }
 
     if (e.target.classList.contains('add-clin-site-range')) {
-      var dataRange = App.getData();
-      if (App.UI.Setup && App.UI.Setup.collectFromForm) App.UI.Setup.collectFromForm(dataRange);
+      var dataRange = resolveSetupData();
+      collectFormInto(dataRange);
       var rangeGroup = e.target.getAttribute('data-clin-group');
       if (!dataRange.config.clinicalGroupSiteWeeks) dataRange.config.clinicalGroupSiteWeeks = {};
       dataRange.config.clinicalGroupSiteWeeks[rangeGroup] = dataRange.config.clinicalGroupSiteWeeks[rangeGroup] || [];
       addRangeToGroup(dataRange, rangeGroup);
-      if (App.UI.Setup && App.UI.Setup.markSetupDraft) App.UI.Setup.markSetupDraft(dataRange);
+      if (App.UI.Setup && App.UI.Setup.markSetupDraft) touchSetupEdit(dataRange);
       return;
     }
 
     if (e.target.closest('.remove-clin-site-range')) {
       var rangeBtn = e.target.closest('.remove-clin-site-range');
       var rg = rangeBtn.getAttribute('data-clin-group');
-      var dataRangeRemove = App.getData();
-      if (App.UI.Setup && App.UI.Setup.collectFromForm) App.UI.Setup.collectFromForm(dataRangeRemove);
+      var dataRangeRemove = resolveSetupData();
+      collectFormInto(dataRangeRemove);
       var rangeRow = rangeBtn.closest('.clin-site-range-row');
       var plan = document.querySelector('[data-clin-group-week-plan="' + rg + '"]');
       var rows = plan ? plan.querySelectorAll('.clin-site-range-row') : [];
@@ -649,13 +754,13 @@ App.UI.SetupConfig = (function () {
         dataRangeRemove.config.clinicalGroupSiteWeeks[rg].splice(rIdx, 1);
       }
       refreshDynamicLists(dataRangeRemove);
-      if (App.UI.Setup && App.UI.Setup.markSetupDraft) App.UI.Setup.markSetupDraft(dataRangeRemove);
+      if (App.UI.Setup && App.UI.Setup.markSetupDraft) touchSetupEdit(dataRangeRemove);
       return;
     }
 
     if (e.target.classList.contains('add-clin-group-site')) {
-      var dataSite = App.getData();
-      if (App.UI.Setup && App.UI.Setup.collectFromForm) App.UI.Setup.collectFromForm(dataSite);
+      var dataSite = resolveSetupData();
+      collectFormInto(dataSite);
       var groupForSite = e.target.getAttribute('data-clin-group');
       if (!groupForSite) {
         var siteRow = e.target.closest('[data-clin-group-row]');
@@ -663,13 +768,13 @@ App.UI.SetupConfig = (function () {
       }
       if (!groupForSite) return;
       addSiteToGroup(dataSite, groupForSite);
-      if (App.UI.Setup && App.UI.Setup.markSetupDraft) App.UI.Setup.markSetupDraft(dataSite);
+      if (App.UI.Setup && App.UI.Setup.markSetupDraft) touchSetupEdit(dataSite);
       return;
     }
 
     if (e.target.classList.contains('add-clin-group')) {
-      var dataAdd = App.getData();
-      if (App.UI.Setup && App.UI.Setup.collectFromForm) App.UI.Setup.collectFromForm(dataAdd);
+      var dataAdd = resolveSetupData();
+      collectFormInto(dataAdd);
       var cfg = App.DataModel.cloneConfig(dataAdd.config);
       var name = App.DataModel.nextClinicalGroupName(cfg.clinicalGroups);
       cfg.clinicalGroups.push(name);
@@ -681,7 +786,7 @@ App.UI.SetupConfig = (function () {
       cfg.clinicalGroupSiteWeeks[name] = [];
       dataAdd.config = App.DataModel.normalizeConfig(cfg);
       refreshDynamicLists(dataAdd);
-      if (App.UI.Setup && App.UI.Setup.markSetupDraft) App.UI.Setup.markSetupDraft(dataAdd);
+      if (App.UI.Setup && App.UI.Setup.markSetupDraft) touchSetupEdit(dataAdd);
       return;
     }
 
@@ -689,22 +794,22 @@ App.UI.SetupConfig = (function () {
       var siteBtn = e.target.closest('.remove-clin-site');
       var siteGroup = siteBtn.getAttribute('data-clin-group');
       var siteIdx = parseInt(siteBtn.getAttribute('data-clin-site-index'), 10);
-      var dataSiteRemove = App.getData();
-      if (App.UI.Setup && App.UI.Setup.collectFromForm) App.UI.Setup.collectFromForm(dataSiteRemove);
+      var dataSiteRemove = resolveSetupData();
+      collectFormInto(dataSiteRemove);
       var list = getGroupFacilityIds(dataSiteRemove, siteGroup);
       if (list.length <= 1) return;
       list.splice(siteIdx, 1);
       dataSiteRemove.config.clinicalGroupFacilities[siteGroup] = list;
       refreshDynamicLists(dataSiteRemove);
-      if (App.UI.Setup && App.UI.Setup.markSetupDraft) App.UI.Setup.markSetupDraft(dataSiteRemove);
+      if (App.UI.Setup && App.UI.Setup.markSetupDraft) touchSetupEdit(dataSiteRemove);
       return;
     }
 
     if (e.target.closest('.remove-clin-group')) {
       var row = e.target.closest('[data-clin-group-row]');
       if (!row) return;
-      var dataRemove = App.getData();
-      if (App.UI.Setup && App.UI.Setup.collectFromForm) App.UI.Setup.collectFromForm(dataRemove);
+      var dataRemove = resolveSetupData();
+      collectFormInto(dataRemove);
       var cfgRemove = App.DataModel.cloneConfig(dataRemove.config);
       if (cfgRemove.clinicalGroups.length <= 1) return;
       var group = row.getAttribute('data-clin-group-row');
@@ -714,13 +819,40 @@ App.UI.SetupConfig = (function () {
       if (cfgRemove.clinicalGroupSiteWeeks) delete cfgRemove.clinicalGroupSiteWeeks[group];
       dataRemove.config = App.DataModel.normalizeConfig(cfgRemove);
       refreshDynamicLists(dataRemove);
-      if (App.UI.Setup && App.UI.Setup.markSetupDraft) App.UI.Setup.markSetupDraft(dataRemove);
+      if (App.UI.Setup && App.UI.Setup.markSetupDraft) touchSetupEdit(dataRemove);
+      return;
+    }
+
+    if (e.target.classList.contains('add-sim-group')) {
+      var dataAddSg = resolveSetupData();
+      collectFormInto(dataAddSg);
+      var cfgAddSg = draftConfigFromForm(dataAddSg.config, dataAddSg);
+      var sgName = App.DataModel.nextSimGroupName(cfgAddSg.simGroups);
+      cfgAddSg.simGroups.push(sgName);
+      dataAddSg.config = App.DataModel.normalizeConfig(cfgAddSg);
+      refreshDynamicLists(dataAddSg);
+      if (App.UI.Setup && App.UI.Setup.markSetupDraft) touchSetupEdit(dataAddSg);
+      return;
+    }
+
+    if (e.target.closest('.remove-sim-group')) {
+      var sgRow = e.target.closest('[data-sim-group-row]');
+      if (!sgRow) return;
+      var dataRemoveSg = resolveSetupData();
+      collectFormInto(dataRemoveSg);
+      var cfgRemoveSg = draftConfigFromForm(dataRemoveSg.config, dataRemoveSg);
+      if (cfgRemoveSg.simGroups.length <= 1) return;
+      var sgGroup = sgRow.getAttribute('data-sim-group-row');
+      cfgRemoveSg.simGroups = cfgRemoveSg.simGroups.filter(function (g) { return g !== sgGroup; });
+      dataRemoveSg.config = App.DataModel.normalizeConfig(cfgRemoveSg);
+      refreshDynamicLists(dataRemoveSg);
+      if (App.UI.Setup && App.UI.Setup.markSetupDraft) touchSetupEdit(dataRemoveSg);
       return;
     }
 
     if (e.target.classList.contains('add-sim-day')) {
-      var dataSim = App.getData();
-      if (App.UI.Setup && App.UI.Setup.collectFromForm) App.UI.Setup.collectFromForm(dataSim);
+      var dataSim = resolveSetupData();
+      collectFormInto(dataSim);
       var cfgSim = draftConfigFromForm(dataSim.config, dataSim);
       var unused = 'Mon';
       for (var di = 0; di < dayOptions.length; di++) {
@@ -732,15 +864,15 @@ App.UI.SetupConfig = (function () {
       cfgSim.simDays.push(unused);
       dataSim.config = App.DataModel.normalizeConfig(cfgSim);
       refreshDynamicLists(dataSim);
-      if (App.UI.Setup && App.UI.Setup.markSetupDraft) App.UI.Setup.markSetupDraft(dataSim);
+      if (App.UI.Setup && App.UI.Setup.markSetupDraft) touchSetupEdit(dataSim);
       return;
     }
 
     if (e.target.closest('.remove-sim-day')) {
       var simRow = e.target.closest('[data-sim-day-row]');
       if (!simRow) return;
-      var dataSimRemove = App.getData();
-      if (App.UI.Setup && App.UI.Setup.collectFromForm) App.UI.Setup.collectFromForm(dataSimRemove);
+      var dataSimRemove = resolveSetupData();
+      collectFormInto(dataSimRemove);
       var cfgSimRemove = draftConfigFromForm(dataSimRemove.config, dataSimRemove);
       if (cfgSimRemove.simDays.length <= 1) return;
       var idx = Array.prototype.indexOf.call(
@@ -750,7 +882,7 @@ App.UI.SetupConfig = (function () {
       if (idx >= 0) cfgSimRemove.simDays.splice(idx, 1);
       dataSimRemove.config = App.DataModel.normalizeConfig(cfgSimRemove);
       refreshDynamicLists(dataSimRemove);
-      if (App.UI.Setup && App.UI.Setup.markSetupDraft) App.UI.Setup.markSetupDraft(dataSimRemove);
+      if (App.UI.Setup && App.UI.Setup.markSetupDraft) touchSetupEdit(dataSimRemove);
     }
   }
 
@@ -759,9 +891,9 @@ App.UI.SetupConfig = (function () {
     if (viewSetup) {
       viewSetup.addEventListener('click', handleSetupClick);
       viewSetup.addEventListener('change', function (e) {
-        var data = App.getData();
+        var data = resolveSetupData();
         if (e.target.hasAttribute('data-clin-week-ranges-toggle')) {
-          if (App.UI.Setup && App.UI.Setup.collectFromForm) App.UI.Setup.collectFromForm(data);
+          collectFormInto(data);
           var tg = e.target.getAttribute('data-clin-group');
           if (!data.config.clinicalGroupSiteWeeks) data.config.clinicalGroupSiteWeeks = {};
           if (!e.target.checked) {
@@ -771,25 +903,23 @@ App.UI.SetupConfig = (function () {
           } else {
             refreshDynamicLists(data);
           }
-          if (App.UI.Setup && App.UI.Setup.markSetupDraft) App.UI.Setup.markSetupDraft(data);
-          App.notifyChange();
-          App.UI.refresh();
+          touchSetupEdit(data);
+          finishSetupEdit(data, { rerender: false, refresh: true });
           return;
         }
         if (e.target.hasAttribute('data-clin-site-range-start') ||
             e.target.hasAttribute('data-clin-site-range-end')) {
           updateWeekRangeHint(data, e.target);
-          if (App.UI.Setup && App.UI.Setup.collectFromForm) App.UI.Setup.collectFromForm(data);
-          if (App.UI.Setup && App.UI.Setup.markSetupDraft) App.UI.Setup.markSetupDraft(data);
-          App.notifyChange();
+          collectFormInto(data);
+          touchSetupEdit(data);
+          finishSetupEdit(data, { rerender: false });
           return;
         }
         if (e.target.hasAttribute('data-clin-site-range-facility') ||
             e.target.hasAttribute('data-clin-site-facility')) {
-          if (App.UI.Setup && App.UI.Setup.collectFromForm) App.UI.Setup.collectFromForm(data);
-          if (App.UI.Setup && App.UI.Setup.markSetupDraft) App.UI.Setup.markSetupDraft(data);
-          App.notifyChange();
-          App.UI.refresh();
+          collectFormInto(data);
+          touchSetupEdit(data);
+          finishSetupEdit(data, { rerender: false, refresh: true });
         }
       });
     }
@@ -807,13 +937,57 @@ App.UI.SetupConfig = (function () {
     if (saveAddBtn) saveAddBtn.addEventListener('click', saveAndAddSemester);
   }
 
+  function applyRoleMode() {
+    var canEdit = App.Permissions.canAction('setup.edit');
+    var canDraft = App.Permissions.canAction('setup.saveDraft');
+    var canPropose = App.Permissions.canAction('proposals.submit');
+    var canImportPg = App.Permissions.canAction('setup.importPlayground');
+    var isEngineer = App.Permissions.canAction('*');
+    var saveBtn = document.getElementById('saveSetupBtn');
+    var proposeBtn = document.getElementById('proposeSetupChangesBtn');
+    var importPgBtn = document.getElementById('importPlaygroundSetupBtn');
+    var templateBtn = document.getElementById('createCourseTemplateBtn');
+    if (saveBtn) {
+      saveBtn.textContent = canEdit ? 'Save Setup' : 'Save draft';
+      saveBtn.classList.toggle('hidden', !canEdit && !canDraft);
+    }
+    if (proposeBtn) proposeBtn.classList.toggle('hidden', !canPropose);
+    if (importPgBtn) importPgBtn.classList.toggle('hidden', !canImportPg);
+    if (templateBtn) templateBtn.classList.toggle('hidden', !isEngineer);
+    var readOnly = !canEdit && !canDraft;
+    document.querySelectorAll('#view-setup input, #view-setup select, #view-setup textarea').forEach(function (el) {
+      if (readOnly && !el.closest('.setup-actions-sticky')) el.disabled = readOnly;
+    });
+  }
+
+  function collectDraftConfig(data) {
+    if (App.SetupDraft && App.SetupDraft.collectSnapshotFromDom) {
+      var snap = App.SetupDraft.collectSnapshotFromDom();
+      return snap ? snap.config : (data && data.config);
+    }
+    return draftConfigFromForm(data.config, data);
+  }
+
+  function renderIntoPlayground(data) {
+    renderAdvancedFields(data.config);
+    var el = document.getElementById('playgroundConfigSummary');
+    if (el) {
+      el.textContent = 'Clinical days: ' + data.config.clinicalDaysRequired +
+        ', Sim days: ' + data.config.simDaysRequired;
+    }
+  }
+
   return {
     render: render,
     collectIntoData: collectIntoData,
+    collectDraftConfig: collectDraftConfig,
     maybeRegenerateAfterChange: maybeRegenerateAfterChange,
     openAdvanced: openAdvanced,
     toggleAdvanced: toggleAdvanced,
     beginNewSemesterFlow: beginNewSemesterFlow,
+    applyRoleMode: applyRoleMode,
+    siteLibraryRow: siteLibraryRow,
+    renderIntoPlayground: renderIntoPlayground,
     init: init
   };
 })();

@@ -44,7 +44,42 @@ App.UI.Setup = (function () {
   }
 
   function guardSetupEdit() {
+    if (App.Permissions && App.UserSession && App.UserSession.isValidated()) {
+      if (!App.Permissions.canAction('setup.edit') &&
+          !App.Permissions.canAction('setup.saveDraft') &&
+          !App.Permissions.canAction('proposals.submit')) {
+        App.UI.showAlert('Not permitted', 'Your role cannot edit setup.');
+        return false;
+      }
+    }
     return App.UI.guardEditable('setup');
+  }
+
+  function isProposeOnlyMode() {
+    return App.SetupDraft && App.SetupDraft.usesDraftMode();
+  }
+
+  function resolveSetupData() {
+    if (isProposeOnlyMode()) return App.SetupDraft.getWorkingForEdit();
+    return App.getData();
+  }
+
+  function resolveRenderData(passed) {
+    if (passed && !isProposeOnlyMode()) return passed;
+    if (isProposeOnlyMode()) return App.SetupDraft.getWorking();
+    return passed || App.getData();
+  }
+
+  function setupAfterChange(data, opts) {
+    if (App.SetupDraft && App.SetupDraft.persistAfterEdit) {
+      App.SetupDraft.persistAfterEdit(data, opts || {});
+      return;
+    }
+    App.notifyChange();
+    if (opts && opts.configBefore !== undefined && App.UI.SetupConfig) {
+      App.UI.SetupConfig.maybeRegenerateAfterChange(data, opts.configBefore);
+    }
+    if (!opts || opts.rerender !== false) App.UI.Setup.render(data);
   }
 
   function updateReadOnlyButtons(data) {
@@ -92,6 +127,10 @@ App.UI.Setup = (function () {
 
   function handleSetupDraftInput(e) {
     if (!isSetupDraftArea(e.target)) return;
+    if (isProposeOnlyMode()) {
+      App.SetupDraft.syncFromDom();
+      return;
+    }
     markSetupDraft(App.getData());
   }
 
@@ -208,22 +247,41 @@ App.UI.Setup = (function () {
   }
 
   function render(data) {
-    renderSemesterFields(data);
-    renderSections(data);
-    renderFacilities(data);
-    renderFaculty(data);
-    renderLeadFaculty(data);
-    renderHolidays(data);
-    renderOrientations(data);
-    renderRoster(data);
-    renderScheduleWarnings(data);
-    if (App.UI.SetupConfig) App.UI.SetupConfig.render(data);
-    if (App.UI.DateInputs) {
-      App.UI.DateInputs.init(document.getElementById('view-setup'), data);
+    var paint = function (renderData) {
+      renderSemesterFields(renderData);
+      renderSections(renderData);
+      renderFacilities(renderData);
+      renderFaculty(renderData);
+      renderLeadFaculty(renderData);
+      renderHolidays(renderData);
+      renderOrientations(renderData);
+      renderRoster(renderData);
+      renderScheduleWarnings(renderData);
+      if (App.UI.SetupConfig) App.UI.SetupConfig.render(renderData);
+      if (App.UI.DateInputs) {
+        App.UI.DateInputs.init(document.getElementById('view-setup'), renderData);
+      }
+      updateAllHolidayWeekHints(renderData);
+      updateAllOrientationWeekHints(renderData);
+      updateReadOnlyButtons(renderData);
+      if (App.UI.SetupProposals) App.UI.SetupProposals.renderSetupProposalsPanel();
+      if (App.UI.SetupConfig && App.UI.SetupConfig.applyRoleMode) App.UI.SetupConfig.applyRoleMode();
+    };
+    var startPaint = function () {
+      paint(resolveRenderData(data));
+    };
+    var ready = function () {
+      if (isProposeOnlyMode() && App.SetupDraft.loadLocalDraft) {
+        return App.SetupDraft.loadLocalDraft().then(startPaint).catch(startPaint);
+      }
+      startPaint();
+      return Promise.resolve();
+    };
+    if (App.UsersRegistryStorage && App.UsersRegistryStorage.reloadFromHandle) {
+      App.UsersRegistryStorage.reloadFromHandle().then(ready).catch(ready);
+    } else {
+      ready();
     }
-    updateAllHolidayWeekHints(data);
-    updateAllOrientationWeekHints(data);
-    updateReadOnlyButtons(data);
   }
 
   function sectionSelectHtml(data, student) {
@@ -594,23 +652,101 @@ App.UI.Setup = (function () {
   }
 
   function renderFaculty(data) {
+    updateAdjunctFacultyDatalist();
     var container = document.getElementById('setupFaculty');
     container.innerHTML = '';
     data.faculty.forEach(function (f, i) {
       container.innerHTML +=
         '<div class="setup-faculty-row">' +
         '<span class="setup-faculty-group">' + f.clinicalGroup + '</span>' +
-        '<input type="text" data-faculty="name" data-idx="' + i + '" value="' + escAttr(f.name) + '" placeholder="Faculty name">' +
+        '<input type="text" data-faculty="name" data-idx="' + i + '" list="setupAdjunctFacultyList" ' +
+        'value="' + escAttr(f.name) + '" placeholder="Search adjunct faculty name" autocomplete="off">' +
         '</div>';
     });
   }
 
+  function updateAdjunctFacultyDatalist() {
+    var list = document.getElementById('setupAdjunctFacultyList');
+    if (!list || !App.UserDirectory) return;
+    var users = App.UserDirectory.getAdjunctFaculty();
+    list.innerHTML = users.map(function (u) {
+      return '<option value="' + escAttr(u.displayName) + '"></option>';
+    }).join('');
+  }
+
+  function syncLeadFacultyEmailFromSelect() {
+    var sel = document.getElementById('leadFacultySelect');
+    var emailEl = document.getElementById('leadFacultyEmail');
+    if (!sel || !emailEl || sel.classList.contains('hidden')) return;
+    var opt = sel.selectedOptions && sel.selectedOptions[0];
+    if (opt && opt.dataset.email) {
+      emailEl.value = opt.dataset.email;
+    } else if (!sel.value) {
+      emailEl.value = '';
+    }
+  }
+
   function renderLeadFaculty(data) {
     var lead = (data.meta && data.meta.leadFaculty) || { name: '', email: '' };
+    var sel = document.getElementById('leadFacultySelect');
     var nameEl = document.getElementById('leadFacultyName');
     var emailEl = document.getElementById('leadFacultyEmail');
-    if (nameEl) nameEl.value = lead.name || '';
-    if (emailEl) emailEl.value = lead.email || '';
+    var hintEl = document.getElementById('leadFacultyRegistryHint');
+    if (!nameEl || !emailEl) return;
+
+    var leads = App.UserDirectory ? App.UserDirectory.getLeadCourseFaculty() : [];
+    var useSelect = !!(sel && leads.length);
+
+    if (useSelect) {
+      sel.classList.remove('hidden');
+      nameEl.classList.add('hidden');
+      nameEl.disabled = true;
+      sel.disabled = false;
+      var html = '<option value="">Select lead faculty…</option>';
+      var matched = false;
+      leads.forEach(function (u) {
+        var selected = lead.name === u.displayName;
+        if (selected) matched = true;
+        html += '<option value="' + escAttr(u.displayName) + '" data-email="' + escAttr(u.email) + '"' +
+          (selected ? ' selected' : '') + '>' + escHtml(u.displayName) + '</option>';
+      });
+      if (lead.name && !matched) {
+        html += '<option value="' + escAttr(lead.name) + '" data-email="' + escAttr(lead.email) + '" selected>' +
+          escHtml(lead.name) + ' (saved)</option>';
+      }
+      sel.innerHTML = html;
+      if (!sel.value && lead.name && matched) {
+        sel.value = lead.name;
+      }
+      syncLeadFacultyEmailFromSelect();
+      if (!sel.value) emailEl.value = lead.email || '';
+      emailEl.readOnly = true;
+      emailEl.classList.add('setup-autofill-field');
+      if (hintEl) {
+        hintEl.textContent = leads.length + ' active lead course facult' +
+          (leads.length === 1 ? 'y' : 'ies') + ' from user registry.';
+        hintEl.classList.remove('hidden');
+      }
+    } else {
+      if (sel) {
+        sel.classList.add('hidden');
+        sel.disabled = true;
+      }
+      nameEl.classList.remove('hidden');
+      nameEl.disabled = false;
+      nameEl.value = lead.name || '';
+      emailEl.value = lead.email || '';
+      emailEl.readOnly = false;
+      emailEl.classList.remove('setup-autofill-field');
+      if (hintEl) {
+        if (App.UsersRegistryStorage && App.UsersRegistryStorage.isReady()) {
+          hintEl.textContent = 'No active lead course faculty in the registry. Enter name manually.';
+        } else {
+          hintEl.textContent = 'Connect users registry to pick lead faculty from registered users.';
+        }
+        hintEl.classList.remove('hidden');
+      }
+    }
   }
 
   function semesterWeekHintText(data, dateStr) {
@@ -639,14 +775,16 @@ App.UI.Setup = (function () {
     }
   }
 
-  function updateAllHolidayWeekHints(data) {
-    document.querySelectorAll('#setupHolidays [data-hol="date"], #setupHolidays [data-hol="week"]').forEach(function (el) {
+  function updateAllHolidayWeekHints(data, containerId) {
+    var root = '#' + (containerId || 'setupHolidays');
+    document.querySelectorAll(root + ' [data-hol="date"], ' + root + ' [data-hol="week"]').forEach(function (el) {
       updateHolidayWeekHint(data, el);
     });
   }
 
-  function renderHolidays(data) {
-    var container = document.getElementById('setupHolidays');
+  function renderHolidays(data, containerId) {
+    var container = document.getElementById(containerId || 'setupHolidays');
+    if (!container) return;
     container.innerHTML = '';
     if (!data.calendar.weeks || !data.calendar.weeks.length) {
       App.CalendarEngine.rebuildWeeks(data);
@@ -703,6 +841,90 @@ App.UI.Setup = (function () {
       container.innerHTML = '<p class="section-sub setup-list-empty-hint">No holidays or breaks defined.</p>';
     }
     container.innerHTML += configListAddRow('add-holiday', 'Add');
+  }
+
+  function collectHolidaysFromDom(data, containerId) {
+    if (!data.holidays) data.holidays = [];
+    var root = '#' + (containerId || 'setupHolidays');
+    document.querySelectorAll(root + ' [data-hol]').forEach(function (el) {
+      var h = data.holidays[parseInt(el.dataset.idx, 10)];
+      if (!h) return;
+      if (el.dataset.hol === 'date') h.date = el.value;
+      if (el.dataset.hol === 'label') h.label = el.value;
+      if (el.dataset.hol === 'type') h.type = el.value;
+      if (el.dataset.hol === 'week') h.weekIndex = parseInt(el.value, 10);
+    });
+    (data.holidays || []).forEach(function (h) {
+      if (h.type === 'break') syncBreakHolidayDate(h, data);
+    });
+  }
+
+  function bindHolidayEditor(containerId, options) {
+    var id = containerId || 'setupHolidays';
+    var el = document.getElementById(id);
+    if (!el || el.dataset.holidayEditorBound) return;
+    el.dataset.holidayEditorBound = '1';
+    options = options || {};
+
+    function getData() {
+      return options.getData ? options.getData() : App.getData();
+    }
+
+    function refresh(data) {
+      if (options.onChange) options.onChange(data);
+      else {
+        markSetupDraft(data);
+        App.notifyChange();
+        render(data);
+      }
+    }
+
+    el.addEventListener('click', function (e) {
+      if (e.target.closest('.add-holiday')) {
+        if (options.guard && !options.guard()) return;
+        var data = getData();
+        collectHolidaysFromDom(data, id);
+        if (!data.holidays) data.holidays = [];
+        data.holidays.push({ id: App.DataModel.uid(), date: '', label: '', type: 'holiday' });
+        refresh(data);
+        return;
+      }
+      var btn = e.target.closest('.remove-holiday');
+      if (!btn) return;
+      if (options.guard && !options.guard()) return;
+      var data = getData();
+      collectHolidaysFromDom(data, id);
+      data.holidays.splice(parseInt(btn.dataset.idx, 10), 1);
+      refresh(data);
+    });
+
+    el.addEventListener('change', function (e) {
+      var hol = e.target.getAttribute('data-hol');
+      if (hol === 'date' || hol === 'week') {
+        updateHolidayWeekHint(getData(), e.target);
+        return;
+      }
+      if (hol !== 'type') return;
+      var data = getData();
+      collectHolidaysFromDom(data, id);
+      var idx = parseInt(e.target.dataset.idx, 10);
+      var h = data.holidays[idx];
+      if (!h) return;
+      h.type = e.target.value;
+      if (h.type === 'break') {
+        if (h.weekIndex == null) {
+          h.weekIndex = h.date ? App.CalendarEngine.getWeekIndexForDate(data, h.date) : 0;
+          if (h.weekIndex < 0) h.weekIndex = 0;
+        }
+        syncBreakHolidayDate(h, data);
+      }
+      refresh(data);
+    });
+
+    el.addEventListener('input', function (e) {
+      if (e.target.getAttribute('data-hol') !== 'date') return;
+      updateHolidayWeekHint(getData(), e.target);
+    });
   }
 
   function orientationFacilitySelectHtml(data, selectedId) {
@@ -808,7 +1030,8 @@ App.UI.Setup = (function () {
     return d.innerHTML;
   }
 
-  function collectSemesterMeta(data) {
+  function collectSemesterMeta(data, opts) {
+    opts = opts || {};
     var season = document.getElementById('semesterSeasonSelect').value;
     var year = parseInt(document.getElementById('semesterYearSelect').value, 10);
     var prevSeason = data.meta.semesterSeason;
@@ -816,10 +1039,11 @@ App.UI.Setup = (function () {
     data.meta.semesterSeason = season;
     data.meta.semesterYear = year;
     data.meta.semesterName = App.DataModel.buildSemesterName(season, year);
-    if (prevSeason !== season || prevYear !== year) markSetupDraft(data);
+    if (!opts.skipSideEffects && (prevSeason !== season || prevYear !== year)) markSetupDraft(data);
   }
 
-  function collectFromForm(data) {
+  function collectFromFormInto(data, opts) {
+    opts = opts || {};
     var sectionRenames = {};
 
     document.querySelectorAll('#setupSections [data-sec="name"]').forEach(function (el) {
@@ -863,18 +1087,20 @@ App.UI.Setup = (function () {
       if (f) f.name = el.value;
     });
     if (!data.meta.leadFaculty) data.meta.leadFaculty = { name: '', email: '' };
+    var leadSel = document.getElementById('leadFacultySelect');
     var leadNameEl = document.getElementById('leadFacultyName');
     var leadEmailEl = document.getElementById('leadFacultyEmail');
-    if (leadNameEl) data.meta.leadFaculty.name = leadNameEl.value.trim();
-    if (leadEmailEl) data.meta.leadFaculty.email = leadEmailEl.value.trim();
-    document.querySelectorAll('#setupHolidays [data-hol]').forEach(function (el) {
-      var h = data.holidays[parseInt(el.dataset.idx, 10)];
-      if (!h) return;
-      if (el.dataset.hol === 'date') h.date = el.value;
-      if (el.dataset.hol === 'label') h.label = el.value;
-      if (el.dataset.hol === 'type') h.type = el.value;
-      if (el.dataset.hol === 'week') h.weekIndex = parseInt(el.value, 10);
-    });
+    if (leadSel && !leadSel.classList.contains('hidden')) {
+      data.meta.leadFaculty.name = leadSel.value.trim();
+      var opt = leadSel.selectedOptions && leadSel.selectedOptions[0];
+      data.meta.leadFaculty.email = (opt && opt.dataset.email)
+        ? String(opt.dataset.email).trim()
+        : (leadEmailEl ? leadEmailEl.value.trim() : '');
+    } else if (leadNameEl) {
+      data.meta.leadFaculty.name = leadNameEl.value.trim();
+      if (leadEmailEl) data.meta.leadFaculty.email = leadEmailEl.value.trim();
+    }
+    collectHolidaysFromDom(data, 'setupHolidays');
     if (!data.orientations) data.orientations = [];
     document.querySelectorAll('#setupOrientations [data-orient]').forEach(function (el) {
       var o = data.orientations[parseInt(el.dataset.idx, 10)];
@@ -888,10 +1114,7 @@ App.UI.Setup = (function () {
         o.weekIndex = App.CalendarEngine.getWeekIndexForDate(data, o.date);
       }
     });
-    (data.holidays || []).forEach(function (h) {
-      if (h.type === 'break') syncBreakHolidayDate(h, data);
-    });
-    collectSemesterMeta(data);
+    collectSemesterMeta(data, opts);
     data.calendar.semesterStartDate = document.getElementById('semesterStartDate').value;
     App.DataModel.normalizeFacilities(data);
     App.CalendarEngine.rebuildWeeks(data);
@@ -901,6 +1124,10 @@ App.UI.Setup = (function () {
       configBefore = App.UI.SetupConfig.collectIntoData(data);
     }
     return configBefore;
+  }
+
+  function collectFromForm(data) {
+    return collectFromFormInto(data, {});
   }
 
   function removeFacility(data, facId) {
@@ -945,8 +1172,7 @@ App.UI.Setup = (function () {
     }
     App.DataModel.normalizeFacilities(data);
     markSetupDraft(data);
-    App.notifyChange();
-    App.UI.Setup.render(data);
+    setupAfterChange(data);
   }
 
   function removeSection(data, secId) {
@@ -958,8 +1184,7 @@ App.UI.Setup = (function () {
       if (s.section === sec.name) s.section = '';
     });
     markSetupDraft(data);
-    App.notifyChange();
-    App.UI.Setup.render(data);
+    setupAfterChange(data);
   }
 
   function addStudent(data, clinicalGroup) {
@@ -976,15 +1201,13 @@ App.UI.Setup = (function () {
       return;
     }
     data.students.push(createNewStudentForGroup(data, clinicalGroup));
-    App.notifyChange();
-    App.UI.Setup.render(data);
+    setupAfterChange(data);
   }
 
   function removeStudent(data, studentId) {
     collectFromForm(data);
     data.students = data.students.filter(function (s) { return s.id !== studentId; });
-    App.notifyChange();
-    App.UI.Setup.render(data);
+    setupAfterChange(data);
   }
 
   function moveStudentToGroup(data, studentId, clinicalGroup) {
@@ -1005,8 +1228,7 @@ App.UI.Setup = (function () {
     student.simGroup = App.RosterBalance.simGroupForClinicalCohort(
       data.students, clinicalGroup, groups, simGroups, studentId
     );
-    App.notifyChange();
-    App.UI.Setup.render(data);
+    setupAfterChange(data);
   }
 
   function initRosterDragDrop() {
@@ -1057,7 +1279,7 @@ App.UI.Setup = (function () {
       var id = dragStudentId || e.dataTransfer.getData('text/plain');
       if (!id) return;
       if (!guardSetupEdit()) return;
-      var data = App.getData();
+      var data = resolveSetupData();
       collectFromForm(data);
       moveStudentToGroup(data, id, zone.getAttribute('data-drop-group'));
     });
@@ -1067,21 +1289,19 @@ App.UI.Setup = (function () {
         var sectionName = e.target.value;
         if (!sectionName) return;
         if (!guardSetupEdit()) return;
-        var data = App.getData();
+        var data = resolveSetupData();
         collectFromForm(data);
         applyCohortSection(data, e.target.getAttribute('data-cohort-section-bulk'), sectionName);
-        App.notifyChange();
-        App.UI.Setup.render(data);
+        setupAfterChange(data);
         return;
       }
       if (e.target.classList.contains('move-cohort-select')) {
         var target = e.target.value;
         if (!target) return;
         if (!guardSetupEdit()) return;
-        var data = App.getData();
+        var data = resolveSetupData();
         collectFromForm(data);
         moveStudentToGroup(data, e.target.getAttribute('data-student-id'), target);
-        return;
       }
     });
 
@@ -1089,14 +1309,14 @@ App.UI.Setup = (function () {
       var addBtn = e.target.closest('.add-student-btn');
       if (addBtn) {
         if (!guardSetupEdit()) return;
-        addStudent(App.getData(), addBtn.getAttribute('data-clinical-group'));
+        addStudent(resolveSetupData(), addBtn.getAttribute('data-clinical-group'));
         return;
       }
       var removeBtn = e.target.closest('.remove-student-btn');
       if (removeBtn) {
         if (!guardSetupEdit()) return;
         App.UI.showConfirm('Remove student?', 'Remove this student from the roster?', function () {
-          removeStudent(App.getData(), removeBtn.getAttribute('data-student-id'));
+          removeStudent(resolveSetupData(), removeBtn.getAttribute('data-student-id'));
         }, { confirmLabel: 'Remove' });
       }
     });
@@ -1107,19 +1327,32 @@ App.UI.Setup = (function () {
     var viewSetup = document.getElementById('view-setup');
     if (viewSetup) {
       viewSetup.addEventListener('input', handleSetupDraftInput);
-      viewSetup.addEventListener('change', handleSetupDraftInput);
+      viewSetup.addEventListener('change', function (e) {
+        if (e.target && e.target.id === 'leadFacultySelect') {
+          syncLeadFacultyEmailFromSelect();
+        }
+        handleSetupDraftInput(e);
+      });
     }
     document.getElementById('semesterSeasonSelect').addEventListener('change', updateStartDateFromSeasonYear);
     document.getElementById('semesterYearSelect').addEventListener('change', updateStartDateFromSeasonYear);
 
     document.getElementById('saveSetupBtn').addEventListener('click', function () {
       if (!guardSetupEdit()) return;
-      var data = App.getData();
-      var configBefore = collectFromForm(data);
-      App.notifyChange();
-      if (App.UI.SetupConfig) App.UI.SetupConfig.maybeRegenerateAfterChange(data, configBefore);
-      App.UI.refresh();
-      App.UI.showAlert('Saved', 'Setup saved.');
+      if (App.Permissions.canAction('setup.edit')) {
+        var data = App.getData();
+        var configBefore = collectFromForm(data);
+        App.notifyChange();
+        if (App.UI.SetupConfig) App.UI.SetupConfig.maybeRegenerateAfterChange(data, configBefore);
+        App.UI.refresh();
+        App.UI.showAlert('Saved', 'Setup saved.');
+      } else if (App.SetupDraft) {
+        App.SetupDraft.saveLocalDraft().then(function () {
+          App.UI.showAlert('Draft saved', 'Changes kept locally. Use Propose changes when ready.');
+        });
+      } else {
+        App.UI.showAlert('Draft saved', 'Changes kept locally. Use Propose changes when ready.');
+      }
       scrollSetupToTop();
     });
 
@@ -1178,25 +1411,24 @@ App.UI.Setup = (function () {
     document.getElementById('setupSections').addEventListener('click', function (e) {
       if (e.target.closest('.add-section')) {
         if (!guardSetupEdit()) return;
-        var data = App.getData();
+        var data = resolveSetupData();
         collectFromForm(data);
         if (!data.sections) data.sections = [];
         data.sections.push({ id: App.DataModel.uid(), name: '' });
         markSetupDraft(data);
-        App.notifyChange();
-        App.UI.Setup.render(data);
+        setupAfterChange(data);
         return;
       }
       var btn = e.target.closest('.remove-section');
       if (!btn) return;
       if (!guardSetupEdit()) return;
-      removeSection(App.getData(), btn.dataset.secId);
+      removeSection(resolveSetupData(), btn.dataset.secId);
     });
 
     document.getElementById('setupFacilities').addEventListener('click', function (e) {
       if (e.target.closest('.add-facility')) {
         if (!guardSetupEdit()) return;
-        var data = App.getData();
+        var data = resolveSetupData();
         collectFromForm(data);
         var newFac = null;
         if (App.SiteLibrary) {
@@ -1223,83 +1455,38 @@ App.UI.Setup = (function () {
         }
         data.facilities.push(newFac);
         markSetupDraft(data);
-        App.notifyChange();
-        App.UI.Setup.render(data);
+        setupAfterChange(data);
         return;
       }
       var btn = e.target.closest('.remove-facility');
       if (!btn) return;
       if (!guardSetupEdit()) return;
-      removeFacility(App.getData(), btn.dataset.facId);
+      removeFacility(resolveSetupData(), btn.dataset.facId);
     });
 
     document.getElementById('setupFacilities').addEventListener('change', function (e) {
       if (e.target.getAttribute('data-fac') !== 'site') return;
       if (!guardSetupEdit()) return;
-      var data = App.getData();
+      var data = resolveSetupData();
       collectFromForm(data);
       markSetupDraft(data);
-      App.notifyChange();
-      App.UI.Setup.render(data);
+      setupAfterChange(data);
     });
 
-    document.getElementById('setupHolidays').addEventListener('click', function (e) {
-      if (e.target.closest('.add-holiday')) {
-        if (!guardSetupEdit()) return;
-        var data = App.getData();
+    bindHolidayEditor('setupHolidays', {
+      guard: guardSetupEdit,
+      getData: function () { return resolveSetupData(); },
+      onChange: function (data) {
         collectFromForm(data);
-        if (!data.holidays) data.holidays = [];
-        data.holidays.push({ id: App.DataModel.uid(), date: '', label: '', type: 'holiday' });
         markSetupDraft(data);
-        App.notifyChange();
-        App.UI.Setup.render(data);
-        return;
+        setupAfterChange(data, { rerender: true });
       }
-      var btn = e.target.closest('.remove-holiday');
-      if (!btn) return;
-      if (!guardSetupEdit()) return;
-      var data = App.getData();
-      collectFromForm(data);
-      data.holidays.splice(parseInt(btn.dataset.idx, 10), 1);
-      markSetupDraft(data);
-      App.notifyChange();
-      App.UI.Setup.render(data);
-    });
-
-    document.getElementById('setupHolidays').addEventListener('change', function (e) {
-      var hol = e.target.getAttribute('data-hol');
-      if (hol === 'date' || hol === 'week') {
-        updateHolidayWeekHint(App.getData(), e.target);
-        return;
-      }
-      if (hol !== 'type') return;
-      var data = App.getData();
-      collectFromForm(data);
-      var idx = parseInt(e.target.dataset.idx, 10);
-      var h = data.holidays[idx];
-      if (!h) return;
-      h.type = e.target.value;
-      if (h.type === 'break') {
-        if (h.weekIndex == null) {
-          h.weekIndex = h.date ? App.CalendarEngine.getWeekIndexForDate(data, h.date) : 0;
-          if (h.weekIndex < 0) h.weekIndex = 0;
-        }
-        syncBreakHolidayDate(h, data);
-      }
-      markSetupDraft(data);
-      App.notifyChange();
-      App.UI.Setup.render(data);
-    });
-
-    document.getElementById('setupHolidays').addEventListener('input', function (e) {
-      if (e.target.getAttribute('data-hol') !== 'date') return;
-      updateHolidayWeekHint(App.getData(), e.target);
     });
 
     document.getElementById('setupOrientations').addEventListener('click', function (e) {
       if (e.target.closest('.add-orientation')) {
         if (!guardSetupEdit()) return;
-        var data = App.getData();
+        var data = resolveSetupData();
         collectFromForm(data);
         if (!data.orientations) data.orientations = [];
         var next = nextOrientationDefault(data);
@@ -1310,34 +1497,32 @@ App.UI.Setup = (function () {
           facilityId: next.facilityId
         });
         markSetupDraft(data);
-        App.notifyChange();
-        App.UI.Setup.render(data);
+        setupAfterChange(data);
         return;
       }
       var btn = e.target.closest('.remove-orientation');
       if (!btn) return;
       if (!guardSetupEdit()) return;
-      var data = App.getData();
+      var data = resolveSetupData();
       collectFromForm(data);
       data.orientations.splice(parseInt(btn.dataset.idx, 10), 1);
       markSetupDraft(data);
-      App.notifyChange();
-      App.UI.Setup.render(data);
+      setupAfterChange(data);
     });
 
     document.getElementById('setupOrientations').addEventListener('change', function (e) {
       if (e.target.getAttribute('data-orient') !== 'date') return;
-      updateOrientationWeekHint(App.getData(), e.target);
+      updateOrientationWeekHint(resolveRenderData(), e.target);
     });
 
     document.getElementById('setupOrientations').addEventListener('input', function (e) {
       if (e.target.getAttribute('data-orient') !== 'date') return;
-      updateOrientationWeekHint(App.getData(), e.target);
+      updateOrientationWeekHint(resolveRenderData(), e.target);
     });
 
     document.getElementById('rebalanceStudentsBtn').addEventListener('click', function () {
       if (!guardSetupEdit()) return;
-      var data = App.getData();
+      var data = resolveSetupData();
       collectFromForm(data);
       var syncCount = data.students.length !== (data.config.maxStudents || 30);
       var msg = syncCount
@@ -1345,8 +1530,12 @@ App.UI.Setup = (function () {
         : 'Evenly assign all students across clinical groups?';
       App.UI.showConfirm('Rebalance roster?', msg, function () {
         rebalanceStudents(data, syncCount);
-        App.notifyChange();
-        App.UI.refresh();
+        if (isProposeOnlyMode()) {
+          setupAfterChange(data);
+        } else {
+          App.notifyChange();
+          App.UI.refresh();
+        }
       }, { confirmLabel: 'Rebalance' });
     });
   }
@@ -1355,6 +1544,13 @@ App.UI.Setup = (function () {
     render: render,
     init: init,
     collectFromForm: collectFromForm,
+    collectFromFormInto: collectFromFormInto,
+    resolveSetupData: resolveSetupData,
+    isProposeOnlyMode: isProposeOnlyMode,
+    setupAfterChange: setupAfterChange,
+    collectHolidaysFromDom: collectHolidaysFromDom,
+    renderHolidays: renderHolidays,
+    bindHolidayEditor: bindHolidayEditor,
     markSetupDraft: markSetupDraft,
     needsRebalance: needsRebalance,
     rebalanceStudents: rebalanceStudents,

@@ -34,7 +34,6 @@ App.DataModel = (function () {
       maxStudents: 30,
       maxPerClinicalGroup: 6,
       maxPerClinicalGroupOverload: 7,
-      maxPerSimGroup: 8,
       maxStudentsPerSimSession: 8,
       maxStudentsPerSimSessionOverload: 9,
       simMakeupHeadroomReserved: 1,
@@ -45,8 +44,32 @@ App.DataModel = (function () {
       clinicalGroups: CLINICAL_GROUPS.slice(),
       clinicalGroupDays: { C1: 'Sat', C2: 'Mon', C3: 'Mon', C4: 'Mon', C5: 'Tue' },
       simGroups: SIM_GROUPS.slice(),
+      simGroupDays: { SG1: 'Mon', SG2: 'Tue', SG3: 'Mon', SG4: 'Tue' },
+      simGroupPattern: { SG1: 'even', SG2: 'even', SG3: 'odd', SG4: 'odd' },
       simDays: ['Mon', 'Tue']
     };
+  }
+
+  function backfillSimGroupConfig(cfg) {
+    if (!cfg.simGroupDays) cfg.simGroupDays = {};
+    if (!cfg.simGroupPattern) cfg.simGroupPattern = {};
+    var simDays = cfg.simDays && cfg.simDays.length ? cfg.simDays : ['Mon', 'Tue'];
+    var half = Math.ceil(cfg.simGroups.length / 2);
+    cfg.simGroups.forEach(function (sg, idx) {
+      if (!cfg.simGroupDays[sg]) {
+        cfg.simGroupDays[sg] = simDays[idx % simDays.length] || 'Mon';
+      }
+      var pat = cfg.simGroupPattern[sg];
+      if (pat !== 'even' && pat !== 'odd') {
+        cfg.simGroupPattern[sg] = idx >= half ? 'odd' : 'even';
+      }
+    });
+    Object.keys(cfg.simGroupDays).forEach(function (key) {
+      if (cfg.simGroups.indexOf(key) < 0) delete cfg.simGroupDays[key];
+    });
+    Object.keys(cfg.simGroupPattern).forEach(function (key) {
+      if (cfg.simGroups.indexOf(key) < 0) delete cfg.simGroupPattern[key];
+    });
   }
 
   function normalizeConfig(cfg) {
@@ -85,8 +108,27 @@ App.DataModel = (function () {
     if (!cfg.simGroups || !cfg.simGroups.length) {
       cfg.simGroups = SIM_GROUPS.slice(0, cfg.numSimGroups || SIM_GROUPS.length);
     }
+    backfillSimGroupConfig(cfg);
     cfg.numClinicalGroups = cfg.clinicalGroups.length;
     cfg.numSimGroups = cfg.simGroups.length;
+    if (cfg.clinicalMakeupPrimaryWeek != null && cfg.clinicalMakeupPrimaryWeek !== '') {
+      var cp = parseInt(cfg.clinicalMakeupPrimaryWeek, 10);
+      cfg.clinicalMakeupPrimaryWeek = isNaN(cp) ? null : cp;
+    } else {
+      cfg.clinicalMakeupPrimaryWeek = null;
+    }
+    if (cfg.clinicalMakeupFallbackWeek != null && cfg.clinicalMakeupFallbackWeek !== '') {
+      var cf = parseInt(cfg.clinicalMakeupFallbackWeek, 10);
+      cfg.clinicalMakeupFallbackWeek = isNaN(cf) ? null : cf;
+    } else {
+      cfg.clinicalMakeupFallbackWeek = null;
+    }
+    if (cfg.simMakeupLastResortWeek != null && cfg.simMakeupLastResortWeek !== '') {
+      var sl = parseInt(cfg.simMakeupLastResortWeek, 10);
+      cfg.simMakeupLastResortWeek = isNaN(sl) ? null : sl;
+    } else {
+      cfg.simMakeupLastResortWeek = null;
+    }
     var clinNormal = cfg.maxPerClinicalGroup || 6;
     if (!cfg.maxPerClinicalGroupOverload) cfg.maxPerClinicalGroupOverload = clinNormal + 1;
     var simNormal = cfg.maxStudentsPerSimSession || 8;
@@ -116,6 +158,32 @@ App.DataModel = (function () {
       if (m) max = Math.max(max, parseInt(m[1], 10));
     });
     return 'C' + (max + 1);
+  }
+
+  function nextSimGroupName(groups) {
+    var max = 0;
+    (groups || []).forEach(function (g) {
+      var m = String(g).match(/^SG(\d+)$/i);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    });
+    return 'SG' + (max + 1);
+  }
+
+  function getSimGroupDay(group, config) {
+    var cfg = normalizeConfig(config);
+    if (cfg.simGroupDays && cfg.simGroupDays[group]) return cfg.simGroupDays[group];
+    var idx = cfg.simGroups.indexOf(group);
+    var simDays = cfg.simDays;
+    return simDays[idx >= 0 ? idx % simDays.length : 0] || 'Mon';
+  }
+
+  function getSimGroupPattern(group, config) {
+    var cfg = normalizeConfig(config);
+    var pat = cfg.simGroupPattern && cfg.simGroupPattern[group];
+    if (pat === 'odd' || pat === 'even') return pat;
+    var idx = cfg.simGroups.indexOf(group);
+    var half = Math.ceil(cfg.simGroups.length / 2);
+    return idx >= half ? 'odd' : 'even';
   }
 
   function syncSemesterFaculty(semester) {
@@ -668,6 +736,7 @@ App.DataModel = (function () {
         semester.meta.semesterYear
       );
     }
+    if (!semester.proposals) semester.proposals = [];
     return semester;
   }
 
@@ -703,6 +772,7 @@ App.DataModel = (function () {
         var source = raw.semesters.length ? raw.semesters[0].config : defaultConfig();
         raw.meta.schedulingDefaults = cloneConfig(source);
       }
+      if (!raw.meta.revision) raw.meta.revision = 1;
       raw.semesters.forEach(function (sem) {
         migrateSemester(sem);
         if (sem.meta.configCustomized === undefined) {
@@ -855,7 +925,10 @@ App.DataModel = (function () {
     getClinicalGroups: getClinicalGroups,
     getSimGroups: getSimGroups,
     getSimDays: getSimDays,
+    getSimGroupDay: getSimGroupDay,
+    getSimGroupPattern: getSimGroupPattern,
     nextClinicalGroupName: nextClinicalGroupName,
+    nextSimGroupName: nextSimGroupName,
     syncSemesterForConfig: syncSemesterForConfig,
     ROLE_OPTIONS: ROLE_OPTIONS,
     uid: uid,

@@ -1,5 +1,5 @@
-/* Clinical & Simulation Management — app shell service worker */
-var CACHE_NAME = 'clin-sim-v8';
+/* Shasta College ADN Course Manager — app shell service worker */
+var CACHE_NAME = 'clin-sim-v19';
 
 var PRECACHE_URLS = [
   './',
@@ -15,6 +15,8 @@ var PRECACHE_URLS = [
   './icons/icon-180.png',
   './icons/favicon.svg',
   './js/state.js',
+  './js/user-template.js',
+  './js/user-data.js',
   './js/course-defaults.js',
   './js/clinical-sites-library.js',
   './js/data-model.js',
@@ -32,7 +34,16 @@ var PRECACHE_URLS = [
   './js/audit-export.js',
   './js/dashboard-export.js',
   './js/sim-faculty-data.js',
+  './js/proposals.js',
+  './js/setup-draft.js',
   './js/storage.js',
+  './js/user-storage.js',
+  './js/users-registry-storage.js',
+  './js/user-directory.js',
+  './js/user-session.js',
+  './js/permissions.js',
+  './js/playground-storage.js',
+  './js/clinical-sites-library-storage.js',
   './js/sim-faculty-storage.js',
   './js/ui/dashboard.js',
   './js/ui/master-calendar.js',
@@ -40,10 +51,17 @@ var PRECACHE_URLS = [
   './js/ui/sim-roles.js',
   './js/ui/makeup-finder.js',
   './js/ui/audit-closeout.js',
+  './js/ui/setup-proposals.js',
   './js/ui/setup-config.js',
   './js/ui/setup.js',
   './js/ui/date-inputs.js',
   './js/ui/config-modal.js',
+  './js/ui/playground.js',
+  './js/ui/new-semester-batch.js',
+  './js/ui/users-admin.js',
+  './js/ui/clinical-sites-tab.js',
+  './js/ui/playground-import.js',
+  './js/ui/theory-stub.js',
   './js/theme.js',
   './js/main.js',
   './js/pwa.js'

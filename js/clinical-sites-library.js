@@ -14,6 +14,7 @@ var App = App || {};
  */
 App.SiteLibrary = (function () {
   var ALLOWED_TAGS = ['MS', 'OB', 'PEDS', 'MH'];
+  var standaloneOverlay = null;
 
   var SEED_SITES = [
     { id: 'site_srmc', name: 'Shasta Regional Medical Center', shortName: 'SRMC', contentTags: ['MS'] },
@@ -57,7 +58,16 @@ App.SiteLibrary = (function () {
     };
   }
 
+  function setStandaloneOverlay(root) {
+    standaloneOverlay = root && Array.isArray(root.sites) ? root : null;
+  }
+
+  function getStandaloneOverlay() {
+    return standaloneOverlay;
+  }
+
   function getOverlay() {
+    if (standaloneOverlay) return standaloneOverlay;
     if (typeof App.getFileRoot !== 'function') return null;
     var fileRoot;
     try { fileRoot = App.getFileRoot(); } catch (e) { return null; }
@@ -87,8 +97,9 @@ App.SiteLibrary = (function () {
     return 'site_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
   }
 
-  /** Copy the effective library into fileRoot.meta.siteLibrary so edits persist. */
+  /** Copy the effective library into standalone or fileRoot overlay so edits persist. */
   function ensureEditable() {
+    if (standaloneOverlay) return standaloneOverlay;
     if (typeof App.getFileRoot !== 'function') return null;
     var fileRoot = App.getFileRoot();
     if (!fileRoot) return null;
@@ -155,6 +166,8 @@ App.SiteLibrary = (function () {
     removeSite: removeSite,
     replaceAll: replaceAll,
     isSiteReferenced: isSiteReferenced,
+    setStandaloneOverlay: setStandaloneOverlay,
+    getStandaloneOverlay: getStandaloneOverlay,
     uid: uid
   };
 })();

@@ -14,6 +14,18 @@ App.state = {
   simFacultyDirty: false,
   simFacultyReady: false,
   simFacultySaveTimer: null,
+  userFile: null,
+  userFileHandle: null,
+  userFileName: null,
+  usersRegistry: null,
+  usersRegistryFileHandle: null,
+  usersRegistryFileName: null,
+  usersRegistryLoadedRevision: null,
+  userSession: null,
+  playgroundRoot: null,
+  clinicalSitesLibraryRoot: null,
+  clinicalSitesLibraryFileHandle: null,
+  fileLoadedRevision: null,
   currentTab: 'dashboard',
   listeners: []
 };
