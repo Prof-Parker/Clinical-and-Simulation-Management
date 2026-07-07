@@ -1,0 +1,52 @@
+---
+description: Proposal diff paths, labels, and human-readable value formatting
+globs: js/proposals.js,js/proposal-format.js,js/ui/setup-proposals.js,tests/proposal-format.test.js,tests/proposals.test.js
+alwaysApply: false
+---
+
+# Proposal diff formatting
+
+Follow when adding or changing Setup proposal paths, diff logic, or proposal row UI.
+
+**Catalog:** [docs/Design Docs/Diff_engine messages.md](../docs/Design%20Docs/Diff_engine%20messages.md) — document every new path with suggested label and value display before merge.
+
+**Implementation home:** [`js/proposal-format.js`](../js/proposal-format.js) (`formatLabel`, `formatChange`). [`js/proposals.js`](../js/proposals.js) owns diff/approve; [`js/ui/setup-proposals.js`](../js/ui/setup-proposals.js) owns DOM only.
+
+## Rules
+
+1. **No raw JSON in proposal rows** — Never show `JSON.stringify` output for objects or arrays in admin-facing proposal rows. Use path-aware formatters; unknown complex values → `(complex change)`.
+
+2. **Granular diff paths** — Prefer `{collection}.{id}.{field}` (e.g. `faculty.{id}.name`, `students.{id}.section`) over whole-array blobs (`faculty`, `students`) when items have stable `id` fields. Pattern: `diffStudents`, `diffArrayById`, `diffFaculty`.
+
+3. **Label registry** — Add labels to `CONFIG_SCALAR_LABELS`, `META_LABELS`, `CALENDAR_LABELS`, `STUDENT_FIELD_LABELS`, or a regex handler in `proposal-format.js`. Do not hard-code labels in `setup-proposals.js`.
+
+4. **Entity fallbacks** — Blank names use numbered placeholders:
+   - Students → **Student {n}** (1-based roster index)
+   - Clinical faculty → **Clinical Faculty {n}** (1-based faculty list index)
+   - Never expose internal ids (`id_*`, `stu_*`) in the value column when a fallback exists.
+
+5. **Sentinels** — Use `App.ProposalFormat.SENTINEL`: `(not set)`, `(none)`, `(unnamed)`, `(removed)`, `(added)`.
+
+6. **Approve contract** — New paths need matching `getValueAtPath` / `setValueAtPath` in `proposals.js`. Add `afterApprove` hooks only when the change affects derived data (calendar rebuild, facility normalize, config sync).
+
+7. **Inline anchors** — New Setup areas need an `ANCHOR_RULES` entry in `setup-proposals.js` so proposals render next to the edited section.
+
+8. **Tests required** — Add at least one label assertion and one `formatChange` assertion per new path family in `tests/proposal-format.test.js`. Extend `tests/proposals.test.js` when diff or approve behavior changes.
+
+## Adding a new proposal path (checklist)
+
+- [ ] Document path, label, and value format in `Diff_engine messages.md`
+- [ ] Emit path from diff engine (`diffSetup` or helper)
+- [ ] `getValueAtPath` / `setValueAtPath` support
+- [ ] `formatLabel` + `formatChange` handlers
+- [ ] `ANCHOR_RULES` entry (if Setup UI)
+- [ ] `afterApprove` side effect (if needed)
+- [ ] Tests in `proposal-format.test.js` and/or `proposals.test.js`
+
+## Row shape
+
+```text
+{label}: {before} → {after}{(stale)} by {proposerName}
+```
+
+Render via `App.ProposalFormat.formatChange(path, current, proposed, semester)` in `renderProposalRowHtml`.

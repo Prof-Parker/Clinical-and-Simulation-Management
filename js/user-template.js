@@ -28,10 +28,10 @@ App.UserTemplate = (function () {
     lead_course_faculty: {
       id: 'lead_course_faculty',
       displayName: 'Lead Course Faculty',
-      tabs: ['dashboard', 'student', 'setup', 'roles', 'playground', 'clinical-sites'],
+      tabs: ['dashboard', 'student', 'setup', 'roles', 'makeup', 'playground', 'clinical-sites'],
       actions: [
         'dashboard.propose', 'setup.propose', 'setup.saveDraft',
-        'roles.edit', 'playground.edit', 'clinicalSites.propose', 'proposals.submit'
+        'roles.edit', 'makeup.edit', 'playground.edit', 'clinicalSites.propose', 'proposals.submit'
       ],
       dashboardReadOnly: false
     },

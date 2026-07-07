@@ -18,15 +18,15 @@ TODO.md
 - [ ] Double check tooltips and section headers match current logic and functions
 
 # Expanded scope
-- [ ] Add support for other semesters based on feedback from faculty and staff
-- [ ] .json file prompt to auto install. Permission restrictions?
+- [X] Add support for other semesters based on feedback from faculty and staff
+- [X] .json file prompt to auto install. Permission restrictions?
 - [ ] Clinical hours tracking
 - [ ] Playground/sandbox function for practice
 - [ ] 4th semester support
 - [ ] Clinical Facult export and signup
 - [ ] Merge with Audra's calendar
-- [ ] Facilities library tagged by semester
-- [ ] tags for OB, Peds, Mental Health
+- [X] Facilities library tagged by semester
+- [X] tags for OB, Peds, Mental Health
 - [ ] Create blank semester for manual entry, logic only runs at the end with warnings instead of autofill
 
 # Feature Implementation plan
@@ -39,10 +39,14 @@ TODO.md
 **Priority**
 [ ] Validate new course file logic (what happens when we use the drop downs? Do we need to better tie to .json file or support concurant .json files being open?)
 ### Next steps
--[ ] Add user specific .json files with associated permissions based on standard role templates
--[ ] First login ui to prompt loading user file
--[ ] C
+-[X ] Human readable proposed change process
+-[ ] Flag for unsaved changes vs unsynced changes, revamp sync behavior (pull from oneDrive, merge, push)
+-[ ] Track clinical hours
+-[ ] Theory support
 
-## Phase 2 []
+## Phase 2 [ ]
 1. Course wide calendar support with export functions for Admin, Faculty and Students
 2. Clinical faculty assignments and self schedule function
+
+## Phase 3 [ ]
+- [ ] UI Polish

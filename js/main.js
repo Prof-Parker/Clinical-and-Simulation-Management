@@ -130,7 +130,9 @@ App.UI.guardEditable = function (action) {
           !App.Permissions.canAction('proposals.submit')) return false;
     }
     if (action === 'regenerate' && !App.Permissions.canAction('setup.edit')) return false;
-    if (action === 'makeup' && !App.Permissions.canAction('setup.edit')) return false;
+    if (action === 'makeup' &&
+        !App.Permissions.canAction('setup.edit') &&
+        !App.Permissions.canAction('makeup.edit')) return false;
   }
   var data = App.getData();
   if (!data || !App.Audit || App.Audit.canEdit(data, action)) return true;

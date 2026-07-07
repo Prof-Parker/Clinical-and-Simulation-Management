@@ -71,6 +71,21 @@ App.Proposals = (function () {
     else arr.push(copy);
   }
 
+  function getFacultyField(semester, facultyId, field) {
+    var f = (semester.faculty || []).find(function (x) { return x.id === facultyId; });
+    return f ? f[field] : undefined;
+  }
+
+  function setFacultyField(semester, facultyId, field, value) {
+    var f = (semester.faculty || []).find(function (x) { return x.id === facultyId; });
+    if (!f) return;
+    if (value === undefined) {
+      delete f[field];
+    } else {
+      f[field] = value;
+    }
+  }
+
   function getValueAtPath(obj, path) {
     if (path === 'students') return obj.students;
     if (path === 'sections') return obj.sections;
@@ -84,6 +99,10 @@ App.Proposals = (function () {
     if (sec) return getArrayItemById(obj.sections, sec[1]);
     var fac = path.match(/^facilities\.([^.]+)$/);
     if (fac) return getArrayItemById(obj.facilities, fac[1]);
+    var facItem = path.match(/^faculty\.([^.]+)$/);
+    if (facItem) return getArrayItemById(obj.faculty, facItem[1]);
+    var facField = path.match(/^faculty\.([^.]+)\.(\w+)$/);
+    if (facField) return getFacultyField(obj, facField[1], facField[2]);
     var parts = path.split('.');
     var cur = obj;
     for (var i = 0; i < parts.length; i++) {
@@ -131,6 +150,16 @@ App.Proposals = (function () {
     var fac = path.match(/^facilities\.([^.]+)$/);
     if (fac) {
       setArrayItemById(obj.facilities, fac[1], value);
+      return;
+    }
+    var facItem = path.match(/^faculty\.([^.]+)$/);
+    if (facItem) {
+      setArrayItemById(obj.faculty, facItem[1], value);
+      return;
+    }
+    var facField = path.match(/^faculty\.([^.]+)\.(\w+)$/);
+    if (facField) {
+      setFacultyField(obj, facField[1], facField[2], value);
       return;
     }
     var parts = path.split('.');
@@ -247,6 +276,56 @@ App.Proposals = (function () {
     return changes;
   }
 
+  function diffFaculty(active, draft) {
+    var changes = [];
+    var aFaculty = active.faculty || [];
+    var dFaculty = draft.faculty || [];
+    var hasIds = aFaculty.every(function (f) { return f && f.id; }) &&
+      dFaculty.every(function (f) { return f && f.id; });
+    if (!hasIds) {
+      return diffValue('faculty', aFaculty, dFaculty);
+    }
+    var aById = {};
+    var dById = {};
+    aFaculty.forEach(function (f) { if (f && f.id) aById[f.id] = f; });
+    dFaculty.forEach(function (f) { if (f && f.id) dById[f.id] = f; });
+
+    var ids = new Set(Object.keys(aById).concat(Object.keys(dById)));
+    ids.forEach(function (id) {
+      var a = aById[id];
+      var d = dById[id];
+      if (!a && d) {
+        changes.push({
+          path: 'faculty.' + id,
+          currentValue: undefined,
+          proposedValue: cloneJson(d)
+        });
+      } else if (a && !d) {
+        changes.push({
+          path: 'faculty.' + id,
+          currentValue: cloneJson(a),
+          proposedValue: undefined
+        });
+      } else if (a && d) {
+        if (a.name !== d.name) {
+          changes.push({
+            path: 'faculty.' + id + '.name',
+            currentValue: a.name,
+            proposedValue: d.name
+          });
+        }
+        if (a.clinicalGroup !== d.clinicalGroup) {
+          changes.push({
+            path: 'faculty.' + id + '.clinicalGroup',
+            currentValue: a.clinicalGroup,
+            proposedValue: d.clinicalGroup
+          });
+        }
+      }
+    });
+    return changes;
+  }
+
   function diffSetupMeta(active, draft) {
     var changes = [];
     ['semesterSeason', 'semesterYear', 'semesterName'].forEach(function (key) {
@@ -264,7 +343,7 @@ App.Proposals = (function () {
       draft.calendar && draft.calendar.semesterStartDate));
     changes = changes.concat(diffValue('holidays', active.holidays, draft.holidays));
     changes = changes.concat(diffArrayById(active.sections, draft.sections, 'sections', 'id'));
-    changes = changes.concat(diffValue('faculty', active.faculty, draft.faculty));
+    changes = changes.concat(diffFaculty(active, draft));
     changes = changes.concat(diffArrayById(active.facilities, draft.facilities, 'facilities', 'id'));
     changes = changes.concat(diffValue('orientations', active.orientations, draft.orientations));
     changes = changes.concat(diffConfig(active.config, draft.config, 'config'));
@@ -391,27 +470,10 @@ App.Proposals = (function () {
   }
 
   function formatProposalLabel(path, semester) {
-    if (!path) return '';
-    if (path === 'students') return 'Student roster (structural change)';
-    if (path === 'faculty') return 'Clinical faculty assignments';
-    if (path === 'holidays') return 'Holidays & breaks';
-    if (path === 'orientations') return 'Orientation days';
-    if (path === 'config.numClinicalGroups') return 'Clinical groups count';
-    if (path === 'config.clinicalGroups') return 'Clinical groups list';
-    if (path === 'config.simGroups') return 'Simulation groups list';
-    if (path === 'config.simDays') return 'Simulation weekdays';
-    if (path.indexOf('config.') === 0) return 'Scheduling: ' + path.slice(7);
-    if (path.indexOf('sections.') === 0) return 'Registrar section';
-    if (path.indexOf('facilities.') === 0) return 'Clinical facility';
-    var sm = path.match(/^students\.([^.]+)\.(\w+)$/);
-    if (sm && semester) {
-      var st = (semester.students || []).find(function (s) { return s.id === sm[1]; });
-      var label = st && st.name ? st.name : sm[1];
-      return label + ' — ' + sm[2];
+    if (App.ProposalFormat && App.ProposalFormat.formatLabel) {
+      return App.ProposalFormat.formatLabel(path, semester);
     }
-    if (path.indexOf('meta.leadFaculty') === 0) return 'Lead course faculty';
-    if (path.indexOf('meta.') === 0) return 'Semester: ' + path.slice(5);
-    if (path.indexOf('calendar.') === 0) return 'Calendar: ' + path.slice(9);
+    if (!path) return '';
     return path;
   }
 

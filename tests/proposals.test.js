@@ -2,6 +2,7 @@
 
 var harness = require('./_harness');
 harness.loadCore();
+harness.load('js/proposal-format.js');
 harness.load('js/proposals.js');
 
 var passed = 0;
@@ -20,7 +21,7 @@ function makeSem(overrides) {
     calendar: { semesterStartDate: '2026-01-12', weeks: [] },
     config: { clinicalDaysRequired: 10, simDaysRequired: 5, clinicalGroups: ['C1'], simGroups: ['SG1'] },
     sections: [{ id: 'sec1', name: 'F6011' }],
-    faculty: [{ name: 'Faculty 1' }],
+    faculty: [{ id: 'fac_test1', name: 'Faculty 1', clinicalGroup: 'C1' }],
     facilities: [{ id: 'fac1', name: 'Site A' }],
     holidays: [],
     orientations: [],
@@ -92,6 +93,15 @@ var merged = App.Proposals.mergeProposalLists(
   [{ id: 'p1', proposedAt: '2026-01-01', status: 'denied' }]
 );
 assert(merged.length === 1 && merged[0].proposedAt === '2026-01-02', 'merge keeps newer');
+
+sem = makeSem();
+draft = makeSem();
+draft.faculty[0].name = 'Dr. Jones';
+count = App.Proposals.submitSetupProposals(sem, draft, proposer);
+assert(count === 1, 'faculty name change is one proposal');
+assert(sem.proposals[0].path === 'faculty.fac_test1.name', 'faculty name path by id');
+assert(App.Proposals.approve(sem, sem.proposals[0].id, reviewer) === true, 'approve faculty name');
+assert(sem.faculty[0].name === 'Dr. Jones', 'faculty name applied');
 
 console.log('\nProposals tests: ' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);

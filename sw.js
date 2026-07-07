@@ -1,5 +1,5 @@
 /* Shasta College ADN Course Manager — app shell service worker */
-var CACHE_NAME = 'clin-sim-v19';
+var CACHE_NAME = 'clin-sim-v21';
 
 var PRECACHE_URLS = [
   './',
@@ -34,6 +34,7 @@ var PRECACHE_URLS = [
   './js/audit-export.js',
   './js/dashboard-export.js',
   './js/sim-faculty-data.js',
+  './js/proposal-format.js',
   './js/proposals.js',
   './js/setup-draft.js',
   './js/storage.js',

@@ -95,12 +95,6 @@ App.UI.SetupProposals = (function () {
     }
   ];
 
-  function formatProposalValue(val) {
-    if (val === undefined) return '(removed)';
-    var s = JSON.stringify(val);
-    return s.length > 80 ? s.slice(0, 77) + '…' : s;
-  }
-
   function anchorForPath(path) {
     for (var i = 0; i < ANCHOR_RULES.length; i++) {
       if (ANCHOR_RULES[i].match(path)) return ANCHOR_RULES[i];
@@ -119,6 +113,9 @@ App.UI.SetupProposals = (function () {
     var label = App.Proposals.formatProposalLabel
       ? App.Proposals.formatProposalLabel(p.path, sem)
       : p.path;
+    var change = App.ProposalFormat && App.ProposalFormat.formatChange
+      ? App.ProposalFormat.formatChange(p.path, p.currentValue, p.proposedValue, sem)
+      : { before: String(p.currentValue), after: String(p.proposedValue) };
     var actions = '';
     if (canReview) {
       actions = '<button type="button" class="btn btn-sm proposal-approve" data-prop-id="' + p.id + '">✔</button>' +
@@ -126,7 +123,7 @@ App.UI.SetupProposals = (function () {
     }
     return '<div class="proposal-row proposal-pending">' +
       '<span class="proposal-path">' + label + '</span>: ' +
-      formatProposalValue(p.currentValue) + ' → ' + formatProposalValue(p.proposedValue) + staleTag +
+      change.before + ' → ' + change.after + staleTag +
       ' <span class="proposal-by">by ' + (p.proposedBy ? p.proposedBy.name : '') + '</span> ' +
       actions + '</div>';
   }
