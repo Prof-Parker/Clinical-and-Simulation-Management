@@ -38,7 +38,7 @@ Standard roles: **Program Engineer**, **Administrative Staff**, **Lead Course Fa
 - Roles gate tabs, menu items, and edit actions; combined with audit-phase gating for semester data.
 - **Admin / Program Engineer** edit semester setup directly and review proposed changes.
 - **Lead Course Faculty** save setup drafts and **propose changes**; changes are staged in the semester file until approved.
-- **Adjunct Faculty** have read-only dashboard access; edit simulation roles via the sim faculty file.
+- **Adjunct Faculty** have read-only dashboard access; edit simulation roles in the semester file (Simulation Roles tab).
 - Proposals are stored in `semester.proposals[]` with line-item approve/deny; saves use reload-merge with `meta.revision` to reduce overwrite conflicts.
 - Basic tamper deterrence: each `user.json` carries a key validated against `users-registry.json` (not authentication — OneDrive ACLs remain authoritative).
 
@@ -53,7 +53,7 @@ See [docs/Design Docs/User_roles_design.md](docs/Design%20Docs/User_roles_design
 - Multi-course support with course defaults (JS templates in repo) and course-aware filenames.
 - Dashboard master schedule with filtering and Excel export.
 - Student calendar view with print/export.
-- Simulation roles and performance flags in a separate sim faculty file (`{token}_Faculty.json`).
+- Simulation roles and performance flags in the semester file (`meta.simRoles`, base64 obfuscated in JSON).
 - Makeup finder to identify and apply simulation/clinical makeup opportunities.
 - Validation and schedule status indicators (green/yellow/red) for feasibility and completion quality.
 - Audit lifecycle tab for closeout phases, lead faculty attestation, audit PDF export, and lock.
@@ -97,8 +97,7 @@ See [docs/Design Docs/User_roles_design.md](docs/Design%20Docs/User_roles_design
 
 | File | Pattern | Contents |
 |------|---------|----------|
-| Semester (working) | `{F\|S}{year}_{courseId}.json` | Roster, schedules, config, proposals, audit metadata — **no sim roles** |
-| Sim faculty | `{token}_Faculty.json` | Role assignments and performance flags |
+| Semester (working) | `{F\|S}{year}_{courseId}.json` | Roster, schedules, config, proposals, audit metadata, simulation roles (`meta.simRoles`) |
 | User profile | `*.user.json` | userId, name, email, key |
 | Users registry | `users-registry.json` | Authoritative roles, key hashes, revocation |
 | Clinical site library | `clinical-sites-library.json` | Program-wide sites and tags |
@@ -106,7 +105,7 @@ See [docs/Design Docs/User_roles_design.md](docs/Design%20Docs/User_roles_design
 | Course defaults (OneDrive) | `course-defaults_{courseId}.json` | Exported course templates |
 | Audit PDF | `{Season}-{Year}-{courseId}-Audit-v{n}.pdf` | Official signed closeout record |
 
-- Legacy combined-role data migrates into the sim faculty file when loaded.
+- Legacy plain `semester.roles` in old semester exports still migrate into `meta.simRoles` on load. Separate `_Faculty.json` files are no longer supported (breaking change, fileVersion 4).
 - No real student JSON files are committed to source control; local `mock-onedrive/` folder is gitignored for dev testing (see [docs/MOCK_ONEDRIVE.md](docs/MOCK_ONEDRIVE.md)).
 
 ## App Layout (Current)

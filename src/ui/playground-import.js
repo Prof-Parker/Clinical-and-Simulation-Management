@@ -5,7 +5,7 @@
 import * as DataModel from '../core/data-model/index.js';
 import * as Permissions from '../auth/permissions.js';
 import * as PlaygroundStorage from '../storage/playground-storage.js';
-import { getData, setFileRoot } from '../core/state.js';
+import { getData, setFileRoot, state } from '../core/state.js';
 import { refresh } from './chrome.js';
 import { showAlert, showConfirm } from './dialogs.js';
 

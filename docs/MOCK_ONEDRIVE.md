@@ -21,8 +21,7 @@ mock-onedrive/
 │   ├── lead-faculty.user.json
 │   └── adjunct.user.json
 ├── semesters/
-│   ├── F2026_REGN15P.json
-│   └── F2026_REGN15P_Faculty.json
+│   └── F2026_REGN15P.json
 ├── playgrounds/
 │   └── user_F2026_REGN15P_playground.json
 └── clinical-sites-library.json

@@ -79,17 +79,11 @@
                             <button id="exportBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Export backup</button>
                         </div>
                         <hr class="menu-divider">
-                        <button id="openSimFacultyBtn" class="menu-item" type="button" role="menuitem">Connect sim faculty file</button>
-                        <button id="newSimFacultyBtn" class="menu-item" type="button" role="menuitem">New sim faculty file</button>
-                        <button id="importSimFacultyBtn" class="menu-item" type="button" role="menuitem">Open sim faculty file…</button>
-                        <button id="exportSimFacultyBtn" class="menu-item" type="button" role="menuitem">Export sim faculty backup</button>
-                        <hr class="menu-divider">
                         <button id="clearStorageBtn" class="menu-item menu-item-danger" type="button" role="menuitem">Clear storage &amp; restore defaults</button>
                         <button id="saveBtn" class="menu-item menu-item-primary" type="button" role="menuitem">Save</button>
                     </div>
                 </div>
                 <input type="file" id="importFileInput" class="hidden">
-                <input type="file" id="importSimFacultyInput" class="hidden">
                 <input type="file" id="importUserFileInput" class="hidden" accept=".json,application/json">
                 <input type="file" id="importRegistryFileInput" class="hidden" accept=".json,application/json">
                 <input type="file" id="importPlaygroundInput" class="hidden" accept=".json,application/json">
@@ -294,8 +288,7 @@
         <div id="view-roles" class="view-panel">
             <section class="card" style="padding:1.25rem">
                 <div id="simFacultyBanner" class="sim-faculty-banner hidden" role="status">
-                    Simulation roles and performance flags are stored in a separate team file.
-                    Connect or create one from the menu.
+                    Open a semester file to manage simulation roles. Role data is saved inside the semester file (obfuscated in JSON exports).
                 </div>
                 <div class="filters" style="margin-bottom:1rem">
                     <select id="roleSimSelect">

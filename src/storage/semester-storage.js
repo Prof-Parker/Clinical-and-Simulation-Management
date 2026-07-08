@@ -117,9 +117,12 @@ var DB_NAME = 'regnTrackerDB';
   }
   function serialize(fileRoot) {
     syncSemesterToFile();
-    var exportRoot = SimFacultyData
-      ? SimFacultyData.cloneFileRootWithoutRoles(fileRoot)
-      : JSON.parse(JSON.stringify(fileRoot));
+    var facultyRoot = SimFacultyStorage ? SimFacultyStorage.getSimFacultyRoot() : null;
+    var exportRoot = SimFacultyData && facultyRoot
+      ? SimFacultyData.embedSimRolesInFileRoot(fileRoot, facultyRoot)
+      : (SimFacultyData
+        ? SimFacultyData.cloneFileRootWithoutRoles(fileRoot)
+        : JSON.parse(JSON.stringify(fileRoot)));
     exportRoot.meta.lastModified = new Date().toISOString();
     if (state.data && state.data.meta) {
       state.data.meta.lastModified = exportRoot.meta.lastModified;
@@ -129,7 +132,14 @@ var DB_NAME = 'regnTrackerDB';
   }
   function cacheData(fileRoot) {
     var now = new Date().toISOString();
-    return idbSet(CACHE_KEY, fileRoot).then(function () {
+    var toCache = fileRoot;
+    if (SimFacultyData && SimFacultyStorage) {
+      var facultyRoot = SimFacultyStorage.getSimFacultyRoot();
+      if (facultyRoot) {
+        toCache = SimFacultyData.embedSimRolesInFileRoot(fileRoot, facultyRoot);
+      }
+    }
+    return idbSet(CACHE_KEY, toCache).then(function () {
       return setMeta({ lastSavedAt: now, hasLoadedData: true });
     });
   }
@@ -348,9 +358,7 @@ var DB_NAME = 'regnTrackerDB';
     if (!fileRoot.meta.revision) fileRoot.meta.revision = 1;
     state.fileLoadedRevision = fileRoot.meta.revision;
     if (SimFacultyStorage) {
-      SimFacultyData.stripRolesFromFileRoot(fileRoot);
-      var migrated = SimFacultyStorage.migrateFromSemesterFile(fileRoot);
-      if (migrated) state.dirty = true;
+      SimFacultyStorage.hydrateFromFileRoot(fileRoot);
     } else {
       SimFacultyData.stripRolesFromFileRoot(fileRoot);
     }
@@ -359,12 +367,7 @@ var DB_NAME = 'regnTrackerDB';
   function updateStatusUI() {
     var el = document.getElementById('fileStatus');
     if (!el) return;
-    Promise.all([
-      getMeta(),
-      SimFacultyStorage ? SimFacultyStorage._getMeta() : Promise.resolve(null)
-    ]).then(function (results) {
-      var meta = results[0];
-      var facultyMeta = results[1];
+    getMeta().then(function (meta) {
       var dirty = state.dirty;
       var name = state.fileName;
       var savedLabel = formatSavedTime(meta.lastSavedAt);
@@ -389,11 +392,7 @@ var DB_NAME = 'regnTrackerDB';
         el.className = 'file-status';
       }
       if (SimFacultyStorage && SimFacultyStorage.isReady()) {
-        var facultyName = state.simFacultyFileName ||
-          (facultyMeta && facultyMeta.lastImportedFileName) ||
-          'sim faculty file';
-        var facultyDirty = state.simFacultyDirty ? ' (unsaved)' : '';
-        parts.push('Sim faculty: ' + facultyName + facultyDirty);
+        parts.push('Sim roles stored in semester file');
       }
       el.textContent = parts.join(' · ');
     });
@@ -406,7 +405,7 @@ var DB_NAME = 'regnTrackerDB';
   }
   function initUnloadWarning() {
     window.addEventListener('beforeunload', function (e) {
-      if (supportsFS() || (!state.dirty && !state.simFacultyDirty)) return;
+      if (supportsFS() || !state.dirty) return;
       e.preventDefault();
       e.returnValue = '';
     });
@@ -434,6 +433,7 @@ var DB_NAME = 'regnTrackerDB';
         loadedFromFile = true;
       }
       var fileRoot = raw ? DataModel.migrateFile(raw) : DataModel.createDefaultFile();
+      if (loadedFromFile) fileRoot = applyLoadedFileRoot(fileRoot);
       var sem = fileRoot.semesters.find(function (s) {
         return s.id === fileRoot.meta.activeSemesterId;
       }) || fileRoot.semesters[0];

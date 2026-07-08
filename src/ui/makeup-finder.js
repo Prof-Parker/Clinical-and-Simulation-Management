@@ -60,7 +60,7 @@ var pendingClinicalHint = null;
       select.innerHTML += '<option value="' + s.id + '">' + s.name + '</option>';
     });
 
-    if (requiredClinicalMakeup.studentId) {
+    if (requiredClinicalMakeup && requiredClinicalMakeup.studentId) {
       select.value = requiredClinicalMakeup.studentId;
       document.getElementById('makeupTypeSelect').value = 'clinical';
     } else if (prev) {

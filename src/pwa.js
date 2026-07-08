@@ -128,8 +128,10 @@ export function init() {
 
 export { isStandalone, canRegisterServiceWorker };
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
+if (!import.meta.env.VITEST) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 }

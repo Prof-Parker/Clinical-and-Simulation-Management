@@ -40,7 +40,7 @@ index.html → src/main.js
 
 Each `src/**/*.js` module is capped at **500 lines** and starts with a brief header comment describing its purpose.
 
-**Runtime model:** `state.fileRoot` holds all semesters; `getData()` returns the active semester. UI modules call `notifyChange()` (semester file) or `notifySimFacultyChange()` (faculty file).
+**Runtime model:** `state.fileRoot` holds all semesters; `getData()` returns the active semester. Simulation roles live in `meta.simRoles` (base64 obfuscated on disk) and are edited in memory via `state.simFacultyRoot`. UI modules call `notifyChange()` to persist the semester file.
 
 **Boot order:** `UserSession.init()` → `semester-storage.init()` → `clinical-sites-library-storage.init()` → `sim-faculty-storage.init()` → `initUI()`. Until the user session validates, `#userGateModal` blocks the app shell.
 
@@ -50,7 +50,7 @@ Each `src/**/*.js` module is capped at **500 lines** and starts with a brief hea
 
 ---
 
-## 3. Data files (FERPA split)
+## 3. Data files
 
 | File | Typical name | Contents |
 |------|----------------|----------|
@@ -58,17 +58,23 @@ Each `src/**/*.js` module is capped at **500 lines** and starts with a brief hea
 | **Users registry** | `users-registry.json` | Authoritative roles + key hashes |
 | **Clinical sites library** | `clinical-sites-library.json` | Program-wide site catalog |
 | **Playground** | `user_{token}_playground.json` | Isolated semester experiments |
-| **Semester file** | `{S\|F}{year}_{courseId}.json` (e.g. `F2026_REGN15P.json`); legacy `regn-tracker.json` | Roster, schedule, config, calendar, facilities, faculty, audit meta, **proposals** — **no sim roles** |
-| **Sim faculty file** | `{S\|F}{year}_{courseId}_Faculty.json` (e.g. `F2026_REGN15P_Faculty.json`); legacy `regn-tracker-sim-faculty.json` | Role assignments (Primary/Secondary/Evaluator/Scribe) + performance flags (Strong/Weaker) |
+| **Semester file** | `{S\|F}{year}_{courseId}.json` (e.g. `F2026_REGN15P.json`); legacy `regn-tracker.json` | Roster, schedule, config, calendar, facilities, faculty, audit meta, **proposals**, and **simulation roles** (`meta.simRoles`, base64 obfuscated) |
 | **Audit PDF** | `{Season}-{Year}-{courseId}-Audit-v{n}.pdf` (e.g. `Fall-2026-REGN15P-Audit-v1.pdf`) | Signed end-of-semester audit record (official record after closeout) |
 
-Course-aware names are suggested automatically when `meta.courseId` and semester season/year are set (header course dropdown / Setup); legacy names still load and migrate. Schedulers can use only the semester file. The sim faculty team connects both. On load, embedded `semester.roles` (legacy) migrate into the faculty file and are stripped from the master export. Sim role edits remain allowed after audit export/lock — the audit lifecycle covers the semester file only (see [docs/AUDIT_TRACKING_IMPLEMENTATION.md](docs/AUDIT_TRACKING_IMPLEMENTATION.md)).
+**Breaking change (fileVersion 4):** Separate `{token}_Faculty.json` files are no longer supported. Simulation role assignments must be stored in the semester file. Legacy plain `semester.roles` / `_legacySimRoles` embedded in old semester exports still migrate on load.
+
+Course-aware names are suggested automatically when `meta.courseId` and semester season/year are set. Sim role edits remain allowed after audit export/lock — the audit lifecycle covers the semester file only.
 
 ### Semester file shape (simplified)
 
 ```json
 {
-  "meta": { "fileVersion": 2, "activeSemesterId": "…", "schedulingDefaults": { } },
+  "meta": {
+    "fileVersion": 4,
+    "activeSemesterId": "…",
+    "schedulingDefaults": { },
+    "simRoles": { "encoding": "b64v1", "data": "…" }
+  },
   "semesters": [{
     "id": "…",
     "meta": { "semesterName": "Spring 2026", "finalized": false },
@@ -103,9 +109,9 @@ Course-aware names are suggested automatically when `meta.courseId` and semester
 | `inactive` | Holiday/break week |
 | `facilityId` | Optional clinical site for that week (multi-site groups) |
 
-### Sim faculty file shape
+### Simulation roles in semester file
 
-Keyed by `semesterId` → `studentId` → `{ flags: { primary, secondary }, "1": { iter1…iter4 }, … }`. See `js/sim-faculty-data.js`.
+Keyed by `semesterId` → `studentId` → `{ flags: { primary, secondary }, "1": { iter1…iter4 }, … }`. Persisted as `meta.simRoles` (base64). See `src/auth/sim-faculty-data.js`.
 
 ---
 
@@ -206,7 +212,7 @@ Tests in `tests/scheduling-rules.test.js` assert program calendar, guest spread,
 | Master calendar + filters | Dashboard | `js/ui/dashboard.js` |
 | Sim progression table (guest cells highlighted) | Dashboard | `dashboard.js` → `renderSimTable` |
 | Student calendar + print | Student View | `js/ui/student-view.js` |
-| Simulation roles + flags | Simulation Roles | `js/ui/sim-roles.js` + sim faculty storage |
+| Simulation roles + flags | Simulation Roles | `src/ui/sim-roles.js` + `src/storage/sim-faculty-storage.js` |
 | Makeup search | Makeup Finder | `js/ui/makeup-finder.js` |
 | Audit lifecycle, attestation, audit PDF | Audit | `js/ui/audit-closeout.js`, `js/audit.js`, `js/audit-export.js` |
 | Roster, holidays, facilities, rebalance | Setup | `js/ui/setup.js`, `setup-config.js` |
@@ -215,7 +221,7 @@ Tests in `tests/scheduling-rules.test.js` assert program calendar, guest spread,
 | Semester add/switch | Header picker | `js/main.js`, `js/ui/config-modal.js` |
 | Dark mode | Menu | `App.UI.toggleDarkMode` |
 
-**Sim Roles tab** is disabled until a sim faculty file is connected. Role edits save only to `regn-tracker-sim-faculty.json`.
+**Sim Roles tab** requires a connected semester file. Role edits save into `meta.simRoles` on the semester file (base64 obfuscated in JSON exports).
 
 ---
 
@@ -238,7 +244,7 @@ From `000_sim_clinical_tracker.md` **Scheduling adjustment configuration**:
 ```bash
 node tests/scheduling-rules.test.js   # Scheduling_rules.md contract (~2400+ assertions)
 node tests/roster-balance.test.js     # Sim group assignment balance
-node tests/sim-faculty-storage.test.js # Roles strip/migrate from semester file
+node tests/sim-faculty-storage.test.js # Sim roles encode/decode in semester file
 ```
 
 Harness: `tests/_harness.js` loads core JS via Node `vm` (no DOM).

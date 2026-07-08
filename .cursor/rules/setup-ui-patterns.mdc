@@ -1,12 +1,40 @@
 ---
-description: Setup and list UI patterns — add/remove rows, checkboxes, dialogs
-globs: index.html,src/ui/**,css/app.css
+description: Setup and list UI patterns — add/remove rows, checkboxes, dialogs, UI registry smoke tests
+globs: index.html,src/ui/**,src/ui/ui-registry.js,tests/ui-smoke.test.js,css/app.css
 alwaysApply: false
 ---
 
 # Setup UI Patterns
 
 Follow these conventions when adding or changing Setup tab UI (and similar list editors elsewhere).
+
+## Adding future UI
+
+When you add a tab, panel, or control:
+
+1. Add markup to `index.html`
+2. Register it in [`src/ui/ui-registry.js`](src/ui/ui-registry.js) — tab + `anchors`, or `UI_SHELL` / `UI_MENU` / `UI_MODALS`
+3. Wire behavior in `main.js` or the feature module
+4. Run `npm test` — [`tests/ui-smoke.test.js`](tests/ui-smoke.test.js) failures point at missing ids or broken routing
+
+Registry contract (see comments in `ui-registry.js`):
+
+- **Tabs** — `id` must match `.nav-tab[data-tab]` and `#view-{id}`; list key controls in `anchors`
+- **Shell** — header, banners, global chrome (`UI_SHELL`)
+- **Menu** — dropdown actions wired in `initUI` (`UI_MENU`)
+- **File inputs** — hidden import pickers (`UI_FILE_INPUTS`)
+- **Modals** — gate, config, dialog controls (`UI_MODALS`)
+
+Example for a new tab:
+
+```javascript
+{
+  id: 'reports',
+  anchors: ['reportsTable', 'reportsExportBtn']
+}
+```
+
+Also register the tab id in [`src/auth/user-template.js`](src/auth/user-template.js) for roles that should see it. The smoke test checks that every role tab is listed in the registry.
 
 ## Add buttons — bottom of list
 

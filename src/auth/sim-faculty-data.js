@@ -3,28 +3,14 @@
  */
 
 var FILE_VERSION = 1;
+var SIM_ROLES_ENCODING = 'b64v1';
 
   function defaultStudentRoles() {
     return { flags: { primary: null, secondary: null } };
   }
 
-  function createEmptySimFacultyFile(linkedSemesterHint) {
-    return {
-      meta: {
-        fileVersion: FILE_VERSION,
-        lastModified: new Date().toISOString(),
-        linkedSemesterHint: linkedSemesterHint || ''
-      },
-      semesters: {}
-    };
-  }
-
-  function migrateSimFaculty(raw) {
-    if (!raw) return createEmptySimFacultyFile();
-    if (!raw.meta) raw.meta = {};
-    raw.meta.fileVersion = FILE_VERSION;
-    if (!raw.semesters) raw.semesters = {};
-    return raw;
+  function createEmptySimFacultyRoot() {
+    return { semesters: {} };
   }
 
   function ensureSemesterBucket(facultyRoot, semesterId) {
@@ -88,11 +74,77 @@ var FILE_VERSION = 1;
     fileRoot.semesters.forEach(stripRolesFromSemester);
   }
 
+  function encodeUtf8Base64(obj) {
+    var json = JSON.stringify(obj);
+    if (typeof TextEncoder !== 'undefined') {
+      var bytes = new TextEncoder().encode(json);
+      var binary = '';
+      bytes.forEach(function (b) { binary += String.fromCharCode(b); });
+      return btoa(binary);
+    }
+    return btoa(unescape(encodeURIComponent(json)));
+  }
+
+  function decodeUtf8Base64(b64) {
+    if (!b64 || typeof b64 !== 'string') return null;
+    try {
+      var binary = atob(b64);
+      if (typeof TextDecoder !== 'undefined') {
+        var bytes = new Uint8Array(binary.length);
+        for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return JSON.parse(new TextDecoder().decode(bytes));
+      }
+      return JSON.parse(decodeURIComponent(escape(binary)));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function encodeSimRolesBlob(semesters) {
+    return {
+      encoding: SIM_ROLES_ENCODING,
+      data: encodeUtf8Base64(semesters || {})
+    };
+  }
+
+  function decodeSimRolesFromMeta(meta) {
+    if (!meta || !meta.simRoles) return {};
+    var blob = meta.simRoles;
+    if (!blob || typeof blob !== 'object' || !blob.data) return {};
+    if ((blob.encoding || SIM_ROLES_ENCODING) !== SIM_ROLES_ENCODING) return {};
+    var decoded = decodeUtf8Base64(blob.data);
+    return decoded && typeof decoded === 'object' ? decoded : {};
+  }
+
   function cloneFileRootWithoutRoles(fileRoot) {
     var clone = JSON.parse(JSON.stringify(fileRoot));
     stripRolesFromFileRoot(clone);
     delete clone._legacySimRoles;
+    if (clone.meta) delete clone.meta.simRoles;
     return clone;
+  }
+
+  function embedSimRolesInFileRoot(fileRoot, facultyRoot) {
+    var clone = cloneFileRootWithoutRoles(fileRoot);
+    if (!clone.meta) clone.meta = {};
+    var semesters = facultyRoot && facultyRoot.semesters ? facultyRoot.semesters : {};
+    if (facultyRootHasData(facultyRoot)) {
+      clone.meta.simRoles = encodeSimRolesBlob(semesters);
+    } else {
+      delete clone.meta.simRoles;
+    }
+    return clone;
+  }
+
+  function hydrateFacultyRootFromFileRoot(fileRoot, facultyRoot) {
+    if (!facultyRoot) facultyRoot = createEmptySimFacultyRoot();
+    var migrated = false;
+    var fromEncoded = decodeSimRolesFromMeta(fileRoot && fileRoot.meta);
+    Object.keys(fromEncoded).forEach(function (semId) {
+      if (mergeSemesterRoles(facultyRoot, semId, fromEncoded[semId])) migrated = true;
+    });
+    if (migrateRolesFromFileRoot(facultyRoot, fileRoot)) migrated = true;
+    return { facultyRoot: facultyRoot, migrated: migrated };
   }
 
   function migrateRolesFromFileRoot(facultyRoot, fileRoot) {
@@ -121,8 +173,8 @@ var FILE_VERSION = 1;
 
 export {
   FILE_VERSION,
-  createEmptySimFacultyFile,
-  migrateSimFaculty,
+  SIM_ROLES_ENCODING,
+  createEmptySimFacultyRoot,
   getStudentRoles,
   setStudentRoleAssignment,
   setStudentFlag,
@@ -131,6 +183,12 @@ export {
   mergeSemesterRoles,
   stripRolesFromFileRoot,
   cloneFileRootWithoutRoles,
+  embedSimRolesInFileRoot,
+  hydrateFacultyRootFromFileRoot,
+  encodeSimRolesBlob,
+  decodeSimRolesFromMeta,
+  encodeUtf8Base64,
+  decodeUtf8Base64,
   migrateRolesFromFileRoot,
   facultyRootHasData,
   rolesHasData

@@ -56,7 +56,7 @@ var SIM_WEEKS = {
       setBannerVisible(true);
       if (tableWrap) tableWrap.classList.add('sim-faculty-disabled');
       tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-muted)">' +
-        'Connect or create a sim faculty file from the menu to manage role assignments and performance flags.</td></tr>';
+        'Open a semester file from the menu to manage role assignments and performance flags.</td></tr>';
       return;
     }
 

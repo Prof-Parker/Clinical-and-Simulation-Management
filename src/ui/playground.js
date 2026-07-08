@@ -5,7 +5,7 @@
 import * as CourseDefaults from '../core/course-defaults.js';
 import * as PlaygroundStorage from '../storage/playground-storage.js';
 import * as SetupConfig from './setup-config/index.js';
-import { getData } from '../core/state.js';
+import { getData, state } from '../core/state.js';
 import { showAlert } from './dialogs.js';
 
 function getPlaygroundData() {

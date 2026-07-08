@@ -40,6 +40,7 @@ export default defineConfig(({ command }) => ({
   },
   test: {
     environment: 'jsdom',
-    include: ['tests/**/*.test.js']
+    include: ['tests/**/*.test.js'],
+    setupFiles: ['tests/vitest-setup.js']
   }
 }));

@@ -144,30 +144,6 @@ export function initUI() {
     closeMenu();
   });
 
-  document.getElementById('importSimFacultyBtn').addEventListener('click', function () {
-    document.getElementById('importSimFacultyInput').click();
-    closeMenu();
-  });
-
-  document.getElementById('importSimFacultyInput').addEventListener('change', function (e) {
-    var file = e.target.files[0];
-    if (!file) return;
-    SimFacultyStorage.importFromFile(file).then(function () {
-      refresh();
-    }).catch(function () { showAlert('Invalid file', 'Invalid sim faculty file.'); });
-    e.target.value = '';
-  });
-
-  document.getElementById('exportSimFacultyBtn').addEventListener('click', function () {
-    if (!SimFacultyStorage.isReady()) {
-      showAlert('Sim faculty', 'Connect or create a sim faculty file first.');
-      closeMenu();
-      return;
-    }
-    SimFacultyStorage.exportDownload();
-    closeMenu();
-  });
-
   document.getElementById('importFileInput').addEventListener('change', function (e) {
     var file = e.target.files[0];
     if (!file) return;
@@ -207,7 +183,6 @@ export function initUI() {
   document.getElementById('saveBtn').addEventListener('click', function () {
     Promise.all([
       Storage.saveCurrent(),
-      SimFacultyStorage.isReady() ? SimFacultyStorage.saveCurrent() : Promise.resolve(),
       ClinicalSitesLibraryStorage.isReady()
         ? ClinicalSitesLibraryStorage.saveCurrent() : Promise.resolve()
     ]).then(function () {
@@ -224,6 +199,7 @@ export function initUI() {
     document.getElementById('openFileBtn').addEventListener('click', function () {
       Storage.openFilePicker().then(function (fileRoot) {
         setFileRoot(fileRoot);
+        SimFacultyStorage.hydrateFromFileRoot(fileRoot);
         Dashboard.populateFilters(getData());
         refresh();
       }).catch(function () {});
@@ -243,20 +219,8 @@ export function initUI() {
       }).catch(function () {});
       closeMenu();
     });
-    document.getElementById('openSimFacultyBtn').addEventListener('click', function () {
-      SimFacultyStorage.openFilePicker().then(function () {
-        refresh();
-      }).catch(function () {});
-      closeMenu();
-    });
-    document.getElementById('newSimFacultyBtn').addEventListener('click', function () {
-      SimFacultyStorage.createFilePicker().then(function () {
-        refresh();
-      }).catch(function () {});
-      closeMenu();
-    });
   } else {
-    ['openFileBtn', 'newFileBtn', 'openSimFacultyBtn', 'newSimFacultyBtn'].forEach(function (id) {
+    ['openFileBtn', 'newFileBtn'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.classList.add('hidden');
     });
@@ -294,8 +258,10 @@ export function main() {
   });
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', main);
-} else {
-  main();
+if (!import.meta.env.VITEST) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', main);
+  } else {
+    main();
+  }
 }

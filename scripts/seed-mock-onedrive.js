@@ -107,7 +107,7 @@ function main() {
 
   writeJson(path.join('semesters', 'F2026_REGN15P.json'), {
     meta: {
-      fileVersion: 2,
+      fileVersion: 4,
       activeSemesterId: semId,
       revision: 1,
       schedulingDefaults: {},
@@ -151,11 +151,6 @@ function main() {
       students: students,
       proposals: []
     }]
-  });
-
-  writeJson(path.join('semesters', 'F2026_REGN15P_Faculty.json'), {
-    meta: { version: 1, linkedSemesterHint: 'Fall 2026', lastModified: new Date().toISOString() },
-    semesters: {}
   });
 
   writeJson(path.join('playgrounds', 'user_F2026_REGN15P_playground.json'), {

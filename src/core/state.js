@@ -11,11 +11,7 @@ export const state = {
   fileName: null,
   saveTimer: null,
   simFacultyRoot: null,
-  simFacultyFileHandle: null,
-  simFacultyFileName: null,
-  simFacultyDirty: false,
   simFacultyReady: false,
-  simFacultySaveTimer: null,
   userFile: null,
   userFileHandle: null,
   userFileName: null,
@@ -64,16 +60,6 @@ export function setFileRoot(fileRoot) {
 export function notifyChange() {
   state.dirty = true;
   syncSemesterToFile();
-  state.listeners.forEach(function (fn) { fn(); });
-}
-
-export function notifySimFacultyChange() {
-  state.simFacultyDirty = true;
-  state.listeners.forEach(function (fn) { fn(); });
-}
-
-export function markSimFacultyClean() {
-  state.simFacultyDirty = false;
   state.listeners.forEach(function (fn) { fn(); });
 }
 

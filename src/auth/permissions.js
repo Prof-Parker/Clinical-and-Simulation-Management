@@ -61,10 +61,6 @@ function currentRole() {
     var role = currentRole();
     var map = {
       newSemesterBatchBtn: 'semester.batchCreate',
-      openSimFacultyBtn: 'roles.edit',
-      newSimFacultyBtn: 'roles.edit',
-      importSimFacultyBtn: 'roles.edit',
-      exportSimFacultyBtn: 'roles.edit',
       menuSwitchSemesterBtn: 'semester.switch',
       loadUserFileMenuBtn: true,
       loadRegistryMenuBtn: true
@@ -76,12 +72,6 @@ function currentRole() {
       var show = perm === true || (role && canAction(perm));
       el.classList.toggle('hidden', !show);
     });
-    if (role === 'admin_staff') {
-      ['openSimFacultyBtn', 'newSimFacultyBtn', 'importSimFacultyBtn', 'exportSimFacultyBtn'].forEach(function (id) {
-        var el = document.getElementById(id);
-        if (el) el.classList.add('hidden');
-      });
-    }
     var logoutBtn = document.getElementById('logoutUserMenuBtn');
     if (logoutBtn) {
       logoutBtn.classList.toggle('hidden', !(UserSession && UserSession.isValidated()));

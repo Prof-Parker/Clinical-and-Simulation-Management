@@ -25,7 +25,7 @@ import {
   createDefaultFile
 } from './semester.js';
 
-export var FILE_VERSION = 2;
+export var FILE_VERSION = 4;
 export var VERSION = 1;
 export var AUDIT_PHASES = ['setup', 'active', 'makeup_review', 'audit_exported', 'locked'];
 
