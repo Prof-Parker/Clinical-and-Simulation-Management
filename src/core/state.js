@@ -1,0 +1,95 @@
+/**
+ * Central reactive state: file roots, active semester, dirty flags, listeners.
+ * Consumed by storage, UI tabs, and scheduler entry points.
+ */
+
+export const state = {
+  fileRoot: null,
+  data: null,
+  dirty: false,
+  fileHandle: null,
+  fileName: null,
+  saveTimer: null,
+  simFacultyRoot: null,
+  simFacultyFileHandle: null,
+  simFacultyFileName: null,
+  simFacultyDirty: false,
+  simFacultyReady: false,
+  simFacultySaveTimer: null,
+  userFile: null,
+  userFileHandle: null,
+  userFileName: null,
+  usersRegistry: null,
+  usersRegistryFileHandle: null,
+  usersRegistryFileName: null,
+  usersRegistryLoadedRevision: null,
+  userSession: null,
+  playgroundRoot: null,
+  clinicalSitesLibraryRoot: null,
+  clinicalSitesLibraryFileHandle: null,
+  fileLoadedRevision: null,
+  currentTab: 'dashboard',
+  listeners: []
+};
+
+export function onStateChange(fn) {
+  state.listeners.push(fn);
+}
+
+export function syncSemesterToFile() {
+  if (!state.fileRoot || !state.data) return;
+  var idx = state.fileRoot.semesters.findIndex(function (s) {
+    return s.id === state.data.id;
+  });
+  if (idx >= 0) state.fileRoot.semesters[idx] = state.data;
+}
+
+export function getFileRoot() {
+  syncSemesterToFile();
+  return state.fileRoot;
+}
+
+export function setFileRoot(fileRoot) {
+  state.fileRoot = fileRoot;
+  if (!fileRoot || !fileRoot.semesters || !fileRoot.semesters.length) {
+    state.data = null;
+    return;
+  }
+  var activeId = fileRoot.meta.activeSemesterId;
+  var sem = fileRoot.semesters.find(function (s) { return s.id === activeId; });
+  state.data = sem || fileRoot.semesters[0];
+  if (!sem) fileRoot.meta.activeSemesterId = state.data.id;
+}
+
+export function notifyChange() {
+  state.dirty = true;
+  syncSemesterToFile();
+  state.listeners.forEach(function (fn) { fn(); });
+}
+
+export function notifySimFacultyChange() {
+  state.simFacultyDirty = true;
+  state.listeners.forEach(function (fn) { fn(); });
+}
+
+export function markSimFacultyClean() {
+  state.simFacultyDirty = false;
+  state.listeners.forEach(function (fn) { fn(); });
+}
+
+export function setData(data) {
+  state.data = data;
+  syncSemesterToFile();
+  notifyChange();
+}
+
+export function getData() {
+  return state.data;
+}
+
+export function markClean() {
+  state.dirty = false;
+  state.listeners.forEach(function (fn) { fn(); });
+}
+
+export { switchSemester, addSemester } from '../ui/chrome.js';

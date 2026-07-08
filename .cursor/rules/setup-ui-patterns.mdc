@@ -1,6 +1,6 @@
 ---
 description: Setup and list UI patterns — add/remove rows, checkboxes, dialogs
-globs: index.html,js/ui/**,css/app.css
+globs: index.html,src/ui/**,css/app.css
 alwaysApply: false
 ---
 
@@ -71,13 +71,15 @@ Use `label.filter-check` for all checkbox labels (filters, toggles, tag pickers)
 
 ## Dialogs — not native alert/confirm
 
-Use `#dialogModal` helpers from `App.UI` in `js/main.js`:
+Use `#dialogModal` helpers from [`src/ui/dialogs.js`](src/ui/dialogs.js):
 
 | Need | API |
 |------|-----|
-| OK only | `App.UI.showAlert(title, message, onOk?)` |
-| Confirm / cancel | `App.UI.showConfirm(title, message, onConfirm, options?)` |
-| Custom form body | `App.UI.showDialog(title, bodyHtml, onSave)` |
+| OK only | `showAlert(title, message, onOk?)` |
+| Confirm / cancel | `showConfirm(title, message, onConfirm, options?)` |
+| Custom form body | `showDialog(title, bodyHtml, onSave)` |
+
+For edit gating (roles + audit closeout), use `guardEditable(action)` from [`src/auth/permissions.js`](src/auth/permissions.js).
 
 Never use `window.alert`, `window.confirm`, or `window.prompt`.
 
@@ -102,7 +104,7 @@ Use `.setup-autofill-field` for inputs populated from registry or other sources 
 - Set `readonly` in JS when the value is registry-driven; remove the class and `readonly` when the field becomes editable again.
 - Prefer `type="text"` over `type="email"` for auto-filled values that may not be full addresses (avoids browser validation styling quirks).
 
-Reference: `#leadFacultyEmail` in Setup → Course Staff (`js/ui/setup.js` → `renderLeadFaculty`).
+Reference: `#leadFacultyEmail` in Setup → Course Staff (`src/ui/setup/facilities-faculty.js` → `renderLeadFaculty`).
 
 ## Section headers
 

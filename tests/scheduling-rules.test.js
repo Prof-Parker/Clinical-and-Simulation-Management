@@ -1,27 +1,31 @@
 /* eslint-disable no-console */
-'use strict';
+import { describe, it, expect } from 'vitest';
+import { readFileSync, existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import {
+  DataModel,
+  CalendarEngine,
+  Scheduler,
+  RosterBalance,
+  Validator,
+  Feasibility,
+  ScheduleStatus
+} from './_harness.js';
 
-var fs = require('fs');
-var path = require('path');
+describe('scheduling-rules.test.js', () => {
+  it('runs assertions', () => {
+    let failed = 0;
 
-var harness = require('./_harness');
-harness.loadCore();
-harness.load('js/schedule-status.js');
+    function assert(condition, message) {
+      if (!condition) {
+        failed++;
+        console.error('FAIL: ' + message);
+        return;
+      }
+    }
 
-var App = harness.App;
-var passed = 0;
-var failed = 0;
-
-function assert(condition, message) {
-  if (!condition) {
-    failed++;
-    console.error('FAIL: ' + message);
-    return;
-  }
-  passed++;
-}
-
-function makeGroupNames(prefix, count) {
+    function makeGroupNames(prefix, count) {
   var names = [];
   for (var i = 1; i <= count; i++) names.push(prefix + i);
   return names;
@@ -30,22 +34,22 @@ function makeGroupNames(prefix, count) {
 function makeStudents(total) {
   var students = [];
   for (var i = 0; i < total; i++) {
-    students.push(App.DataModel.createStudent('Student ' + (i + 1), 'C1', 'SG1', 'fac0', ''));
+    students.push(DataModel.createStudent('Student ' + (i + 1), 'C1', 'SG1', 'fac0', ''));
   }
   return students;
 }
 
 function makeConfig(numClinical, numSim) {
-  var cfg = App.DataModel.defaultConfig();
+  var cfg = DataModel.defaultConfig();
   cfg.maxStudents = 30;
   cfg.maxPerClinicalGroup = Math.ceil(30 / numClinical);
   cfg.clinicalGroups = makeGroupNames('C', numClinical);
   cfg.clinicalGroupDays = {};
   cfg.clinicalGroups.forEach(function (g, i) {
-    cfg.clinicalGroupDays[g] = App.DataModel.WEEKDAY_OPTIONS[i % 7];
+    cfg.clinicalGroupDays[g] = DataModel.WEEKDAY_OPTIONS[i % 7];
   });
   cfg.simGroups = makeGroupNames('SG', numSim);
-  return App.DataModel.normalizeConfig(cfg);
+  return DataModel.normalizeConfig(cfg);
 }
 
 function makeSemester(numClinical, numSim) {
@@ -65,23 +69,23 @@ function makeSemester(numClinical, numSim) {
     calendar: { semesterStartDate: '2026-01-12', weeks: [] },
     meta: {}
   };
-  App.RosterBalance.rebalance(students, config);
+  RosterBalance.rebalance(students, config);
   students.forEach(function (s) {
     var gi = config.clinicalGroups.indexOf(s.clinicalGroup);
     s.facilityId = facilities[gi % facilities.length].id;
   });
-  App.CalendarEngine.rebuildWeeks(sem);
-  App.Scheduler.regenerateAll(sem);
+  CalendarEngine.rebuildWeeks(sem);
+  Scheduler.regenerateAll(sem);
   return sem;
 }
 
 function assertSimWeekOrder(sem, label) {
-  var violations = App.Validator.validateSimChronologicalOrder(sem);
+  var violations = Validator.validateSimChronologicalOrder(sem);
   assert(violations.length === 0, label + ': sims in chronological week order (' + violations.length + ' violations)');
 }
 
 function assertValidation(sem, label) {
-  var v = App.Validator.validateAll(sem);
+  var v = Validator.validateAll(sem);
   if (!v.allValid) {
     var msgs = [];
     Object.keys(v.students).forEach(function (id) {
@@ -104,15 +108,14 @@ function assertValidation(sem, label) {
       studentCount: sem.students.length,
       suggestion: 'Review semester setup.'
     };
-    console.error('FAIL: ' + App.Feasibility.formatIssue(issue));
+    console.error('FAIL: ' + Feasibility.formatIssue(issue));
     failed++;
     return;
   }
-  passed++;
 }
 
-function assertNoDoubleBooking(sem, label) {
-  var violations = App.Validator.validateNoDoubleBooking(sem);
+    function assertNoDoubleBooking(sem, label) {
+  var violations = Validator.validateNoDoubleBooking(sem);
   assert(violations.length === 0, label + ': no double-booking (' + violations.length + ' violations)');
 }
 
@@ -132,10 +135,10 @@ function assertGuestSimSpread(sem, label) {
 }
 
 function assertNoEarlyWeek18(sem, label) {
-  var calendar = sem._simCalendar || App.Scheduler.buildProgramSimCalendar(sem, sem.config);
+  var calendar = sem._simCalendar || Scheduler.buildProgramSimCalendar(sem, sem.config);
   var simReq = sem.config.simDaysRequired || 5;
   for (var n = 1; n <= simReq; n++) {
-    if (App.Scheduler.blockHasRegularCapacity(sem, calendar, n, sem.config)) {
+    if (Scheduler.blockHasRegularCapacity(sem, calendar, n, sem.config)) {
       sem.students.forEach(function (s) {
         s.schedule.forEach(function (cell, wi) {
           if (wi === 17 && cell.sim === n) {
@@ -151,15 +154,15 @@ function assertNoEarlyWeek18(sem, label) {
 function assertPerDaySimCap(sem, label) {
   var normal = sem.config.maxStudentsPerSimSession || 8;
   var overload = sem.config.maxStudentsPerSimSessionOverload || 9;
-  var simDays = App.DataModel.getSimDays(sem.config);
+  var simDays = DataModel.getSimDays(sem.config);
   for (var w = 0; w < 18; w++) {
-    if (App.CalendarEngine.isWeekInactive(sem, w)) continue;
+    if (CalendarEngine.isWeekInactive(sem, w)) continue;
     simDays.forEach(function (day) {
-      var count = App.Scheduler.getDaySimAttendanceCount(sem, w, day);
+      var count = Scheduler.getDaySimAttendanceCount(sem, w, day);
       assert(count <= overload, label + ': week ' + (w + 1) + ' ' + day + ' sim count ' +
         count + ' exceeds overload cap ' + overload);
       if (count > normal) {
-        var students = App.Scheduler.getDaySimStudents(sem, w, day);
+        var students = Scheduler.getDaySimStudents(sem, w, day);
         var overloadCells = students.filter(function (x) { return x.cell.simOverload; }).length;
         assert(count - normal === overloadCells,
           label + ': week ' + (w + 1) + ' ' + day + ' overload count mismatch');
@@ -171,14 +174,14 @@ function assertPerDaySimCap(sem, label) {
 function assertSimLoadBalance(sem, label) {
   var normal = sem.config.maxStudentsPerSimSession || 8;
   var overload = sem.config.maxStudentsPerSimSessionOverload || 9;
-  var simDays = App.DataModel.getSimDays(sem.config);
-  var calendar = sem._simCalendar || App.Scheduler.buildProgramSimCalendar(sem, sem.config);
+  var simDays = DataModel.getSimDays(sem.config);
+  var calendar = sem._simCalendar || Scheduler.buildProgramSimCalendar(sem, sem.config);
   calendar.blocks.forEach(function (block) {
     block.weeks.forEach(function (wi) {
-      if (App.CalendarEngine.isWeekInactive(sem, wi)) return;
+      if (CalendarEngine.isWeekInactive(sem, wi)) return;
       if (simDays.length < 2) return;
       var counts = simDays.map(function (day) {
-        return App.Scheduler.getDaySimAttendanceCount(sem, wi, day);
+        return Scheduler.getDaySimAttendanceCount(sem, wi, day);
       });
       var maxC = Math.max.apply(null, counts);
       var minC = Math.min.apply(null, counts);
@@ -192,10 +195,10 @@ function assertSimLoadBalance(sem, label) {
 
 function assertOverlapRouting(sem, label) {
   var cfg = sem.config;
-  var simDays = App.DataModel.getSimDays(cfg);
+  var simDays = DataModel.getSimDays(cfg);
   sem.students.forEach(function (s) {
-    if (!App.Scheduler.clinicalSimWeekdaysOverlap(s, cfg)) return;
-    var clinDay = App.DataModel.getClinicalDayForGroup(s.clinicalGroup, cfg);
+    if (!Scheduler.clinicalSimWeekdaysOverlap(s, cfg)) return;
+    var clinDay = DataModel.getClinicalDayForGroup(s.clinicalGroup, cfg);
     s.schedule.forEach(function (cell, wi) {
       if (!cell.sim || cell.simDay === clinDay) return;
       if (cell.clinical && !cell.clinicalMissed) return;
@@ -216,11 +219,11 @@ function assertHeadroomSpare(sem, label) {
   var headroom = sem.config.simMakeupHeadroomReserved != null ? sem.config.simMakeupHeadroomReserved : 1;
   if (headroom <= 0) return;
   var genMax = Math.max(1, normal - headroom);
-  var simDays = App.DataModel.getSimDays(sem.config);
+  var simDays = DataModel.getSimDays(sem.config);
   var foundSpare = false;
   for (var w = 10; w <= 13 && !foundSpare; w++) {
     simDays.forEach(function (day) {
-      var count = App.Scheduler.getDaySimAttendanceCount(sem, w, day);
+      var count = Scheduler.getDaySimAttendanceCount(sem, w, day);
       if (count > 0 && count <= genMax) foundSpare = true;
     });
   }
@@ -229,7 +232,7 @@ function assertHeadroomSpare(sem, label) {
 
 function assertStudentSimParticipation(sem, label) {
   var simReq = sem.config.simDaysRequired || 5;
-  var violations = App.Validator.validateStudentSimParticipation(sem);
+  var violations = Validator.validateStudentSimParticipation(sem);
   assert(violations.length === 0, label + ': each student has sims 1..' + simReq + ' once (' +
     violations.length + ' violations)');
   sem.students.forEach(function (s) {
@@ -248,40 +251,40 @@ function assertDefaultConfigComplete(sem, label) {
   c2Students.forEach(function (s) {
     var simReq = sem.config.simDaysRequired || 5;
     for (var n = 1; n <= simReq; n++) {
-      assert(App.Scheduler.findSimWeek(s, n) >= 0,
+      assert(Scheduler.findSimWeek(s, n) >= 0,
         label + ': C2 student ' + s.name + ' missing Sim ' + n);
     }
   });
 }
 
 function assertProgramSimCalendar(sem, label) {
-  var calendar = sem._simCalendar || App.Scheduler.buildProgramSimCalendar(sem, sem.config);
+  var calendar = sem._simCalendar || Scheduler.buildProgramSimCalendar(sem, sem.config);
   var simReq = sem.config.simDaysRequired || 5;
   for (var n = 1; n <= Math.min(5, simReq); n++) {
     var block = calendar.blocks[n - 1];
     if (!block) continue;
     if (block.evenWeekIndex != null) {
-      assert(App.Scheduler.getWeekSimNumber(calendar, block.evenWeekIndex) === n,
+      assert(Scheduler.getWeekSimNumber(calendar, block.evenWeekIndex) === n,
         label + ': even week ' + (block.evenWeekIndex + 1) + ' is Sim ' + n);
     }
     if (block.oddWeekIndex != null) {
-      assert(App.Scheduler.getWeekSimNumber(calendar, block.oddWeekIndex) === n,
+      assert(Scheduler.getWeekSimNumber(calendar, block.oddWeekIndex) === n,
         label + ': odd week ' + (block.oddWeekIndex + 1) + ' is Sim ' + n);
     }
   }
-  if (simReq >= 5 && !App.CalendarEngine.isWeekInactive(sem, 4)) {
-    assert(App.Scheduler.getWeekSimNumber(calendar, 4) === 1, label + ': week 5 is Sim 1');
-    assert(App.Scheduler.getWeekSimNumber(calendar, 5) === 1, label + ': week 6 is Sim 1');
-    assert(App.Scheduler.getWeekSimNumber(calendar, 6) === 2, label + ': week 7 is Sim 2');
-    assert(App.Scheduler.getWeekSimNumber(calendar, 7) === 2, label + ': week 8 is Sim 2');
+  if (simReq >= 5 && !CalendarEngine.isWeekInactive(sem, 4)) {
+    assert(Scheduler.getWeekSimNumber(calendar, 4) === 1, label + ': week 5 is Sim 1');
+    assert(Scheduler.getWeekSimNumber(calendar, 5) === 1, label + ': week 6 is Sim 1');
+    assert(Scheduler.getWeekSimNumber(calendar, 6) === 2, label + ': week 7 is Sim 2');
+    assert(Scheduler.getWeekSimNumber(calendar, 7) === 2, label + ': week 8 is Sim 2');
   }
 }
 
 function assertEvenPatternSimWeeks(sem, label) {
-  var calendar = sem._simCalendar || App.Scheduler.buildProgramSimCalendar(sem, sem.config);
+  var calendar = sem._simCalendar || Scheduler.buildProgramSimCalendar(sem, sem.config);
   sem.students.forEach(function (s) {
     if (s.simGroup !== 'SG1' && s.simGroup !== 'SG2') return;
-    var placements = App.Scheduler.getSimPlacements(s);
+    var placements = Scheduler.getSimPlacements(s);
     placements.forEach(function (p) {
       var block = calendar.blocks[p.sim - 1];
       if (!block) return;
@@ -292,7 +295,7 @@ function assertEvenPatternSimWeeks(sem, label) {
 }
 
 function makeDefaultSemester() {
-  var config = App.DataModel.defaultConfig();
+  var config = DataModel.defaultConfig();
   var facilities = [];
   for (var i = 0; i < 5; i++) {
     facilities.push({ id: 'fac' + i, name: 'Facility ' + (i + 1) });
@@ -308,13 +311,13 @@ function makeDefaultSemester() {
     calendar: { semesterStartDate: '2026-01-12', weeks: [] },
     meta: {}
   };
-  App.RosterBalance.rebalance(students, config);
+  RosterBalance.rebalance(students, config);
   students.forEach(function (s) {
     var gi = config.clinicalGroups.indexOf(s.clinicalGroup);
     s.facilityId = facilities[gi % facilities.length].id;
   });
-  App.CalendarEngine.rebuildWeeks(sem);
-  App.Scheduler.regenerateAll(sem);
+  CalendarEngine.rebuildWeeks(sem);
+  Scheduler.regenerateAll(sem);
   return sem;
 }
 
@@ -344,16 +347,16 @@ assertSimLoadBalance(defaultSem, 'default 5 clinical / 4 sim');
 assertOverlapRouting(defaultSem, 'default 5 clinical / 4 sim');
 assertHeadroomSpare(defaultSem, 'default 5 clinical / 4 sim');
 
-var noHeadroomCfg = App.DataModel.defaultConfig();
+var noHeadroomCfg = DataModel.defaultConfig();
 noHeadroomCfg.simMakeupHeadroomReserved = 0;
 var noHeadroomSem = makeSemester(5, 4);
-noHeadroomSem.config = App.DataModel.normalizeConfig(noHeadroomCfg);
-App.Scheduler.regenerateAll(noHeadroomSem);
+noHeadroomSem.config = DataModel.normalizeConfig(noHeadroomCfg);
+Scheduler.regenerateAll(noHeadroomSem);
 assertStudentSimParticipation(noHeadroomSem, 'headroom 0 / 5 clinical / 4 sim');
 
 function assertClinicalSimAlignment(sem, label) {
-  var clin = App.DataModel.getClinicalGroups(sem.config);
-  var sim = App.DataModel.getSimGroups(sem.config);
+  var clin = DataModel.getClinicalGroups(sem.config);
+  var sim = DataModel.getSimGroups(sem.config);
   if (clin.length !== sim.length) return;
   sem.students.forEach(function (s) {
     var ci = clin.indexOf(s.clinicalGroup);
@@ -368,10 +371,10 @@ function assertSimGroupConfigRespected(label) {
   sem.config.simGroupPattern.SG1 = 'even';
   sem.config.simGroupDays.SG2 = 'Mon';
   sem.config.simGroupPattern.SG2 = 'odd';
-  App.DataModel.normalizeConfig(sem.config);
-  assert(App.DataModel.getSimGroupDay('SG1', sem.config) === 'Tue', label + ': SG1 day');
-  assert(App.DataModel.getSimGroupPattern('SG2', sem.config) === 'odd', label + ': SG2 pattern');
-  assert(App.Scheduler.getSimWeekPatterns(sem.config).evenWeeks.length > 0, label + ': even weeks');
+  DataModel.normalizeConfig(sem.config);
+  assert(DataModel.getSimGroupDay('SG1', sem.config) === 'Tue', label + ': SG1 day');
+  assert(DataModel.getSimGroupPattern('SG2', sem.config) === 'odd', label + ': SG2 pattern');
+  assert(Scheduler.getSimWeekPatterns(sem.config).evenWeeks.length > 0, label + ': even weeks');
 }
 
 function assertDistinctSimGroupDaysSchedule(label) {
@@ -380,8 +383,8 @@ function assertDistinctSimGroupDaysSchedule(label) {
   sem.config.simGroupPattern.SG1 = 'even';
   sem.config.simGroupDays.SG2 = 'Tue';
   sem.config.simGroupPattern.SG2 = 'odd';
-  App.DataModel.normalizeConfig(sem.config);
-  App.Scheduler.regenerateAll(sem);
+  DataModel.normalizeConfig(sem.config);
+  Scheduler.regenerateAll(sem);
   var sg1 = sem.students.find(function (s) { return s.simGroup === 'SG1'; });
   var sg2 = sem.students.find(function (s) { return s.simGroup === 'SG2'; });
   assert(sg1 && sg1.schedule.some(function (c) { return c.sim && c.simDay === 'Mon'; }), label + ': SG1 Mon');
@@ -391,8 +394,8 @@ function assertDistinctSimGroupDaysSchedule(label) {
 function assertMakeupWeeksDerived(label) {
   var sem = makeSemester(4, 4);
   sem.holidays = [{ id: 'b', type: 'break', weekIndex: 16, date: '', label: 'Break' }];
-  App.CalendarEngine.rebuildWeeks(sem);
-  var mk = App.CalendarEngine.resolveMakeupWeeks(sem);
+  CalendarEngine.rebuildWeeks(sem);
+  var mk = CalendarEngine.resolveMakeupWeeks(sem);
   assert(mk.clinicalFallback === 17, label + ': clinical fallback week 18');
   assert(mk.clinicalPrimary === 15, label + ': clinical primary week 16');
 }
@@ -401,7 +404,7 @@ function assertMismatchPreservesSimGroup(label) {
   var sem = makeSemester(4, 5);
   var student = sem.students[0];
   student.simGroup = 'SG5';
-  App.Scheduler.regenerateAll(sem);
+  Scheduler.regenerateAll(sem);
   assert(student.simGroup === 'SG5', label + ': manual simGroup preserved when counts differ');
 }
 
@@ -412,15 +415,15 @@ assertMakeupWeeksDerived('makeup weeks with week 17 break');
 assertMismatchPreservesSimGroup('5 sim / 4 clinical');
 
 function loadS2026SemesterConfig() {
-  var file = path.join(__dirname, '..', 'mock-onedrive', 'semesters', 'S2026_REGN15P.json');
-  var raw = JSON.parse(fs.readFileSync(file, 'utf8'));
-  return App.DataModel.normalizeConfig(JSON.parse(JSON.stringify(raw.semesters[0].config)));
+  var file = join(dirname(fileURLToPath(import.meta.url)), '..', 'mock-onedrive', 'semesters', 'S2026_REGN15P.json');
+  var raw = JSON.parse(readFileSync(file, 'utf8'));
+  return DataModel.normalizeConfig(JSON.parse(JSON.stringify(raw.semesters[0].config)));
 }
 
 function makeS2026Semester() {
   var config = loadS2026SemesterConfig();
-  var file = path.join(__dirname, '..', 'mock-onedrive', 'semesters', 'S2026_REGN15P.json');
-  var raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+  var file = join(dirname(fileURLToPath(import.meta.url)), '..', 'mock-onedrive', 'semesters', 'S2026_REGN15P.json');
+  var raw = JSON.parse(readFileSync(file, 'utf8'));
   var src = raw.semesters[0];
   var facilities = (src.facilities && src.facilities.length)
     ? JSON.parse(JSON.stringify(src.facilities))
@@ -438,20 +441,20 @@ function makeS2026Semester() {
       : { semesterStartDate: '2026-01-19', weeks: [] },
     meta: {}
   };
-  App.RosterBalance.rebalance(students, config);
+  RosterBalance.rebalance(students, config);
   students.forEach(function (s) {
     var gi = config.clinicalGroups.indexOf(s.clinicalGroup);
     s.facilityId = facilities[gi >= 0 ? gi % facilities.length : 0].id;
   });
-  App.CalendarEngine.rebuildWeeks(sem);
-  App.Scheduler.regenerateAll(sem);
+  CalendarEngine.rebuildWeeks(sem);
+  Scheduler.regenerateAll(sem);
   return sem;
 }
 
 function assertSimGroupDayConsistency(sem, label) {
   var cfg = sem.config;
   sem.students.forEach(function (s) {
-    var expected = App.DataModel.getSimGroupDay(s.simGroup, cfg);
+    var expected = DataModel.getSimGroupDay(s.simGroup, cfg);
     s.schedule.forEach(function (cell, wi) {
       if (!cell || !cell.sim || cell.simGuestGroup || cell.simOverload) return;
       assert(cell.simDay === expected,
@@ -462,8 +465,8 @@ function assertSimGroupDayConsistency(sem, label) {
 }
 
 function assertNoNonPrimarySimPlacements(sem, label) {
-  var calendar = sem._simCalendar || App.Scheduler.buildProgramSimCalendar(sem, sem.config);
-  var adj = App.ScheduleStatus.scanAdjustments(sem, calendar, App.DataModel.getSimGroups(sem.config));
+  var calendar = sem._simCalendar || Scheduler.buildProgramSimCalendar(sem, sem.config);
+  var adj = ScheduleStatus.scanAdjustments(sem, calendar, DataModel.getSimGroups(sem.config));
   assert(adj.nonPrimarySimCount === 0,
     label + ': non-primary sim placements (' + adj.nonPrimarySimCount + ' students)');
 }
@@ -488,9 +491,9 @@ function assertSimDayOverflowCohort(label) {
     s.simGroup = 'SG1';
     s.facilityId = sem.facilities[0].id;
   });
-  App.DataModel.normalizeConfig(sem.config);
-  App.CalendarEngine.rebuildWeeks(sem);
-  App.Scheduler.regenerateAll(sem);
+  DataModel.normalizeConfig(sem.config);
+  CalendarEngine.rebuildWeeks(sem);
+  Scheduler.regenerateAll(sem);
   var configured = 0;
   var overflow = 0;
   sem.students.forEach(function (s) {
@@ -504,8 +507,12 @@ function assertSimDayOverflowCohort(label) {
   assert(overflow === 2, label + ': two overflow students on alternate Mon');
 }
 
-assertS2026PrimarySimSchedule('S2026 REGN15P aligned sim days');
-assertSimDayOverflowCohort('sim group day overflow cohort');
+    var s2026Fixture = join(dirname(fileURLToPath(import.meta.url)), '..', 'mock-onedrive', 'semesters', 'S2026_REGN15P.json');
+    if (existsSync(s2026Fixture)) {
+      assertS2026PrimarySimSchedule('S2026 REGN15P aligned sim days');
+    }
+    assertSimDayOverflowCohort('sim group day overflow cohort');
 
-console.log('\nScheduling rules tests: ' + passed + ' passed, ' + failed + ' failed');
-if (failed > 0) process.exit(1);
+    expect(failed).toBe(0);
+  });
+});

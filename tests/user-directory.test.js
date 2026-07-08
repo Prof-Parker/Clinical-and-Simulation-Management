@@ -1,54 +1,52 @@
-'use strict';
+import { describe, it, expect, vi } from 'vitest';
+import { state } from '../src/core/state.js';
+import { UserData, UserDirectory } from './_harness.js';
 
-var harness = require('./_harness');
-harness.load('js/user-data.js');
-harness.load('js/user-directory.js');
-
-var App = harness.App;
-var passed = 0;
-var failed = 0;
-
-function assert(cond, msg) {
-  if (cond) { passed++; return; }
-  failed++;
-  console.error('FAIL: ' + msg);
-}
-
-App.UsersRegistryStorage = {
+vi.mock('../src/storage/users-registry-storage.js', () => ({
   isReady: function () { return true; },
-  getRegistry: function () { return App.state.usersRegistry; }
-};
-App.state = { usersRegistry: null };
+  getRegistry: function () { return state.usersRegistry; }
+}));
 
-App.state.usersRegistry = App.UserData.createEmptyRegistry();
-App.state.usersRegistry.users.usr_lead1 = App.UserData.createRegistryEntry(
-  'lead_course_faculty', 'hash1', 'admin', { firstName: 'Lead', lastName: 'One', email: 'lead1@example.edu' }
-);
-App.state.usersRegistry.users.usr_lead2 = App.UserData.createRegistryEntry(
-  'lead_course_faculty', 'hash2', 'admin', { firstName: 'Lead', lastName: 'Two', email: 'lead2@example.edu' }
-);
-App.state.usersRegistry.users.usr_adj1 = App.UserData.createRegistryEntry(
-  'adjunct_faculty', 'hash3', 'admin', { firstName: 'Adjunct', lastName: 'Alpha', email: 'adj1@example.edu' }
-);
-App.state.usersRegistry.users.usr_revoked = App.UserData.createRegistryEntry(
-  'adjunct_faculty', 'hash4', 'admin', { firstName: 'Revoked', lastName: 'User', email: 'rev@example.edu' }
-);
-App.state.usersRegistry.users.usr_revoked.status = 'revoked';
+describe('user-directory.test.js', () => {
+  it('runs assertions', () => {
+    let failed = 0;
 
-var leads = App.UserDirectory.getLeadCourseFaculty();
-assert(leads.length === 2, 'lists active lead course faculty only');
-assert(leads[0].displayName === 'Lead One', 'lead faculty sorted by name');
-assert(leads[0].email === 'lead1@example.edu', 'lead faculty includes email');
+    function assert(cond, msg) {
+      if (cond) return;
+      failed++;
+      console.error('FAIL: ' + msg);
+    }
 
-var adjuncts = App.UserDirectory.getAdjunctFaculty();
-assert(adjuncts.length === 1, 'lists active adjunct faculty only');
-assert(adjuncts[0].displayName === 'Adjunct Alpha', 'adjunct display name');
+    state.usersRegistry = UserData.createEmptyRegistry();
+    state.usersRegistry.users.usr_lead1 = UserData.createRegistryEntry(
+      'lead_course_faculty', 'hash1', 'admin', { firstName: 'Lead', lastName: 'One', email: 'lead1@example.edu' }
+    );
+    state.usersRegistry.users.usr_lead2 = UserData.createRegistryEntry(
+      'lead_course_faculty', 'hash2', 'admin', { firstName: 'Lead', lastName: 'Two', email: 'lead2@example.edu' }
+    );
+    state.usersRegistry.users.usr_adj1 = UserData.createRegistryEntry(
+      'adjunct_faculty', 'hash3', 'admin', { firstName: 'Adjunct', lastName: 'Alpha', email: 'adj1@example.edu' }
+    );
+    state.usersRegistry.users.usr_revoked = UserData.createRegistryEntry(
+      'adjunct_faculty', 'hash4', 'admin', { firstName: 'Revoked', lastName: 'User', email: 'rev@example.edu' }
+    );
+    state.usersRegistry.users.usr_revoked.status = 'revoked';
 
-var found = App.UserDirectory.findByDisplayName('adjunct_faculty', 'Adjunct Alpha');
-assert(found && found.email === 'adj1@example.edu', 'findByDisplayName matches adjunct');
+    var leads = UserDirectory.getLeadCourseFaculty();
+    assert(leads.length === 2, 'lists active lead course faculty only');
+    assert(leads[0].displayName === 'Lead One', 'lead faculty sorted by name');
+    assert(leads[0].email === 'lead1@example.edu', 'lead faculty includes email');
 
-assert(App.UserDirectory.getActiveUsersByRole('lead_course_faculty', { limit: 1 }).length === 1,
-  'role list respects limit');
+    var adjuncts = UserDirectory.getAdjunctFaculty();
+    assert(adjuncts.length === 1, 'lists active adjunct faculty only');
+    assert(adjuncts[0].displayName === 'Adjunct Alpha', 'adjunct display name');
 
-console.log('\nUser directory tests: ' + passed + ' passed, ' + failed + ' failed');
-process.exit(failed ? 1 : 0);
+    var found = UserDirectory.findByDisplayName('adjunct_faculty', 'Adjunct Alpha');
+    assert(found && found.email === 'adj1@example.edu', 'findByDisplayName matches adjunct');
+
+    assert(UserDirectory.getActiveUsersByRole('lead_course_faculty', { limit: 1 }).length === 1,
+      'role list respects limit');
+
+    expect(failed).toBe(0);
+  });
+});

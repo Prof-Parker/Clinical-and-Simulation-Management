@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-'use strict';
 
 /**
  * Seeds mock-onedrive/ with placeholder-only test fixtures.
@@ -7,11 +6,13 @@
  * Folder is gitignored — never commit output.
  */
 
-var fs = require('fs');
-var path = require('path');
-var crypto = require('crypto');
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import { fileURLToPath } from 'url';
 
-var ROOT = path.join(__dirname, '..', 'mock-onedrive');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.join(__dirname, '..', 'mock-onedrive');
 
 function hashKey(key) {
   return 'sha256:' + crypto.createHash('sha256').update(String(key)).digest('hex');
@@ -74,13 +75,10 @@ function main() {
     ]
   });
 
-  // Minimal semester file via inline default shape (no browser App)
   var semId = uid('sem');
-  var studentIds = [];
   var students = [];
   for (var i = 1; i <= 30; i++) {
     var sid = uid('stu');
-    studentIds.push(sid);
     students.push({
       id: sid,
       name: 'Student ' + i,
@@ -89,8 +87,18 @@ function main() {
       facilityId: null,
       section: 'F6011',
       schedule: Array.from({ length: 18 }, function () {
-        return { clinical: false, clinicalMissed: false, sim: null, simDay: null, simGuestGroup: null,
-          simOverload: false, simMakeup: false, makeupClinical: false, inactive: false, facilityId: null };
+        return {
+          clinical: false,
+          clinicalMissed: false,
+          sim: null,
+          simDay: null,
+          simGuestGroup: null,
+          simOverload: false,
+          simMakeup: false,
+          makeupClinical: false,
+          inactive: false,
+          facilityId: null
+        };
       }),
       absences: [],
       makeups: []
@@ -151,10 +159,20 @@ function main() {
   });
 
   writeJson(path.join('playgrounds', 'user_F2026_REGN15P_playground.json'), {
-    meta: { fileVersion: 2, activeSemesterId: semId, playgroundSource: { courseId: 'REGN15P' }, lastModified: new Date().toISOString() },
+    meta: {
+      fileVersion: 2,
+      activeSemesterId: semId,
+      playgroundSource: { courseId: 'REGN15P' },
+      lastModified: new Date().toISOString()
+    },
     semesters: [{
       id: semId,
-      meta: { courseId: 'REGN15P', semesterSeason: 'fall', semesterYear: 2026, semesterName: 'Fall 2026 (playground)' },
+      meta: {
+        courseId: 'REGN15P',
+        semesterSeason: 'fall',
+        semesterYear: 2026,
+        semesterName: 'Fall 2026 (playground)'
+      },
       config: { clinicalDaysRequired: 12, simDaysRequired: 5 },
       proposals: []
     }]

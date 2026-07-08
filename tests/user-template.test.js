@@ -1,27 +1,27 @@
-'use strict';
+import { describe, it, expect } from 'vitest';
+import { UserTemplate } from './_harness.js';
 
-var harness = require('./_harness');
-harness.load('js/user-template.js');
+describe('user-template.test.js', () => {
+  it('runs assertions', () => {
+    let failed = 0;
 
-var passed = 0;
-var failed = 0;
+    function assert(cond, msg) {
+      if (cond) return;
+      failed++;
+      console.error('FAIL: ' + msg);
+    }
 
-function assert(cond, msg) {
-  if (cond) { passed++; return; }
-  failed++;
-  console.error('FAIL: ' + msg);
-}
+    assert(UserTemplate.canTab('lead_course_faculty', 'makeup'),
+      'lead course faculty can access makeup tab');
+    assert(UserTemplate.canAction('lead_course_faculty', 'makeup.edit'),
+      'lead course faculty can apply makeup');
+    assert(!UserTemplate.canTab('adjunct_faculty', 'makeup'),
+      'adjunct faculty cannot access makeup tab');
+    assert(!UserTemplate.canTab('admin_staff', 'makeup'),
+      'admin staff cannot access makeup tab');
+    assert(UserTemplate.canAction('program_engineer', 'makeup.edit'),
+      'program engineer can apply makeup via wildcard');
 
-assert(App.UserTemplate.canTab('lead_course_faculty', 'makeup'),
-  'lead course faculty can access makeup tab');
-assert(App.UserTemplate.canAction('lead_course_faculty', 'makeup.edit'),
-  'lead course faculty can apply makeup');
-assert(!App.UserTemplate.canTab('adjunct_faculty', 'makeup'),
-  'adjunct faculty cannot access makeup tab');
-assert(!App.UserTemplate.canTab('admin_staff', 'makeup'),
-  'admin staff cannot access makeup tab');
-assert(App.UserTemplate.canAction('program_engineer', 'makeup.edit'),
-  'program engineer can apply makeup via wildcard');
-
-console.log('user-template: ' + passed + ' passed, ' + failed + ' failed');
-process.exit(failed ? 1 : 0);
+    expect(failed).toBe(0);
+  });
+});

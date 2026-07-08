@@ -17,49 +17,36 @@ A **browser-only PWA** (no Microsoft API calls) that:
 
 ---
 
-## 2. Architecture (vanilla JS, no build step)
+## 2. Architecture (Vite + ES modules)
 
 ```
-index.html
-├── css/app.css              UI + print styles
-├── js/
-│   ├── state.js             App.state, semester switching, dirty flags
-│   ├── course-defaults.js   Per-course default config templates (App.CourseDefaults)
-│   ├── clinical-sites-library.js  Program-wide site library: shortName + content tags (App.SiteLibrary)
-│   ├── data-model.js        Schema, defaults, migration, student/semester shapes
-│   ├── calendar-engine.js   18-week calendar, holidays, inactive weeks
-│   ├── scheduler.js         Clinical + sim generation, makeup slots (core logic)
-│   ├── roster-balance.js    Clinical cohort → sim group assignment heuristics
-│   ├── validator.js         Post-generation validation + dashboard status
-│   ├── feasibility.js       Pre-generation “can this config work?” warnings
-│   ├── makeup-display.js    Tier CSS/classes for makeup UI
-│   ├── audit.js             Audit lifecycle phases + edit gating (App.Audit)
-│   ├── audit-snapshot.js    Canonical semester payload + SHA-256 snapshot hash
-│   ├── audit-export.js      Audit PDF export via hidden print DOM (css/audit-print.css)
-│   ├── user-template.js     Role capability matrix (App.UserTemplate)
-│   ├── user-data.js         User/registry schemas + key hash validation
-│   ├── user-storage.js      user.json persistence
-│   ├── users-registry-storage.js  users-registry.json persistence
-│   ├── user-session.js      Validated session + boot gate
-│   ├── permissions.js       Tab/menu/action gating (App.Permissions)
-│   ├── proposals.js         Setup proposal workflow
-│   ├── playground-storage.js  Playground file helpers
-│   ├── clinical-sites-library-storage.js  Standalone clinical-sites-library.json
-│   ├── storage.js           Semester JSON: IDB cache + File System Access API
-│   ├── sim-faculty-data.js  Sim roles schema (separate from semester file)
-│   ├── sim-faculty-storage.js  Sim faculty JSON persistence
-│   ├── main.js              Boot, menu, tab routing, closeout banner
-│   └── ui/                    Dashboard, setup, roles, makeup, audit closeout, student view, etc.
-└── tests/                   Node vm harness (no browser)
+index.html → src/main.js
+├── css/                         UI + print styles (imported by main.js)
+├── src/
+│   ├── core/state.js            Reactive state, getData/setData, notifyChange
+│   ├── core/data-model/         Schema, defaults, migration, student/semester shapes
+│   ├── core/scheduler/          Clinical + sim generation, makeup slots
+│   ├── core/calendar-engine.js  18-week calendar, holidays, inactive weeks
+│   ├── core/course-defaults.js  Per-course default config templates
+│   ├── core/clinical-sites-library.js  Program-wide site catalog
+│   ├── storage/semester-storage.js     Semester JSON: IDB + File System Access
+│   ├── auth/permissions.js      Tab/menu/action gating
+│   ├── ui/chrome.js             Tab router, menus, semester switch
+│   ├── ui/dialogs.js            Modal alert/confirm/custom dialogs
+│   └── ui/                      Dashboard, setup, roles, makeup, audit, etc.
+├── public/                      Icons + PWA manifest (copied to dist/)
+└── tests/                       Vitest (imports from src/)
 ```
 
-**Runtime model:** `App.state.fileRoot` holds all semesters; `App.state.data` is the active semester. UI modules call `App.notifyChange()` (semester file) or `App.notifySimFacultyChange()` (faculty file).
+Each `src/**/*.js` module is capped at **500 lines** and starts with a brief header comment describing its purpose.
 
-**Boot order:** `App.UserSession.init()` (user.json + users-registry.json validation) → `App.Storage.init()` → `App.ClinicalSitesLibraryStorage.init()` → `App.SimFacultyStorage.init()` → `App.UI.init()`. Until the user session validates, `#userGateModal` blocks the app shell.
+**Runtime model:** `state.fileRoot` holds all semesters; `getData()` returns the active semester. UI modules call `notifyChange()` (semester file) or `notifySimFacultyChange()` (faculty file).
 
-**Local testing:** `node scripts/seed-mock-onedrive.js` creates gitignored `mock-onedrive/` fixtures. See [docs/MOCK_ONEDRIVE.md](docs/MOCK_ONEDRIVE.md).
+**Boot order:** `UserSession.init()` → `semester-storage.init()` → `clinical-sites-library-storage.init()` → `sim-faculty-storage.init()` → `initUI()`. Until the user session validates, `#userGateModal` blocks the app shell.
 
-**Role gating:** `App.Permissions.canTab()` / `canAction()` combined with `App.Audit.canEdit()` via `App.UI.guardEditable()`. Spec: [docs/Design Docs/User_roles_design.md](docs/Design%20Docs/User_roles_design.md).
+**Local testing:** `npm test` runs Vitest. `node scripts/seed-mock-onedrive.js` creates gitignored `mock-onedrive/` fixtures. See [docs/MOCK_ONEDRIVE.md](docs/MOCK_ONEDRIVE.md).
+
+**Role gating:** `Permissions.canTab()` / `canAction()` combined with `Audit.canEdit()` via `Permissions.guardEditable()`. Spec: [docs/Design Docs/User_roles_design.md](docs/Design%20Docs/User_roles_design.md).
 
 ---
 

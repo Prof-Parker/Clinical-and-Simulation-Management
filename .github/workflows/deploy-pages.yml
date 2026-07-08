@@ -21,22 +21,29 @@ jobs:
         with:
           persist-credentials: true
 
-      - name: Build site folder
-        run: |
-          mkdir -p _site
-          rsync -a \
-            --exclude .git \
-            --exclude .github \
-            --exclude .cursor \
-            --exclude .githooks \
-            --exclude _site \
-            ./ _site/
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Line limit check
+        run: npm run check:line-limit
+
+      - name: Build
+        run: npm run build
 
       - name: Deploy to gh-pages branch
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          folder: _site
+          folder: dist
           branch: gh-pages
           clean: true
           single-commit: true

@@ -24,7 +24,18 @@ On first launch, use **Open semester file…** (menu) and choose your `.json` fr
 
 ### Local development
 
-Open [`index.html`](index.html) in a browser. Service worker registration requires `localhost` or HTTPS.
+```powershell
+npm install
+npm run dev
+```
+
+Open http://localhost:5173 (Vite dev server). Service worker registration requires `localhost` or HTTPS.
+
+```powershell
+npm test              # Vitest unit tests
+npm run build         # Production bundle → dist/
+npm run check:line-limit  # Enforce 500-line cap per src module
+```
 
 ## Data policy (FERPA)
 
@@ -91,19 +102,26 @@ Before every commit or push:
 ## Project layout
 
 ```
-index.html              Entry point
-manifest.webmanifest    PWA manifest
-sw.js                   Service worker (offline app shell)
-icons/                  App icons
-vendor/chart.umd.min.js Chart.js (bundled for offline use)
-vendor/xlsx.full.min.js  SheetJS (Excel export)
+index.html              Vite entry (loads src/main.js)
+package.json            npm scripts and dependencies (Chart.js, SheetJS)
+vite.config.js          Vite + PWA plugin
+src/
+  main.js               Boot, menu, tab routing
+  core/                 State, data model, scheduler engine
+  storage/              JSON file persistence (semester, users, faculty)
+  auth/                 Roles, sessions, permissions
+  ui/                   Tab modules (dashboard, setup, audit, etc.)
+public/
+  icons/                App icons
+  manifest.webmanifest  PWA manifest
 css/                    Styles (app + print)
-js/                     Application logic and UI modules
+tests/                  Vitest unit tests
+dist/                   Build output (deployed to GitHub Pages)
 ```
 
 ## GitHub Pages deployment
 
-Pushes to `main` deploy automatically via [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml). The workflow publishes the app to the **`gh-pages`** branch.
+Pushes to `main` run tests, line-limit check, and Vite build, then deploy `dist/` via [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml). The workflow publishes the app to the **`gh-pages`** branch.
 
 ### First-time setup (required once)
 
