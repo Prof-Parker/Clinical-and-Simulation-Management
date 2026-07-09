@@ -81,6 +81,10 @@ function currentRole() {
       var tab = id === 'menuUsersLibraryBtn' ? 'users' : 'clinical-sites';
       el.classList.toggle('hidden', !canTab(tab));
     });
+    var pgBtn = document.getElementById('menuPlaygroundBtn');
+    if (pgBtn) {
+      pgBtn.classList.toggle('hidden', !canTab('playground-dashboard'));
+    }
     var logoutBtn = document.getElementById('logoutUserMenuBtn');
     if (logoutBtn) {
       logoutBtn.classList.toggle('hidden', !(UserSession && UserSession.isValidated()));

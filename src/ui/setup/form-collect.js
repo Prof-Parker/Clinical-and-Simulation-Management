@@ -9,12 +9,13 @@ import { collectSemesterMeta } from './semester-fields.js';
 import { applyGroupFacilitiesFromConfig } from './facilities-faculty.js';
 import * as SetupConfig from '../setup-config/index.js';
 import { markSetupDraft } from './index.js';
+import { getSetupScope, setupEl, setupQueryAll } from './scope.js';
 
 export function collectFromFormInto(data, opts) {
   opts = opts || {};
   var sectionRenames = {};
 
-  document.querySelectorAll('#setupSections [data-sec="name"]').forEach(function (el) {
+  setupQueryAll('setupSections', '[data-sec="name"]').forEach(function (el) {
     var sec = data.sections.find(function (s) { return s.id === el.dataset.secId; });
     if (!sec) return;
     var oldName = sec.name;
@@ -22,7 +23,7 @@ export function collectFromFormInto(data, opts) {
     if (oldName !== sec.name) sectionRenames[oldName] = sec.name;
   });
 
-  document.querySelectorAll('#setupRoster [data-id]').forEach(function (el) {
+  setupQueryAll('setupRoster', '[data-id]').forEach(function (el) {
     var s = data.students.find(function (st) { return st.id === el.dataset.id; });
     if (!s) return;
     if (el.dataset.field === 'facilityId') return;
@@ -38,7 +39,7 @@ export function collectFromFormInto(data, opts) {
     });
   });
 
-  document.querySelectorAll('#setupFacilities [data-fac="site"]').forEach(function (el) {
+  setupQueryAll('setupFacilities', '[data-fac="site"]').forEach(function (el) {
     var f = data.facilities.find(function (fac) { return fac.id === el.dataset.facId; });
     if (!f) return;
     var site = el.value ? SiteLibrary.getById(el.value) : null;
@@ -49,14 +50,14 @@ export function collectFromFormInto(data, opts) {
       f.contentTags = site.contentTags.slice();
     }
   });
-  document.querySelectorAll('#setupFaculty [data-faculty]').forEach(function (el) {
+  setupQueryAll('setupFaculty', '[data-faculty]').forEach(function (el) {
     var f = data.faculty[parseInt(el.dataset.idx, 10)];
     if (f) f.name = el.value;
   });
   if (!data.meta.leadFaculty) data.meta.leadFaculty = { name: '', email: '' };
-  var leadSel = document.getElementById('leadFacultySelect');
-  var leadNameEl = document.getElementById('leadFacultyName');
-  var leadEmailEl = document.getElementById('leadFacultyEmail');
+  var leadSel = setupEl('leadFacultySelect');
+  var leadNameEl = setupEl('leadFacultyName');
+  var leadEmailEl = setupEl('leadFacultyEmail');
   if (leadSel && !leadSel.classList.contains('hidden')) {
     data.meta.leadFaculty.name = leadSel.value.trim();
     var opt = leadSel.selectedOptions && leadSel.selectedOptions[0];
@@ -67,9 +68,9 @@ export function collectFromFormInto(data, opts) {
     data.meta.leadFaculty.name = leadNameEl.value.trim();
     if (leadEmailEl) data.meta.leadFaculty.email = leadEmailEl.value.trim();
   }
-  collectHolidaysFromDom(data, 'setupHolidays');
+  collectHolidaysFromDom(data, getSetupScope().prefix + 'setupHolidays');
   if (!data.orientations) data.orientations = [];
-  document.querySelectorAll('#setupOrientations [data-orient]').forEach(function (el) {
+  setupQueryAll('setupOrientations', '[data-orient]').forEach(function (el) {
     var o = data.orientations[parseInt(el.dataset.idx, 10)];
     if (!o) return;
     if (el.dataset.orient === 'date') o.date = el.value;
@@ -82,7 +83,8 @@ export function collectFromFormInto(data, opts) {
     }
   });
   collectSemesterMeta(data, opts, markSetupDraft);
-  data.calendar.semesterStartDate = document.getElementById('semesterStartDate').value;
+  var startEl = setupEl('semesterStartDate');
+  if (startEl) data.calendar.semesterStartDate = startEl.value;
   DataModel.normalizeFacilities(data);
   CalendarEngine.rebuildWeeks(data);
 

@@ -27,6 +27,7 @@ export const state = {
   theoryLibraryFileHandle: null,
   fileLoadedRevision: null,
   currentTab: 'dashboard',
+  appShell: null,
   listeners: []
 };
 

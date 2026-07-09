@@ -5,9 +5,10 @@ import { startDateForSeason, buildSemesterName } from '../../core/data-model/ind
 import { init as initDateInputs } from '../date-inputs.js';
 import * as ScheduleStatus from '../../core/schedule-status.js';
 import { escHtml } from './dom-utils.js';
+import { resolveScopeData, getSetupScope, scopeRootEl, setupEl } from './scope.js';
 
 export function populateYearSelect(selectedYear) {
-  var yearSelect = document.getElementById('semesterYearSelect');
+  var yearSelect = setupEl('semesterYearSelect');
   if (!yearSelect) return;
   var curYear = new Date().getFullYear();
   if (!yearSelect.options.length) {
@@ -22,39 +23,39 @@ export function populateYearSelect(selectedYear) {
 }
 
 export function updateFinalizeButtonState(data) {
-  var finalizeBtn = document.getElementById('finalizeSemesterBtn');
+  var finalizeBtn = setupEl('finalizeSemesterBtn');
   if (!finalizeBtn) return;
   finalizeBtn.disabled = !!(data && data.meta && data.meta.finalized);
   finalizeBtn.title = finalizeBtn.disabled ? 'This semester has been finalized' : '';
 }
 
 export function updateStartDateFromSeasonYear() {
-  var season = document.getElementById('semesterSeasonSelect').value;
-  var year = parseInt(document.getElementById('semesterYearSelect').value, 10);
-  document.getElementById('semesterStartDate').value = startDateForSeason(season, year);
-  var data = getData();
+  var season = setupEl('semesterSeasonSelect').value;
+  var year = parseInt(setupEl('semesterYearSelect').value, 10);
+  setupEl('semesterStartDate').value = startDateForSeason(season, year);
+  var data = resolveScopeData();
   if (data) {
-    initDateInputs(document.getElementById('view-setup'), data);
+    initDateInputs(scopeRootEl(getSetupScope()), data);
   }
 }
 
 export function renderSemesterFields(data) {
   var season = data.meta.semesterSeason || 'spring';
   var year = data.meta.semesterYear || new Date().getFullYear();
-  document.getElementById('semesterSeasonSelect').value = season;
+  setupEl('semesterSeasonSelect').value = season;
   populateYearSelect(year);
-  document.getElementById('semesterStartDate').value =
+  setupEl('semesterStartDate').value =
     data.calendar.semesterStartDate || startDateForSeason(season, year);
 
-  var finalizeBtn = document.getElementById('finalizeSemesterBtn');
+  var finalizeBtn = setupEl('finalizeSemesterBtn');
   if (finalizeBtn) {
     updateFinalizeButtonState(data);
   }
 }
 
 export function renderScheduleWarnings(data) {
-    var panel = document.getElementById('setupScheduleWarnings');
-    var section = document.getElementById('setupScheduleWarningsSection');
+    var panel = setupEl('setupScheduleWarnings');
+    var section = setupEl('setupScheduleWarningsSection');
     if (!panel) return;
     var summary = ScheduleStatus.summarize(data);
     if (!ScheduleStatus.shouldShowPanel(summary)) {
@@ -142,8 +143,8 @@ export function renderScheduleWarnings(data) {
 
 export function collectSemesterMeta(data, opts, markSetupDraft) {
   opts = opts || {};
-  var season = document.getElementById('semesterSeasonSelect').value;
-  var year = parseInt(document.getElementById('semesterYearSelect').value, 10);
+  var season = setupEl('semesterSeasonSelect').value;
+  var year = parseInt(setupEl('semesterYearSelect').value, 10);
   var prevSeason = data.meta.semesterSeason;
   var prevYear = data.meta.semesterYear;
   data.meta.semesterSeason = season;

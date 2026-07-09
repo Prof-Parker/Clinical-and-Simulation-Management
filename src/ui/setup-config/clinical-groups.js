@@ -5,6 +5,7 @@ import * as ClinicalSites from '../../core/clinical-sites.js';
 import { getCohortFacilityIdForGroup, cohortFacilitySelectHtml } from '../setup/roster.js';
 import { weekSelectHtml, semesterWeekHintForIndex } from '../setup/holidays-orientations.js';
 import { daySelectHtml, renderSimGroupsList, renderSimDaysList } from './sim-groups.js';
+import { setupEl, setupQueryAll } from '../setup/scope.js';
 
 function getGroupFacilityIds(data, group) {
     if (ClinicalSites) {
@@ -181,10 +182,10 @@ function updateWeekRangeHint(data, selectEl) {
   }
 
 function updateAllWeekRangeHints(data) {
-    document.querySelectorAll('#cfgClinicalGroupsList [data-clin-site-range-start], ' +
-      '#cfgClinicalGroupsList [data-clin-site-range-end]').forEach(function (el) {
-      updateWeekRangeHint(data, el);
-    });
+    setupQueryAll('cfgClinicalGroupsList', '[data-clin-site-range-start], [data-clin-site-range-end]')
+      .forEach(function (el) {
+        updateWeekRangeHint(data, el);
+      });
   }
 
 function nextFacilityForGroup(data, group) {
@@ -233,9 +234,9 @@ function addRangeToGroup(data, group) {
   }
 
 function refreshDynamicLists(data) {
-    var clinList = document.getElementById('cfgClinicalGroupsList');
-    var simGroupsList = document.getElementById('cfgSimGroupsList');
-    var simList = document.getElementById('cfgSimDaysList');
+    var clinList = setupEl('cfgClinicalGroupsList');
+    var simGroupsList = setupEl('cfgSimGroupsList');
+    var simList = setupEl('cfgSimDaysList');
     var cfg = data.config;
     if (clinList) clinList.innerHTML = renderClinicalGroupsList(data);
     if (simGroupsList) simGroupsList.innerHTML = renderSimGroupsList(cfg);

@@ -18,7 +18,9 @@ import { render as renderStudentView } from './student-view.js';
 import { render as renderSimRoles } from './sim-roles.js';
 import { render as renderMakeupFinder } from './makeup-finder.js';
 import { render as renderAuditCloseout } from './audit-closeout.js';
-import { render as renderPlayground } from './playground.js';
+import { render as renderPlaygroundDashboard } from './playground/dashboard.js';
+import { renderSetupTab } from './playground/index.js';
+import { isPlaygroundShell } from './playground-shell.js';
 import { render as renderUsersAdmin } from './users-admin.js';
 import { render as renderClinicalSitesTab } from './clinical-sites-tab.js';
 import * as Theory from './theory/index.js';
@@ -122,7 +124,26 @@ export function toggleMenu() {
   }
 }
 
+export function refreshPlaygroundViews() {
+  if (state.currentTab === 'playground-dashboard') renderPlaygroundDashboard();
+  if (state.currentTab === 'playground-setup') renderSetupTab();
+  updateCourseStatusLabel();
+}
+
+export function refreshPlaygroundDashboard() {
+  renderPlaygroundDashboard();
+}
+
 export function refresh() {
+  if (isPlaygroundShell()) {
+    Storage.updateStatusUI();
+    updateUserStatusLine();
+    refreshPlaygroundViews();
+    applyNavShell(getNavShell());
+    Permissions.apply();
+    updatePlaygroundMenuState();
+    return;
+  }
   var data = getData();
   Storage.updateStatusUI();
   updateSemesterDisplay();
@@ -136,7 +157,8 @@ export function refresh() {
   if (tab === 'makeup') renderMakeupFinder(data);
   if (tab === 'audit') renderAuditCloseout(data);
   if (tab === 'setup') renderSetup(data);
-  if (tab === 'playground') renderPlayground();
+  if (tab === 'playground-dashboard') renderPlaygroundDashboard();
+  if (tab === 'playground-setup') renderSetupTab();
   if (tab === 'users') renderUsersAdmin();
   if (tab === 'clinical-sites') renderClinicalSitesTab();
   if (tab === 'theory-master' || tab === 'theory-lecture' || tab === 'theory-coordinator') {
@@ -148,6 +170,14 @@ export function refresh() {
   Permissions.apply();
   updateCourseStatusLine();
   updateUserStatusLine();
+  updatePlaygroundMenuState();
+}
+
+function updatePlaygroundMenuState() {
+  var enterBtn = document.getElementById('menuPlaygroundBtn');
+  var exitBtn = document.getElementById('menuExitPlaygroundBtn');
+  if (enterBtn) enterBtn.classList.toggle('hidden', isPlaygroundShell());
+  if (exitBtn) exitBtn.classList.toggle('hidden', !isPlaygroundShell());
 }
 
 export function guardEditable(action) {
@@ -187,7 +217,7 @@ export function switchTab(tabId) {
     showAlert('Not permitted', 'Your role cannot access this tab.');
     return;
   }
-  if (tabId !== 'dashboard' && tabId !== 'theory-master' && setScheduleFullscreen) {
+  if (tabId !== 'dashboard' && tabId !== 'theory-master' && tabId !== 'playground-dashboard' && setScheduleFullscreen) {
     setScheduleFullscreen(false);
   }
   state.currentTab = tabId;

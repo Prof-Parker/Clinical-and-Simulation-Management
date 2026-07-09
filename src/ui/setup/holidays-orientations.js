@@ -9,6 +9,7 @@ import {
   markSetupDraft, resolveRenderData, guardSetupEdit, resolveSetupData, setupAfterChange, collectFromForm,
   getCohortFacilityIdForGroup
 } from './index.js';
+import { setupEl, setupQueryAll } from './scope.js';
 
 function syncBreakHolidayDate(h, data) {
     if (h.type !== 'break') return;
@@ -57,14 +58,15 @@ function updateHolidayWeekHint(data, el) {
   }
 
 function updateAllHolidayWeekHints(data, containerId) {
-    var root = '#' + (containerId || 'setupHolidays');
-    document.querySelectorAll(root + ' [data-hol="date"], ' + root + ' [data-hol="week"]').forEach(function (el) {
+    var container = containerId ? document.getElementById(containerId) : setupEl('setupHolidays');
+    if (!container) return;
+    container.querySelectorAll('[data-hol="date"], [data-hol="week"]').forEach(function (el) {
       updateHolidayWeekHint(data, el);
     });
   }
 
 function renderHolidays(data, containerId) {
-    var container = document.getElementById(containerId || 'setupHolidays');
+    var container = containerId ? document.getElementById(containerId) : setupEl('setupHolidays');
     if (!container) return;
     container.innerHTML = '';
     if (!data.calendar.weeks || !data.calendar.weeks.length) {
@@ -126,8 +128,9 @@ function renderHolidays(data, containerId) {
 
 function collectHolidaysFromDom(data, containerId) {
     if (!data.holidays) data.holidays = [];
-    var root = '#' + (containerId || 'setupHolidays');
-    document.querySelectorAll(root + ' [data-hol]').forEach(function (el) {
+    var container = document.getElementById(containerId || 'setupHolidays');
+    if (!container) return;
+    container.querySelectorAll('[data-hol]').forEach(function (el) {
       var h = data.holidays[parseInt(el.dataset.idx, 10)];
       if (!h) return;
       if (el.dataset.hol === 'date') h.date = el.value;
@@ -226,7 +229,9 @@ function updateOrientationWeekHint(data, dateInput) {
   }
 
 function updateAllOrientationWeekHints(data) {
-    document.querySelectorAll('#setupOrientations [data-orient="date"]').forEach(function (el) {
+    var container = setupEl('setupOrientations');
+    if (!container) return;
+    container.querySelectorAll('[data-orient="date"]').forEach(function (el) {
       updateOrientationWeekHint(data, el);
     });
   }
@@ -258,7 +263,7 @@ function nextOrientationDefault(data) {
   }
 
 function renderOrientations(data) {
-    var container = document.getElementById('setupOrientations');
+    var container = setupEl('setupOrientations');
     if (!container) return;
     container.innerHTML = '';
     if (!data.calendar.weeks || !data.calendar.weeks.length) {

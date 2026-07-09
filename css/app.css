@@ -2176,6 +2176,9 @@ html.dark .user-gate-step-indicator.done {
 .text-muted { color: var(--text-muted, #6b7280); }
 
 .clinical-sites-connect-prompt { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.playground-setup-root { margin-top: 0.5rem; }
+.playground-setup-root.hidden { display: none; }
+.playground-empty-state { margin-bottom: 1rem; }
 
 .course-status-wrap { position: relative; }
 button.course-status-line {

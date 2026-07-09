@@ -84,6 +84,11 @@
                             <button id="menuUsersLibraryBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Users registry</button>
                             <button id="menuClinicalSitesBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Clinical sites library</button>
                         </div>
+                        <div class="menu-group" role="group" aria-labelledby="menuPlaygroundLabel">
+                            <div id="menuPlaygroundLabel" class="menu-group-label">Sandbox</div>
+                            <button id="menuPlaygroundBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Course playground…</button>
+                            <button id="menuExitPlaygroundBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">Return to semester file</button>
+                        </div>
                         <hr class="menu-divider">
                         <button id="clearStorageBtn" class="menu-item menu-item-danger" type="button" role="menuitem">Clear storage &amp; restore defaults</button>
                         <button id="saveBtn" class="menu-item menu-item-primary" type="button" role="menuitem">Save</button>
@@ -104,7 +109,8 @@
                 <button class="nav-tab" data-tab="makeup" data-shell="clinical" type="button">Makeup Finder</button>
                 <button class="nav-tab" data-tab="audit" data-shell="clinical" type="button">Audit</button>
                 <button class="nav-tab" data-tab="setup" data-shell="clinical" type="button">Setup</button>
-                <button class="nav-tab" data-tab="playground" data-shell="clinical" type="button">Playground</button>
+                <button class="nav-tab hidden" data-tab="playground-dashboard" data-shell="playground" type="button">Dashboard</button>
+                <button class="nav-tab hidden" data-tab="playground-setup" data-shell="playground" type="button">Setup</button>
                 <button class="nav-tab hidden" data-tab="theory-master" data-shell="theory" type="button">Master Calendar</button>
                 <button class="nav-tab hidden" data-tab="theory-lecture" data-shell="theory" type="button">Lecture Assignments</button>
                 <button class="nav-tab hidden" data-tab="theory-coordinator" data-shell="theory" type="button">Coordinator</button>
@@ -497,9 +503,9 @@
             </section>
         </div>
 
-        <!-- PLAYGROUND -->
-        <div id="view-playground" class="view-panel">
-            <section class="card" style="padding:1.25rem">
+        <!-- PLAYGROUND DASHBOARD -->
+        <div id="view-playground-dashboard" class="view-panel">
+            <section id="playgroundShellBar" class="card playground-shell-bar" style="padding:1.25rem;margin-bottom:1rem">
                 <h3 class="section-title">Course Playground</h3>
                 <p id="playgroundStatus" class="section-sub">Trial semester configurations without affecting the live semester file.</p>
                 <div class="filters" style="margin:1rem 0">
@@ -509,8 +515,77 @@
                     <button id="playgroundImportBtn" class="btn btn-sm" type="button">Import playground file…</button>
                     <button id="playgroundSaveBtn" class="btn btn-sm btn-primary" type="button">Save playground</button>
                 </div>
-                <p id="playgroundConfigSummary" class="section-sub"></p>
             </section>
+            <div id="pgDashEmptyState" class="card playground-empty-state" style="padding:1.25rem">
+                <p class="section-sub">Load or import a playground file to preview the master schedule and simulation progression.</p>
+            </div>
+            <div id="pgDashContent" class="hidden">
+                <div id="pgDashConflictsPanel" class="conflicts-panel hidden no-print"></div>
+                <details class="card no-print dashboard-panel-details" open>
+                    <summary class="dashboard-panel-summary">
+                        <div class="dashboard-panel-summary-text">
+                            <h3 class="section-title" style="margin:0">Master Schedule</h3>
+                            <p class="section-sub" style="margin:0.35rem 0 0">Read-only preview. Tracks <span id="pgDashReqClinLabel">10</span> clinical days &amp; <span id="pgDashReqSimLabel">5</span> simulations per student.</p>
+                        </div>
+                    </summary>
+                    <div class="dashboard-panel-body">
+                        <div class="legend dashboard-panel-legend">
+                            <span class="legend-item"><span class="dot dot-clin"></span> Clinical</span>
+                            <span class="legend-item"><span class="dot dot-sim"></span> Simulation</span>
+                            <span class="legend-item"><span class="dot dot-holiday"></span> Holiday</span>
+                        </div>
+                        <div class="schedule-table-outer">
+                            <div class="schedule-table-scroll custom-scrollbar" id="pgDashScheduleBodyScroll">
+                                <table class="data-table schedule-master-table">
+                                    <thead><tr id="pgDashScheduleHeadRow"></tr></thead>
+                                    <tbody id="pgDashScheduleBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+                <details class="card no-print dashboard-panel-details" open style="margin-top:1rem">
+                    <summary class="dashboard-panel-summary">
+                        <div class="dashboard-panel-summary-text">
+                            <h3 class="section-title" style="margin:0">Simulation Groups &amp; Progression</h3>
+                        </div>
+                    </summary>
+                    <div class="dashboard-panel-body">
+                        <div class="custom-scrollbar">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sticky-col">Student</th>
+                                        <th>Clinical</th>
+                                        <th>Sim Group</th>
+                                        <th style="text-align:center">Sim 1</th>
+                                        <th style="text-align:center">Sim 2</th>
+                                        <th style="text-align:center">Sim 3</th>
+                                        <th style="text-align:center">Sim 4</th>
+                                        <th style="text-align:center">Sim 5</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pgDashSimTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </details>
+                <details class="card no-print dashboard-panel-details" open style="margin-top:1rem">
+                    <summary class="dashboard-panel-summary">
+                        <div class="dashboard-panel-summary-text">
+                            <h3 class="section-title" style="margin:0">Sim Center Load</h3>
+                        </div>
+                    </summary>
+                    <div class="dashboard-panel-body">
+                        <div class="chart-container"><canvas id="pgDashLoadChart"></canvas></div>
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <!-- PLAYGROUND SETUP -->
+        <div id="view-playground-setup" class="view-panel">
+            <div id="playgroundSetupRoot" class="playground-setup-root hidden"></div>
         </div>
 
         <!-- USERS -->

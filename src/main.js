@@ -34,6 +34,8 @@ import * as Setup from './ui/setup/index.js';
 import * as ConfigModal from './ui/config-modal.js';
 import * as SetupProposals from './ui/setup-proposals.js';
 import * as Playground from './ui/playground.js';
+import { initToolbar } from './ui/playground/toolbar.js';
+import { enterPlaygroundShell, exitPlaygroundShell } from './ui/playground-shell.js';
 import * as NewSemesterBatch from './ui/new-semester-batch.js';
 import * as UsersAdmin from './ui/users-admin.js';
 import * as ClinicalSitesTab from './ui/clinical-sites-tab.js';
@@ -67,6 +69,7 @@ export function initUI() {
   ConfigModal.init();
   SetupProposals.init();
   Playground.init();
+  initToolbar();
   NewSemesterBatch.init();
   UsersAdmin.init();
   ClinicalSitesTab.init();
@@ -83,6 +86,15 @@ export function initUI() {
   var menuSitesBtn = document.getElementById('menuClinicalSitesBtn');
   if (menuSitesBtn) {
     menuSitesBtn.addEventListener('click', function () { openLibraryTab('clinical-sites'); });
+  }
+
+  var menuPlaygroundBtn = document.getElementById('menuPlaygroundBtn');
+  if (menuPlaygroundBtn) {
+    menuPlaygroundBtn.addEventListener('click', function () { enterPlaygroundShell(); });
+  }
+  var menuExitPlaygroundBtn = document.getElementById('menuExitPlaygroundBtn');
+  if (menuExitPlaygroundBtn) {
+    menuExitPlaygroundBtn.addEventListener('click', function () { exitPlaygroundShell(); });
   }
 
   if (getData() && DateInputs.init) {

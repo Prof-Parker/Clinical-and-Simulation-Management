@@ -6,7 +6,8 @@ var ROLES = {
     program_engineer: {
       id: 'program_engineer',
       displayName: 'Program Engineer',
-      tabs: ['dashboard', 'student', 'roles', 'makeup', 'audit', 'setup', 'playground',
+      tabs: ['dashboard', 'student', 'roles', 'makeup', 'audit', 'setup',
+        'playground-dashboard', 'playground-setup',
         'theory-master', 'theory-lecture', 'theory-coordinator', 'users', 'clinical-sites'],
       actions: ['*'],
       dashboardReadOnly: false
@@ -26,7 +27,8 @@ var ROLES = {
     lead_course_faculty: {
       id: 'lead_course_faculty',
       displayName: 'Lead Course Faculty',
-      tabs: ['dashboard', 'student', 'setup', 'roles', 'makeup', 'playground', 'clinical-sites',
+      tabs: ['dashboard', 'student', 'setup', 'roles', 'makeup',
+        'playground-dashboard', 'playground-setup', 'clinical-sites',
         'theory-master', 'theory-lecture', 'theory-coordinator'],
       actions: [
         'dashboard.propose', 'setup.propose', 'setup.saveDraft',
@@ -51,7 +53,8 @@ var ROLES = {
     makeup: 'Makeup Finder',
     audit: 'Audit',
     setup: 'Setup',
-    playground: 'Playground',
+    'playground-dashboard': 'Dashboard',
+    'playground-setup': 'Setup',
     users: 'Users',
     'clinical-sites': 'Clinical Sites',
     'theory-master': 'Master Calendar',

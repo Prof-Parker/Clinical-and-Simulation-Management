@@ -8,9 +8,10 @@ import * as UserDirectory from '../../storage/user-directory.js';
 import { isReady as isRegistryReady } from '../../storage/users-registry-storage.js';
 import { escAttr, escHtml, configListAddRow } from './dom-utils.js';
 import { guardSetupEdit, resolveSetupData, setupAfterChange, collectFromForm, markSetupDraft } from './index.js';
+import { getSetupScope, setupEl } from './scope.js';
 
 function renderSections(data) {
-    var container = document.getElementById('setupSections');
+    var container = setupEl('setupSections');
     container.innerHTML = '';
     (data.sections || []).forEach(function (sec) {
       container.innerHTML +=
@@ -54,7 +55,7 @@ function facilityTagsHtml(facility) {
   }
 
 function renderFacilities(data) {
-    var container = document.getElementById('setupFacilities');
+    var container = setupEl('setupFacilities');
     container.innerHTML = '';
     DataModel.getUniqueFacilitiesForSelect(data).forEach(function (f) {
       var canRemove = data.facilities.length > 1;
@@ -73,20 +74,21 @@ function renderFacilities(data) {
 
 function renderFaculty(data) {
     updateAdjunctFacultyDatalist();
-    var container = document.getElementById('setupFaculty');
+    var container = setupEl('setupFaculty');
+    var listId = getSetupScope().prefix + 'setupAdjunctFacultyList';
     container.innerHTML = '';
     data.faculty.forEach(function (f, i) {
       container.innerHTML +=
         '<div class="setup-faculty-row">' +
         '<span class="setup-faculty-group">' + f.clinicalGroup + '</span>' +
-        '<input type="text" data-faculty="name" data-idx="' + i + '" list="setupAdjunctFacultyList" ' +
+        '<input type="text" data-faculty="name" data-idx="' + i + '" list="' + listId + '" ' +
         'value="' + escAttr(f.name) + '" placeholder="Search adjunct faculty name" autocomplete="off">' +
         '</div>';
     });
   }
 
 function updateAdjunctFacultyDatalist() {
-    var list = document.getElementById('setupAdjunctFacultyList');
+    var list = setupEl('setupAdjunctFacultyList');
     if (!list || !UserDirectory) return;
     var users = UserDirectory.getAdjunctFaculty();
     list.innerHTML = users.map(function (u) {
@@ -95,8 +97,8 @@ function updateAdjunctFacultyDatalist() {
   }
 
 function syncLeadFacultyEmailFromSelect() {
-    var sel = document.getElementById('leadFacultySelect');
-    var emailEl = document.getElementById('leadFacultyEmail');
+    var sel = setupEl('leadFacultySelect');
+    var emailEl = setupEl('leadFacultyEmail');
     if (!sel || !emailEl || sel.classList.contains('hidden')) return;
     var opt = sel.selectedOptions && sel.selectedOptions[0];
     if (opt && opt.dataset.email) {
@@ -108,10 +110,10 @@ function syncLeadFacultyEmailFromSelect() {
 
 function renderLeadFaculty(data) {
     var lead = (data.meta && data.meta.leadFaculty) || { name: '', email: '' };
-    var sel = document.getElementById('leadFacultySelect');
-    var nameEl = document.getElementById('leadFacultyName');
-    var emailEl = document.getElementById('leadFacultyEmail');
-    var hintEl = document.getElementById('leadFacultyRegistryHint');
+    var sel = setupEl('leadFacultySelect');
+    var nameEl = setupEl('leadFacultyName');
+    var emailEl = setupEl('leadFacultyEmail');
+    var hintEl = setupEl('leadFacultyRegistryHint');
     if (!nameEl || !emailEl) return;
 
     var leads = UserDirectory ? UserDirectory.getLeadCourseFaculty() : [];

@@ -5,7 +5,11 @@
 export var UI_REGISTRY_VERSION = 2;
 
 export var UI_NAV_CLINICAL = [
-  'dashboard', 'student', 'roles', 'makeup', 'audit', 'setup', 'playground'
+  'dashboard', 'student', 'roles', 'makeup', 'audit', 'setup'
+];
+
+export var UI_NAV_PLAYGROUND = [
+  'playground-dashboard', 'playground-setup'
 ];
 
 export var UI_NAV_THEORY = [
@@ -56,12 +60,19 @@ export var UI_TABS = [
     ]
   },
   {
-    id: 'playground',
-    shell: 'clinical',
+    id: 'playground-dashboard',
+    shell: 'playground',
     anchors: [
       'playgroundStatus', 'playgroundLoadSemesterBtn', 'playgroundCourseSelect',
-      'playgroundSaveBtn', 'playgroundConfigSummary'
+      'playgroundSaveBtn', 'playgroundImportBtn', 'pgDashEmptyState', 'pgDashContent',
+      'pgDashConflictsPanel', 'pgDashScheduleHeadRow', 'pgDashScheduleBody', 'pgDashSimTableBody',
+      'pgDashLoadChart', 'pgDashReqClinLabel', 'pgDashReqSimLabel'
     ]
+  },
+  {
+    id: 'playground-setup',
+    shell: 'playground',
+    anchors: ['playgroundSetupRoot']
   },
   {
     id: 'theory-master',
@@ -98,7 +109,8 @@ export var UI_SHELL = [
 export var UI_MENU = [
   'darkModeToggle', 'loadUserFileMenuBtn', 'loadRegistryMenuBtn', 'logoutUserMenuBtn',
   'newSemesterBatchBtn', 'semesterSwitchMenu', 'openFileBtn', 'newFileBtn', 'importBtn',
-  'exportBtn', 'menuUsersLibraryBtn', 'menuClinicalSitesBtn', 'clearStorageBtn', 'saveBtn'
+  'exportBtn', 'menuUsersLibraryBtn', 'menuClinicalSitesBtn', 'menuPlaygroundBtn',
+  'menuExitPlaygroundBtn', 'clearStorageBtn', 'saveBtn'
 ];
 
 export var UI_FILE_INPUTS = [

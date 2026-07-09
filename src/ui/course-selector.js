@@ -7,6 +7,7 @@ import * as DataModel from '../core/data-model/index.js';
 import * as TheoryData from '../core/theory-data.js';
 import * as Audit from '../audit/audit.js';
 import { showConfirm } from './dialogs.js';
+import { resolveNavShell, isPlaygroundShell, updatePlaygroundStatusLine } from './playground-shell.js';
 
 function chromeApi() {
   return import('./chrome.js');
@@ -22,10 +23,14 @@ export function getActiveCourseCode() {
 }
 
 export function getNavShell() {
-  return TheoryData.isTheoryCourseCode(getActiveCourseCode()) ? 'theory' : 'clinical';
+  return resolveNavShell();
 }
 
 export function updateCourseStatusLabel() {
+  if (isPlaygroundShell()) {
+    updatePlaygroundStatusLine();
+    return;
+  }
   var trigger = document.getElementById('courseStatusLine');
   var data = getData();
   if (!trigger) return;
@@ -70,6 +75,7 @@ export function setActiveCourseCode(code, skipConfirm) {
   if (!fileRoot || !code) return;
   function apply() {
     fileRoot.meta.activeCourseCode = code;
+    state.appShell = null;
     var shell = TheoryData.isTheoryCourseCode(code) ? 'theory' : 'clinical';
     applyNavShell(shell);
     updateCourseStatusLabel();

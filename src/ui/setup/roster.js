@@ -7,6 +7,7 @@ import * as RosterBalance from '../../core/roster-balance.js';
 import * as ClinicalSites from '../../core/clinical-sites.js';
 import { escAttr, escHtml } from './dom-utils.js';
 import { guardSetupEdit, resolveSetupData, setupAfterChange, collectFromForm } from './index.js';
+import { scopeFromElement, setSetupScope, setupEl } from './scope.js';
 
 var dragStudentId = null;
 
@@ -225,13 +226,13 @@ function rebalanceStudents(data, syncCount) {
   }
 
 function updateRebalanceButton(data) {
-    var btn = document.getElementById('rebalanceStudentsBtn');
+    var btn = setupEl('rebalanceStudentsBtn');
     if (!btn) return;
     btn.classList.toggle('needs-attention', needsRebalance(data));
   }
 
 function renderRoster(data) {
-    var container = document.getElementById('setupRoster');
+    var container = setupEl('setupRoster');
     container.innerHTML = '';
 
     var maxPer = data.config.maxPerClinicalGroup || 6;
@@ -321,10 +322,14 @@ function moveStudentToGroup(data, studentId, clinicalGroup) {
   }
 
 function initRosterDragDrop() {
-    var roster = document.getElementById('setupRoster');
-    if (!roster || roster.dataset.dragInit) return;
-    roster.dataset.dragInit = '1';
+    document.querySelectorAll('#setupRoster, #pg-setupRoster').forEach(function (roster) {
+      if (!roster || roster.dataset.dragInit) return;
+      roster.dataset.dragInit = '1';
+      initOneRoster(roster);
+    });
+  }
 
+function initOneRoster(roster) {
     roster.addEventListener('dragstart', function (e) {
       var handle = e.target.closest('.drag-handle');
       if (!handle) {
@@ -368,12 +373,14 @@ function initRosterDragDrop() {
       var id = dragStudentId || e.dataTransfer.getData('text/plain');
       if (!id) return;
       if (!guardSetupEdit()) return;
+      setSetupScope(scopeFromElement(roster));
       var data = resolveSetupData();
       collectFromForm(data);
       moveStudentToGroup(data, id, zone.getAttribute('data-drop-group'));
     });
 
     roster.addEventListener('change', function (e) {
+      setSetupScope(scopeFromElement(roster));
       if (e.target.hasAttribute('data-cohort-section-bulk')) {
         var sectionName = e.target.value;
         if (!sectionName) return;
@@ -395,6 +402,7 @@ function initRosterDragDrop() {
     });
 
     roster.addEventListener('click', function (e) {
+      setSetupScope(scopeFromElement(roster));
       var addBtn = e.target.closest('.add-student-btn');
       if (addBtn) {
         if (!guardSetupEdit()) return;

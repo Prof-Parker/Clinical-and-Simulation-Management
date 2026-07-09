@@ -13,6 +13,10 @@ import { canAction } from '../../auth/permissions.js';
 import { refresh, switchTab } from '../chrome.js';
 import { WEEKDAY_OPTIONS } from '../../core/data-model/config.js';
 import {
+  LIVE, PLAYGROUND, getSetupScope, setSetupScope, setupEl, setupQueryAll, resolveScopeFileRoot,
+  scopeRootEl
+} from '../setup/scope.js';
+import {
   renderClinicalGroupsList, refreshDynamicLists, getGroupFacilityIds, addSiteToGroup, addRangeToGroup,
   updateWeekRangeHint, updateAllWeekRangeHints, nextFacilityForGroup
 } from './clinical-groups.js';
@@ -72,23 +76,23 @@ function configModeBadge(customized) {
   }
 
 function readOptionalWeekInput(id) {
-    var el = document.getElementById(id);
+    var el = setupEl(id);
     if (!el || el.value === '') return null;
     var n = parseInt(el.value, 10);
     return isNaN(n) ? null : n;
   }
 
 function readFormIntoConfig(cfg, data) {
-    cfg.clinicalDaysRequired = parseInt(document.getElementById('cfgClinDays').value, 10);
-    cfg.simDaysRequired = parseInt(document.getElementById('cfgSimDays').value, 10);
-    cfg.maxStudents = parseInt(document.getElementById('cfgMaxStudents').value, 10);
-    cfg.maxPerClinicalGroup = parseInt(document.getElementById('cfgMaxClinGroup').value, 10);
-    cfg.maxPerClinicalGroupOverload = parseInt(document.getElementById('cfgMaxClinOverload').value, 10);
-    cfg.maxStudentsPerSimSession = parseInt(document.getElementById('cfgMaxSimSession').value, 10);
-    cfg.maxStudentsPerSimSessionOverload = parseInt(document.getElementById('cfgMaxSimOverload').value, 10);
-    cfg.simMakeupHeadroomReserved = parseInt(document.getElementById('cfgSimHeadroom').value, 10);
-    cfg.clinicalStartWeek = parseInt(document.getElementById('cfgClinStart').value, 10);
-    cfg.simStartWeek = parseInt(document.getElementById('cfgSimStart').value, 10);
+    cfg.clinicalDaysRequired = parseInt(setupEl('cfgClinDays').value, 10);
+    cfg.simDaysRequired = parseInt(setupEl('cfgSimDays').value, 10);
+    cfg.maxStudents = parseInt(setupEl('cfgMaxStudents').value, 10);
+    cfg.maxPerClinicalGroup = parseInt(setupEl('cfgMaxClinGroup').value, 10);
+    cfg.maxPerClinicalGroupOverload = parseInt(setupEl('cfgMaxClinOverload').value, 10);
+    cfg.maxStudentsPerSimSession = parseInt(setupEl('cfgMaxSimSession').value, 10);
+    cfg.maxStudentsPerSimSessionOverload = parseInt(setupEl('cfgMaxSimOverload').value, 10);
+    cfg.simMakeupHeadroomReserved = parseInt(setupEl('cfgSimHeadroom').value, 10);
+    cfg.clinicalStartWeek = parseInt(setupEl('cfgClinStart').value, 10);
+    cfg.simStartWeek = parseInt(setupEl('cfgSimStart').value, 10);
     cfg.clinicalMakeupPrimaryWeek = readOptionalWeekInput('cfgClinMakeupPrimary');
     cfg.clinicalMakeupFallbackWeek = readOptionalWeekInput('cfgClinMakeupFallback');
     cfg.simMakeupLastResortWeek = readOptionalWeekInput('cfgSimMakeupLastResort');
@@ -96,7 +100,7 @@ function readFormIntoConfig(cfg, data) {
     cfg.clinicalGroups = [];
     cfg.clinicalGroupDays = {};
     cfg.clinicalGroupFacilities = {};
-    document.querySelectorAll('#cfgClinicalGroupsList [data-clin-group-row]').forEach(function (row) {
+    setupQueryAll('cfgClinicalGroupsList', '[data-clin-group-row]').forEach(function (row) {
       var g = row.getAttribute('data-clin-group-row');
       var siteIndex = parseInt(row.getAttribute('data-clin-site-index'), 10) || 0;
       if (siteIndex === 0) {
@@ -112,14 +116,14 @@ function readFormIntoConfig(cfg, data) {
     });
 
     cfg.simDays = [];
-    document.querySelectorAll('#cfgSimDaysList [data-sim-day-row]').forEach(function (row) {
+    setupQueryAll('cfgSimDaysList', '[data-sim-day-row]').forEach(function (row) {
       cfg.simDays.push(row.querySelector('[data-sim-day="value"]').value);
     });
 
     cfg.simGroups = [];
     cfg.simGroupDays = {};
     cfg.simGroupPattern = {};
-    document.querySelectorAll('#cfgSimGroupsList [data-sim-group-row]').forEach(function (row) {
+    setupQueryAll('cfgSimGroupsList', '[data-sim-group-row]').forEach(function (row) {
       var g = row.getAttribute('data-sim-group-row');
       cfg.simGroups.push(g);
       var dayEl = row.querySelector('[data-sim-group="day"]');
@@ -143,7 +147,7 @@ function draftConfigFromForm(baseCfg, data) {
 
 function renderAdvancedFields(cfg) {
     var set = function (id, val) {
-      var el = document.getElementById(id);
+      var el = setupEl(id);
       if (el) el.value = val;
     };
     set('cfgClinDays', cfg.clinicalDaysRequired);
@@ -163,16 +167,17 @@ function renderAdvancedFields(cfg) {
 
 function updateSubtitle(data) {
     var parts = DataModel.parseSemesterDisplay(data);
-    var subtitle = document.getElementById('setupConfigSubtitle');
+    var subtitle = setupEl('setupConfigSubtitle');
     if (!subtitle) return;
     subtitle.innerHTML = 'Scheduling settings for <strong>' + parts.name + '</strong> ' +
       configModeBadge(!!data.meta.configCustomized);
   }
 
 function updateNewSemesterBanner() {
-    var banner = document.getElementById('setupPendingNewSemesterBanner');
-    var saveAddBtn = document.getElementById('setupSaveAddSemesterBtn');
-    var courseLabel = document.getElementById('setupNewSemesterCourseLabel');
+    if (getSetupScope().isPlayground) return;
+    var banner = setupEl('setupPendingNewSemesterBanner');
+    var saveAddBtn = setupEl('setupSaveAddSemesterBtn');
+    var courseLabel = setupEl('setupNewSemesterCourseLabel');
     if (banner) banner.classList.toggle('hidden', !pendingNewSemester);
     if (saveAddBtn) saveAddBtn.classList.toggle('hidden', !pendingNewSemester);
     if (courseLabel) {
@@ -205,13 +210,13 @@ function render(data) {
   }
 
 function isAdvancedOpen() {
-    var panel = document.getElementById('setupAdvancedPanel');
+    var panel = setupEl('setupAdvancedPanel');
     return panel && !panel.classList.contains('hidden');
   }
 
 function setAdvancedOpen(open) {
-    var panel = document.getElementById('setupAdvancedPanel');
-    var btn = document.getElementById('setupAdvancedConfigBtn');
+    var panel = setupEl('setupAdvancedPanel');
+    var btn = setupEl('setupAdvancedConfigBtn');
     if (!panel || !btn) return;
     panel.classList.toggle('hidden', !open);
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -224,7 +229,7 @@ function toggleAdvanced() {
 
 function openAdvanced() {
     setAdvancedOpen(true);
-    var panel = document.getElementById('setupAdvancedPanel');
+    var panel = setupEl('setupAdvancedPanel');
     if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
@@ -282,19 +287,24 @@ function maybeRegenerateAfterChange(data, before) {
   }
 
 function resetToDefaults() {
-    var fileRoot = getFileRoot();
+    var fileRoot = resolveScopeFileRoot();
     var data = getData();
     var defaults = DataModel.normalizeConfig(DataModel.getSchedulingDefaults(fileRoot));
     var before = applyConfigToData(data, defaults);
     data.meta.configCustomized = false;
     Setup.markSetupDraft(data);
     render(data);
-    notifyChange();
-    maybeRegenerateAfterChange(data, before);
-    refresh();
+    if (getSetupScope().isPlayground) {
+      Setup.setupAfterChange(data);
+    } else {
+      notifyChange();
+      maybeRegenerateAfterChange(data, before);
+      refresh();
+    }
   }
 
 function applyToFutureSemesters() {
+    if (getSetupScope().isPlayground) return;
     var fileRoot = getFileRoot();
     var data = getData();
     var draft = draftConfigFromForm(data.config, data);
@@ -384,19 +394,37 @@ function collectDraftConfig(data) {
   }
 
 function renderIntoPlayground(data) {
-    renderAdvancedFields(data.config);
+    if (!data || !data.config) return;
+    setSetupScope(PLAYGROUND);
+    render(data);
+    setSetupScope(LIVE);
     var el = document.getElementById('playgroundConfigSummary');
     if (el) {
       el.textContent = 'Clinical days: ' + data.config.clinicalDaysRequired +
-        ', Sim days: ' + data.config.simDaysRequired;
+        ', Sim days: ' + data.config.simDaysRequired +
+        ' — use Save playground to persist changes to your playground file.';
     }
   }
 
+function bindScopedConfig(logicalId, event, handler) {
+  [LIVE, PLAYGROUND].forEach(function (scope) {
+    var el = document.getElementById(scope.prefix + logicalId);
+    if (!el) return;
+    el.addEventListener(event, function (e) {
+      setSetupScope(scope);
+      handler(e);
+    });
+  });
+}
+
 function init() {
-    var viewSetup = document.getElementById('view-setup');
-    if (viewSetup) {
-      viewSetup.addEventListener('click', handleSetupClick);
-      viewSetup.addEventListener('change', function (e) {
+    document.querySelectorAll('#view-setup, #playgroundSetupRoot').forEach(function (view) {
+      view.addEventListener('click', function (e) {
+        setSetupScope(view.id === 'playgroundSetupRoot' ? PLAYGROUND : LIVE);
+        handleSetupClick(e);
+      });
+      view.addEventListener('change', function (e) {
+        setSetupScope(view.id === 'playgroundSetupRoot' ? PLAYGROUND : LIVE);
         var data = resolveSetupData();
         if (e.target.hasAttribute('data-clin-week-ranges-toggle')) {
           collectFormInto(data);
@@ -428,18 +456,13 @@ function init() {
           finishSetupEdit(data, { rerender: false, refresh: true });
         }
       });
-    }
+    });
 
-    var advBtn = document.getElementById('setupAdvancedConfigBtn');
-    if (advBtn) advBtn.addEventListener('click', toggleAdvanced);
+    bindScopedConfig('setupAdvancedConfigBtn', 'click', toggleAdvanced);
+    bindScopedConfig('setupConfigResetDefaultsBtn', 'click', resetToDefaults);
+    bindScopedConfig('setupConfigApplyFutureBtn', 'click', applyToFutureSemesters);
 
-    var resetBtn = document.getElementById('setupConfigResetDefaultsBtn');
-    if (resetBtn) resetBtn.addEventListener('click', resetToDefaults);
-
-    var futureBtn = document.getElementById('setupConfigApplyFutureBtn');
-    if (futureBtn) futureBtn.addEventListener('click', applyToFutureSemesters);
-
-    var saveAddBtn = document.getElementById('setupSaveAddSemesterBtn');
+    var saveAddBtn = setupEl('setupSaveAddSemesterBtn');
     if (saveAddBtn) saveAddBtn.addEventListener('click', saveAndAddSemester);
   }
 

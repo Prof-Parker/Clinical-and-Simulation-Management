@@ -34,6 +34,33 @@ import {
   cohortFacilitySelectHtml
 } from './roster.js';
 import { collectFromForm, collectFromFormInto } from './form-collect.js';
+import {
+  LIVE, PLAYGROUND, getSetupScope, setSetupScope, scopeRootEl,
+  resolveScopeData, syncPlaygroundSemester, setupEl
+} from './scope.js';
+
+function bindScoped(logicalId, event, handler) {
+  [LIVE, PLAYGROUND].forEach(function (scope) {
+    var el = document.getElementById(scope.prefix + logicalId);
+    if (!el) return;
+    el.addEventListener(event, function (e) {
+      setSetupScope(scope);
+      handler(e);
+    });
+  });
+}
+
+function bindScopedContainer(logicalId, event, handler) {
+  [LIVE, PLAYGROUND].forEach(function (scope) {
+    var el = document.getElementById(scope.prefix + logicalId);
+    if (!el || el.dataset['bound' + event]) return;
+    el.dataset['bound' + event] = '1';
+    el.addEventListener(event, function (e) {
+      setSetupScope(scope);
+      handler(e);
+    });
+  });
+}
 
 function updateSetupStickyOffset() {
     var sticky = document.querySelector('.sticky-top');
@@ -42,7 +69,8 @@ function updateSetupStickyOffset() {
   }
 
 function scrollSetupToTop() {
-    var view = document.getElementById('view-setup');
+    var scope = getSetupScope();
+    var view = document.getElementById(scope.viewId);
     if (!view || !view.classList.contains('active')) return;
     var target = view.querySelector('.setup-actions-sticky') || view;
     var sticky = document.querySelector('.sticky-top');
@@ -52,6 +80,15 @@ function scrollSetupToTop() {
   }
 
 function guardSetupEdit() {
+    if (getSetupScope().isPlayground) {
+      if (isValidated()) {
+        if (!canAction('playground.edit') && !canAction('setup.edit') && !canAction('*')) {
+          showAlert('Not permitted', 'Your role cannot edit the playground.');
+          return false;
+        }
+      }
+      return true;
+    }
     if (isValidated()) {
       if (!canAction('setup.edit') &&
           !canAction('setup.saveDraft') &&
@@ -68,6 +105,7 @@ function isProposeOnlyMode() {
   }
 
 function resolveSetupData() {
+    if (getSetupScope().isPlayground) return resolveScopeData();
     if (isProposeOnlyMode()) return SetupDraft.getWorkingForEdit();
     return getData();
   }
@@ -79,6 +117,14 @@ function resolveRenderData(passed) {
   }
 
 function setupAfterChange(data, opts) {
+    if (getSetupScope().isPlayground) {
+      syncPlaygroundSemester(data);
+      if (!opts || opts.rerender !== false) render(data);
+      import('../chrome.js').then(function (m) {
+        if (m.refreshPlaygroundDashboard) m.refreshPlaygroundDashboard();
+      });
+      return;
+    }
     if (SetupDraft && SetupDraft.persistAfterEdit) {
       SetupDraft.persistAfterEdit(data, opts || {});
       return;
@@ -91,9 +137,10 @@ function setupAfterChange(data, opts) {
   }
 
 function updateReadOnlyButtons(data) {
+    if (getSetupScope().isPlayground) return;
     var readOnly = !!(Audit && Audit.isReadOnly(data));
     ['saveSetupBtn', 'regenerateSchedulesBtn', 'rebalanceStudentsBtn'].forEach(function (id) {
-      var btn = document.getElementById(id);
+      var btn = setupEl(id);
       if (!btn) return;
       btn.disabled = readOnly;
       if (readOnly) btn.title = 'Semester in closeout — editing disabled';
@@ -105,7 +152,7 @@ function updateReadOnlyButtons(data) {
       else if (btn.title === 'Semester in closeout — editing disabled') btn.title = '';
     });
     if (readOnly) {
-      var finalizeBtn = document.getElementById('finalizeSemesterBtn');
+      var finalizeBtn = setupEl('finalizeSemesterBtn');
       if (finalizeBtn) {
         finalizeBtn.disabled = true;
         finalizeBtn.title = 'Semester in closeout — editing disabled';
@@ -114,6 +161,7 @@ function updateReadOnlyButtons(data) {
   }
 
 function markSetupDraft(data) {
+    if (getSetupScope().isPlayground) return;
     if (!data || !data.meta || !data.meta.finalized) return;
     data.meta.finalized = false;
     updateFinalizeButtonState(data);
@@ -121,11 +169,14 @@ function markSetupDraft(data) {
   }
 
 function isSetupDraftArea(el) {
-    if (!el || !el.closest('#view-setup')) return false;
+    if (!el) return false;
+    var inView = el.closest('#view-setup') || el.closest('#playgroundSetupRoot');
+    if (!inView) return false;
     if (el.closest('.setup-actions-sticky')) return false;
-    if (el.closest('#setupRoster')) return false;
+    if (el.closest('#setupRoster') || el.closest('#pg-setupRoster')) return false;
     return !!(
       el.closest('#view-setup > section.card') ||
+      el.closest('#playgroundSetupRoot > section.card') ||
       el.closest('.setup-program-card') ||
       el.closest('.setup-holidays-card') ||
       el.closest('.setup-orientations-card') ||
@@ -139,27 +190,34 @@ function handleSetupDraftInput(e) {
       SetupDraft.syncFromDom();
       return;
     }
-    markSetupDraft(getData());
+    markSetupDraft(resolveSetupData());
   }
 
 function render(data) {
+    var paintScope = getSetupScope();
     var paint = function (renderData) {
-      renderSemesterFields(renderData);
-      renderSections(renderData);
-      renderFacilities(renderData);
-      renderFaculty(renderData);
-      renderLeadFaculty(renderData);
-      renderHolidays(renderData);
-      renderOrientations(renderData);
-      renderRoster(renderData);
-      renderScheduleWarnings(renderData);
-      SetupConfig.render(renderData);
-      initDateInputs(document.getElementById('view-setup'), renderData);
-      updateAllHolidayWeekHints(renderData);
-      updateAllOrientationWeekHints(renderData);
-      updateReadOnlyButtons(renderData);
-      renderSetupProposalsPanel();
-      if (SetupConfig.applyRoleMode) SetupConfig.applyRoleMode();
+      var prevScope = getSetupScope();
+      setSetupScope(paintScope);
+      try {
+        renderSemesterFields(renderData);
+        renderSections(renderData);
+        renderFacilities(renderData);
+        renderFaculty(renderData);
+        renderLeadFaculty(renderData);
+        renderHolidays(renderData);
+        renderOrientations(renderData);
+        renderRoster(renderData);
+        renderScheduleWarnings(renderData);
+        SetupConfig.render(renderData);
+        initDateInputs(scopeRootEl(paintScope), renderData);
+        updateAllHolidayWeekHints(renderData);
+        updateAllOrientationWeekHints(renderData);
+        updateReadOnlyButtons(renderData);
+        if (!paintScope.isPlayground) renderSetupProposalsPanel();
+        if (SetupConfig.applyRoleMode) SetupConfig.applyRoleMode();
+      } finally {
+        setSetupScope(prevScope);
+      }
     };
     var startPaint = function () {
       paint(resolveRenderData(data));
@@ -172,28 +230,72 @@ function render(data) {
       return Promise.resolve();
     };
     if (reloadFromHandle) {
-      reloadFromHandle().then(ready).catch(ready);
-    } else {
-      ready();
+      return reloadFromHandle().then(ready).catch(ready);
     }
+    return ready();
+  }
+
+function runRegenerateSchedules() {
+    if (!getSetupScope().isPlayground && !guardEditable('regenerate')) return;
+    if (!guardSetupEdit()) return;
+    var data = resolveSetupData();
+    collectFromForm(data);
+    var confirmMsg = 'Regenerate all student schedules? Manual edits will be lost.';
+    var summary = ScheduleStatus.summarize(data);
+    if (summary.tier === 'yellow') {
+      confirmMsg = 'Schedules will be regenerated. Substitutions or makeup days may be needed for some students.\n\nRegenerate anyway? Manual edits will be lost.';
+      if (summary.blockingIssues.length) {
+        var blockers = summary.blockingIssues.map(function (i) {
+          return ScheduleStatus.formatBlockingIssue(i);
+        }).join('\n\n');
+        confirmMsg = 'Schedule issues detected:\n\n' + blockers + '\n\nRegenerate anyway? Manual edits will be lost.';
+      }
+    } else if (summary.tier === 'red') {
+      var parts = [];
+      if (summary.blockingIssues.length) {
+        parts = summary.blockingIssues.map(function (i) {
+          return ScheduleStatus.formatBlockingIssue(i);
+        });
+      }
+      if (summary.incompleteStudents.length) {
+        summary.incompleteStudents.forEach(function (s) {
+          parts.push(s.name + ': ' + s.errors.join('; '));
+        });
+      }
+      confirmMsg = 'Schedule problems detected:\n\n' + parts.join('\n\n') +
+        '\n\nRegenerate anyway? Manual edits will be lost.';
+    }
+    showConfirm('Regenerate schedules?', confirmMsg, function () {
+      Scheduler.regenerateAll(data);
+      setupAfterChange(data);
+      if (!getSetupScope().isPlayground) refresh();
+      else render(data);
+      scrollSetupToTop();
+    }, { confirmLabel: 'Regenerate' });
   }
 
 function init() {
     initRosterDragDrop();
-    var viewSetup = document.getElementById('view-setup');
-    if (viewSetup) {
-      viewSetup.addEventListener('input', handleSetupDraftInput);
-      viewSetup.addEventListener('change', function (e) {
-        if (e.target && e.target.id === 'leadFacultySelect') {
+    [LIVE, PLAYGROUND].forEach(function (scope) {
+      var root = scopeRootEl(scope);
+      if (!root) return;
+      root.addEventListener('input', function (e) {
+        setSetupScope(scope);
+        handleSetupDraftInput(e);
+      });
+      root.addEventListener('change', function (e) {
+        setSetupScope(scope);
+        if (e.target && e.target.id === scope.prefix + 'leadFacultySelect') {
           syncLeadFacultyEmailFromSelect();
         }
         handleSetupDraftInput(e);
       });
-    }
-    document.getElementById('semesterSeasonSelect').addEventListener('change', updateStartDateFromSeasonYear);
-    document.getElementById('semesterYearSelect').addEventListener('change', updateStartDateFromSeasonYear);
+    });
 
-    document.getElementById('saveSetupBtn').addEventListener('click', function () {
+    bindScoped('semesterSeasonSelect', 'change', updateStartDateFromSeasonYear);
+    bindScoped('semesterYearSelect', 'change', updateStartDateFromSeasonYear);
+
+    bindScoped('saveSetupBtn', 'click', function () {
       if (!guardSetupEdit()) return;
       if (canAction('setup.edit')) {
         var data = getData();
@@ -212,7 +314,7 @@ function init() {
       scrollSetupToTop();
     });
 
-    document.getElementById('finalizeSemesterBtn').addEventListener('click', function () {
+    bindScoped('finalizeSemesterBtn', 'click', function () {
       if (!guardSetupEdit()) return;
       var data = getData();
       collectFromForm(data);
@@ -222,47 +324,14 @@ function init() {
       showAlert('Finalized', 'Semester finalized.');
     });
 
-    document.getElementById('regenerateSchedulesBtn').addEventListener('click', function () {
-      if (!guardEditable('regenerate')) return;
-      var data = getData();
-      collectFromForm(data);
-      var confirmMsg = 'Regenerate all student schedules? Manual edits will be lost.';
-      var summary = ScheduleStatus.summarize(data);
-      if (summary.tier === 'yellow') {
-          confirmMsg = 'Schedules will be regenerated. Substitutions or makeup days may be needed for some students.\n\nRegenerate anyway? Manual edits will be lost.';
-          if (summary.blockingIssues.length) {
-            var blockers = summary.blockingIssues.map(function (i) {
-              return ScheduleStatus.formatBlockingIssue(i);
-            }).join('\n\n');
-            confirmMsg = 'Schedule issues detected:\n\n' + blockers + '\n\nRegenerate anyway? Manual edits will be lost.';
-          }
-        } else if (summary.tier === 'red') {
-          var parts = [];
-          if (summary.blockingIssues.length) {
-            parts = summary.blockingIssues.map(function (i) {
-              return ScheduleStatus.formatBlockingIssue(i);
-            });
-          }
-          if (summary.incompleteStudents.length) {
-            summary.incompleteStudents.forEach(function (s) {
-              parts.push(s.name + ': ' + s.errors.join('; '));
-            });
-          }
-          confirmMsg = 'Schedule problems detected:\n\n' + parts.join('\n\n') +
-            '\n\nRegenerate anyway? Manual edits will be lost.';
-      }
-      showConfirm('Regenerate schedules?', confirmMsg, function () {
-        Scheduler.regenerateAll(data);
-        notifyChange();
-        refresh();
-        scrollSetupToTop();
-      }, { confirmLabel: 'Regenerate' });
+    bindScoped('regenerateSchedulesBtn', 'click', function () {
+      runRegenerateSchedules();
     });
 
     updateSetupStickyOffset();
     window.addEventListener('resize', updateSetupStickyOffset);
 
-    document.getElementById('setupSections').addEventListener('click', function (e) {
+    bindScopedContainer('setupSections', 'click', function (e) {
       if (e.target.closest('.add-section')) {
         if (!guardSetupEdit()) return;
         var data = resolveSetupData();
@@ -279,7 +348,7 @@ function init() {
       removeSection(resolveSetupData(), btn.dataset.secId);
     });
 
-    document.getElementById('setupFacilities').addEventListener('click', function (e) {
+    bindScopedContainer('setupFacilities', 'click', function (e) {
       if (e.target.closest('.add-facility')) {
         if (!guardSetupEdit()) return;
         var data = resolveSetupData();
@@ -318,7 +387,7 @@ function init() {
       removeFacility(resolveSetupData(), btn.dataset.facId);
     });
 
-    document.getElementById('setupFacilities').addEventListener('change', function (e) {
+    bindScopedContainer('setupFacilities', 'change', function (e) {
       if (e.target.getAttribute('data-fac') !== 'site') return;
       if (!guardSetupEdit()) return;
       var data = resolveSetupData();
@@ -327,17 +396,23 @@ function init() {
       setupAfterChange(data);
     });
 
-    bindHolidayEditor('setupHolidays', {
-      guard: guardSetupEdit,
-      getData: function () { return resolveSetupData(); },
-      onChange: function (data) {
-        collectFromForm(data);
-        markSetupDraft(data);
-        setupAfterChange(data, { rerender: true });
-      }
+    [LIVE, PLAYGROUND].forEach(function (scope) {
+      bindHolidayEditor(scope.prefix + 'setupHolidays', {
+        guard: guardSetupEdit,
+        getData: function () {
+          setSetupScope(scope);
+          return resolveSetupData();
+        },
+        onChange: function (data) {
+          setSetupScope(scope);
+          collectFromForm(data);
+          markSetupDraft(data);
+          setupAfterChange(data, { rerender: true });
+        }
+      });
     });
 
-    document.getElementById('setupOrientations').addEventListener('click', function (e) {
+    bindScopedContainer('setupOrientations', 'click', function (e) {
       if (e.target.closest('.add-orientation')) {
         if (!guardSetupEdit()) return;
         var data = resolveSetupData();
@@ -364,17 +439,17 @@ function init() {
       setupAfterChange(data);
     });
 
-    document.getElementById('setupOrientations').addEventListener('change', function (e) {
+    bindScopedContainer('setupOrientations', 'change', function (e) {
       if (e.target.getAttribute('data-orient') !== 'date') return;
       updateOrientationWeekHint(resolveRenderData(), e.target);
     });
 
-    document.getElementById('setupOrientations').addEventListener('input', function (e) {
+    bindScopedContainer('setupOrientations', 'input', function (e) {
       if (e.target.getAttribute('data-orient') !== 'date') return;
       updateOrientationWeekHint(resolveRenderData(), e.target);
     });
 
-    document.getElementById('rebalanceStudentsBtn').addEventListener('click', function () {
+    bindScoped('rebalanceStudentsBtn', 'click', function () {
       if (!guardSetupEdit()) return;
       var data = resolveSetupData();
       collectFromForm(data);
