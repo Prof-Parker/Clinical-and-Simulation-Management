@@ -45,7 +45,10 @@
                 <div class="header-brand">
                     <h1 class="header-title">Shasta College ADN Course Manager</h1>
                     <p class="section-sub header-tagline">Clinical &amp; simulation scheduling, requirement tracking, and resource allocation</p>
-                    <span id="fileStatus" class="file-status">Loading...</span>
+                    <div class="file-status-row">
+                        <span id="fileStatus" class="file-status">Loading...</span>
+                        <button id="syncOneDriveBtn" class="btn btn-sm file-sync-btn hidden" type="button">Sync to OneDrive</button>
+                    </div>
                     <span id="userStatusLine" class="user-status-line"></span>
                 </div>
                 <div class="header-status-wrap course-status-wrap">
@@ -642,8 +645,7 @@
                     <button id="theoryHourSettingsBtn" class="btn btn-sm" type="button">Hour settings</button>
                 </div>
                 <div id="theorySimWarnBanner" class="closeout-banner hidden" role="status"></div>
-                <table class="data-table"><thead><tr><th>Week</th><th>Lecture</th><th>Skills lab</th><th>Clinical</th><th>Simulation</th><th>Total</th></tr></thead>
-                <tbody id="theoryCoordinatorTableBody"></tbody></table>
+                <div id="theoryCoordinatorGrid"></div>
             </section>
         </div>
     </div>
@@ -728,6 +730,40 @@
                 <button id="dialogSave" class="btn btn-primary" type="button">Save</button>
             </div>
         </div>
+    </div>
+
+    <style id="wrong-entry-warn-style">
+      #wrong-entry-warn { display: none; position: fixed; inset: 0; z-index: 999999; background: #0f172a; color: #e2e8f0; padding: 2rem; font-family: Segoe UI, system-ui, sans-serif; line-height: 1.55; overflow: auto; }
+      #wrong-entry-warn h1 { margin-top: 0; color: #fbbf24; font-size: 1.35rem; }
+      #wrong-entry-warn code { background: #334155; padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.92em; }
+      #wrong-entry-warn ol { padding-left: 1.25rem; }
+      #wrong-entry-warn li { margin: 0.5rem 0; }
+    </style>
+    <script>
+    (function () {
+      var mod = document.querySelector('script[type="module"][src*="/src/main.js"]');
+      if (!mod) return;
+      function showWrongEntryWarn() {
+        var el = document.getElementById('wrong-entry-warn');
+        if (el) el.style.display = 'block';
+      }
+      if (location.protocol === 'file:') {
+        document.addEventListener('DOMContentLoaded', showWrongEntryWarn);
+        return;
+      }
+      setTimeout(function () {
+        if (!window.__regnAppBooted) showWrongEntryWarn();
+      }, 2000);
+    })();
+    </script>
+    <div id="wrong-entry-warn" role="alert">
+      <h1>This file is the development entry point — not the built app</h1>
+      <p>You are seeing unstyled HTML because bundled CSS and JavaScript are not loaded.</p>
+      <ol>
+        <li><strong>Local development:</strong> run <code>npm run dev</code> and open the URL Vite prints (usually <code>http://localhost:5173</code>).</li>
+        <li><strong>Local test of SharePoint build:</strong> run <code>npm run build:sharepoint</code>, then <code>npm run preview:sharepoint</code>, and open <code>http://localhost:4173</code>.</li>
+        <li><strong>SharePoint:</strong> upload the entire <code>sharepoint-package/ClinSimApp/</code> folder (including <code>assets/</code>), then open the direct link ending in <code>/ClinSimApp/index.html</code> — not the SharePoint preview pane.</li>
+      </ol>
     </div>
 
     <script type="module" src="/src/main.js"></script>

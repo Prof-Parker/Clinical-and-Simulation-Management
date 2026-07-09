@@ -88,9 +88,46 @@ describe('theory-data.test.js', () => {
       simOverload: false,
       facilityId: null
     };
-    var sched = TheoryData.rollSchedulerHours(sem, 'REGN15P');
-    expect(sched[5].clinical).toBeGreaterThan(0);
-    expect(sched[6].simulation).toBeGreaterThan(0);
+    var raw = TheoryData.rollSchedulerHours(sem, 'REGN15P');
+    expect(raw[5].clinical).toBeGreaterThan(0);
+    expect(raw[6].simulation).toBeGreaterThan(0);
+    var perStudent = TheoryData.rollSchedulerHoursPerStudent(sem, 'REGN15P');
+    var n = TheoryData.studentCountForSemester(sem);
+    expect(perStudent[5].clinical).toBeCloseTo(raw[5].clinical / n, 2);
+    expect(perStudent[6].simulation).toBeCloseTo(raw[6].simulation / n, 2);
+  });
+
+  it('builds coordinator day items and semester totals', () => {
+    var sem = DataModel.createDefaultFile().semesters[0];
+    DataModel.migrateSemester(sem);
+    sem.theory.days = [{
+      date: '2026-08-19',
+      weekIndex: 0,
+      weekday: 'Wed',
+      weekLabel: 1,
+      events: [{
+        id: 'ev1',
+        track: 'theory',
+        title: 'Module 1A',
+        timeStart: '0800',
+        timeEnd: '1050',
+        categories: ['lecture']
+      }, {
+        id: 'ev2',
+        track: 'skills',
+        title: 'Skills intro',
+        timeStart: '1200',
+        timeEnd: '1550',
+        categories: ['skills_lab']
+      }]
+    }];
+    var items = TheoryData.coordinatorItemsForDay(sem.theory, sem, 1, 'Wed', 'REGN15P');
+    expect(items.length).toBe(2);
+    expect(items[0].label).toBe('Lecture 0800–1050');
+    expect(items[1].label).toBe('Skills lab 1200–1550');
+    var totals = TheoryData.semesterHourTotals(sem.theory, sem, 'REGN15P');
+    expect(totals.lecture).toBeGreaterThan(0);
+    expect(totals.practicum).toBe(totals.skills_lab + totals.clinical + totals.simulation);
   });
 
   it('validates contact hour targets', () => {

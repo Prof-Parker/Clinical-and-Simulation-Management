@@ -87,7 +87,7 @@ export var UI_TABS = [
   {
     id: 'theory-coordinator',
     shell: 'theory',
-    anchors: ['theoryCoordinatorTableBody', 'theoryCoordinatorStatusChip', 'theoryHourSettingsBtn', 'theorySimWarnBanner']
+    anchors: ['theoryCoordinatorGrid', 'theoryCoordinatorStatusChip', 'theoryHourSettingsBtn', 'theorySimWarnBanner']
   },
   {
     id: 'users',
@@ -102,7 +102,7 @@ export var UI_TABS = [
 ];
 
 export var UI_SHELL = [
-  'appMain', 'fileStatus', 'userStatusLine', 'courseStatusLine', 'courseStatusDropdown',
+  'appMain', 'fileStatus', 'syncOneDriveBtn', 'userStatusLine', 'courseStatusLine', 'courseStatusDropdown',
   'menuToggle', 'menuDropdown', 'closeoutBanner', 'pwaInstallBanner', 'pwaIosInstallBanner', 'pwaOnedriveBanner'
 ];
 

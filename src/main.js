@@ -1,5 +1,7 @@
 /** Application entry — boot storage, auth, and UI event wiring. */
 
+window.__regnAppBooted = true;
+
 import '../css/app.css';
 import '../css/print.css';
 import '../css/audit-print.css';
@@ -55,6 +57,32 @@ import {
   updateUserStatusLine
 } from './ui/chrome.js';
 import { closeDialog, showAlert, showConfirm } from './ui/dialogs.js';
+
+function persistSemesterFiles() {
+  return Promise.all([
+    Storage.saveCurrent(),
+    ClinicalSitesLibraryStorage.isReady()
+      ? ClinicalSitesLibraryStorage.saveCurrent() : Promise.resolve()
+  ]);
+}
+
+function syncSemesterToOneDrive() {
+  if (state.fileHandle) {
+    return persistSemesterFiles().then(function () {
+      showAlert('Synced', 'Changes saved to OneDrive.');
+    });
+  }
+  if (Storage.supportsFS()) {
+    return Storage.createFilePicker().then(function (fileRoot) {
+      setFileRoot(fileRoot);
+      SimFacultyStorage.hydrateFromFileRoot(fileRoot);
+      Dashboard.populateFilters(getData());
+      refresh();
+      showAlert('Synced', 'Semester file saved to OneDrive.');
+    }).catch(function () {});
+  }
+  Storage.exportDownload();
+}
 
 export function initUI() {
   if (Storage.configureImportInput) Storage.configureImportInput();
@@ -209,12 +237,8 @@ export function initUI() {
   });
 
   document.getElementById('saveBtn').addEventListener('click', function () {
-    Promise.all([
-      Storage.saveCurrent(),
-      ClinicalSitesLibraryStorage.isReady()
-        ? ClinicalSitesLibraryStorage.saveCurrent() : Promise.resolve()
-    ]).then(function () {
-      if (Storage.supportsFS()) {
+    persistSemesterFiles().then(function () {
+      if (Storage.supportsFS() && state.fileHandle) {
         showAlert('Saved', 'Saved to connected file(s).');
       } else {
         showAlert('Saved', 'Saved on this device. Export backup to OneDrive when finished.');
@@ -222,6 +246,13 @@ export function initUI() {
     });
     closeMenu();
   });
+
+  var syncOneDriveBtn = document.getElementById('syncOneDriveBtn');
+  if (syncOneDriveBtn) {
+    syncOneDriveBtn.addEventListener('click', function () {
+      syncSemesterToOneDrive();
+    });
+  }
 
   if (Storage.supportsFS()) {
     document.getElementById('openFileBtn').addEventListener('click', function () {

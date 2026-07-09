@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ command }) => ({
-  base: command === 'serve' ? '/' : '/Clinical-and-Simulation-Management/',
+  base: command === 'serve' ? '/' : (process.env.SHAREPOINT_BASE_URL || process.env.VITE_DEPLOY_BASE || '/Clinical-and-Simulation-Management/'),
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',

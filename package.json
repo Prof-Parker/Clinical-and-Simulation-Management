@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:sharepoint": "node scripts/package-sharepoint.js",
+    "preview:sharepoint": "npx serve sharepoint-package/ClinSimApp -p 4173",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

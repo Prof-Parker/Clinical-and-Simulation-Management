@@ -31,3 +31,4 @@ docs/Design Docs/
 # Node / Vite build
 node_modules/
 dist/
+sharepoint-package/

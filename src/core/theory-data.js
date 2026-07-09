@@ -3,6 +3,7 @@
  */
 
 import { uid } from './data-model/students.js';
+import { getClinicalDayForGroup } from './data-model/index.js';
 import { parseDate, toISO, addDays, getWeekIndexForDate } from './calendar-engine.js';
 
 export var THEORY_VERSION = 1;
@@ -312,11 +313,98 @@ export function rollSchedulerHours(semester, courseCode) {
   return byWeek;
 }
 
+export function studentCountForSemester(semester) {
+  var n = (semester && semester.students) ? semester.students.length : 0;
+  return n > 0 ? n : 1;
+}
+
+/** Scheduler hours averaged per student (contact hours, not cohort totals). */
+export function rollSchedulerHoursPerStudent(semester, courseCode) {
+  var raw = rollSchedulerHours(semester, courseCode);
+  var n = studentCountForSemester(semester);
+  var byWeek = {};
+  Object.keys(raw).forEach(function (wl) {
+    byWeek[wl] = {
+      clinical: Math.round((raw[wl].clinical / n) * 100) / 100,
+      simulation: Math.round((raw[wl].simulation / n) * 100) / 100
+    };
+  });
+  return byWeek;
+}
+
+export function practicumCourseCode(theory) {
+  var codes = (theory && theory.courseCodes) || [];
+  var match = codes.find(function (c) { return /P$/i.test(c); });
+  return match || 'REGN15P';
+}
+
+var COORDINATOR_TRACK_LABELS = {
+  theory: 'Lecture',
+  skills: 'Skills lab',
+  simulation: 'Simulation',
+  clinical: 'Clinical'
+};
+
+export function coordinatorCompactLabel(track, timeStart, timeEnd) {
+  var label = COORDINATOR_TRACK_LABELS[track] || track;
+  if (timeStart && timeEnd) return label + ' ' + timeStart + '–' + timeEnd;
+  return label;
+}
+
+export function practicumSlotsForDay(semester, weekLabel, weekday, courseCode) {
+  var theory = semester.theory;
+  var rules = getContactHourRules(theory, courseCode);
+  if (!rules) return { clinical: null, simulation: null };
+  var wi = weekLabel - 1;
+  var cfg = semester.config;
+  var clinical = null;
+  var simulation = null;
+  (semester.students || []).some(function (student) {
+    var cell = student.schedule && student.schedule[wi];
+    if (!cell || cell.inactive) return false;
+    if (!clinical && cell.clinical && !cell.clinicalMissed) {
+      var clinDay = getClinicalDayForGroup(student.clinicalGroup, cfg);
+      if (clinDay === weekday) {
+        clinical = { hours: clinicalHoursForDay(rules, cell.facilityId) };
+      }
+    }
+    if (!simulation && cell.sim && cell.simDay === weekday) {
+      simulation = { hours: simHoursForDay(rules, cell.sim), simNum: cell.sim };
+    }
+    return !!(clinical && simulation);
+  });
+  return { clinical: clinical, simulation: simulation };
+}
+
+export function coordinatorItemsForDay(theory, semester, weekLabel, weekday, courseCode) {
+  var items = [];
+  var day = (theory.days || []).find(function (d) {
+    return d.weekLabel === weekLabel && d.weekday === weekday;
+  });
+  if (day) {
+    (day.events || []).forEach(function (ev) {
+      if (['theory', 'skills', 'simulation'].indexOf(ev.track) < 0) return;
+      items.push({
+        kind: ev.track,
+        label: coordinatorCompactLabel(ev.track, ev.timeStart, ev.timeEnd)
+      });
+    });
+  }
+  var practicum = practicumSlotsForDay(semester, weekLabel, weekday, courseCode);
+  if (practicum.clinical) {
+    items.push({ kind: 'clinical', label: 'Clinical' });
+  }
+  if (practicum.simulation) {
+    items.push({ kind: 'simulation', label: 'Simulation' });
+  }
+  return items;
+}
+
 export function weekSummaryForLabel(theory, semester, weekLabel, courseCode) {
   var override = theory.weekSummaries && theory.weekSummaries[String(weekLabel)];
   var lecture = sumTheoryHoursForWeek(theory, weekLabel, 'lecture');
   var skills_lab = sumTheoryHoursForWeek(theory, weekLabel, 'skills_lab');
-  var sched = rollSchedulerHours(semester, courseCode);
+  var sched = rollSchedulerHoursPerStudent(semester, courseCode);
   var clinical = sched[weekLabel] ? sched[weekLabel].clinical : 0;
   var simulation = sched[weekLabel] ? sched[weekLabel].simulation : 0;
   if (override) {
@@ -326,6 +414,23 @@ export function weekSummaryForLabel(theory, semester, weekLabel, courseCode) {
     if (override.simulation != null) simulation = override.simulation;
   }
   return { lecture: lecture, skills_lab: skills_lab, clinical: clinical, simulation: simulation };
+}
+
+export function semesterHourTotals(theory, semester, courseCode) {
+  var totals = { lecture: 0, skills_lab: 0, clinical: 0, simulation: 0 };
+  for (var w = 1; w <= 18; w++) {
+    var s = weekSummaryForLabel(theory, semester, w, courseCode);
+    totals.lecture += s.lecture;
+    totals.skills_lab += s.skills_lab;
+    totals.clinical += s.clinical;
+    totals.simulation += s.simulation;
+  }
+  totals.lecture = Math.round(totals.lecture * 100) / 100;
+  totals.skills_lab = Math.round(totals.skills_lab * 100) / 100;
+  totals.clinical = Math.round(totals.clinical * 100) / 100;
+  totals.simulation = Math.round(totals.simulation * 100) / 100;
+  totals.practicum = Math.round((totals.skills_lab + totals.clinical + totals.simulation) * 100) / 100;
+  return totals;
 }
 
 export function semesterContactHourTotal(theory, semester, courseCode) {

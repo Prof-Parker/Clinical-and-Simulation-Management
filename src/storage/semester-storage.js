@@ -395,6 +395,21 @@ var DB_NAME = 'regnTrackerDB';
         parts.push('Sim roles stored in semester file');
       }
       el.textContent = parts.join(' · ');
+      var syncBtn = document.getElementById('syncOneDriveBtn');
+      if (syncBtn) {
+        if (dirty) {
+          syncBtn.classList.remove('hidden');
+          if (supportsFS() && state.fileHandle) {
+            syncBtn.textContent = 'Sync to OneDrive';
+          } else if (supportsFS()) {
+            syncBtn.textContent = 'Save to OneDrive…';
+          } else {
+            syncBtn.textContent = 'Export backup';
+          }
+        } else {
+          syncBtn.classList.add('hidden');
+        }
+      }
     });
   }
   function shouldShowOnedriveBanner() {

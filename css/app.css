@@ -369,6 +369,8 @@ html.dark .menu-item-danger { color: #f87171; }
 html.dark .menu-item-danger:hover { background: #450a0a; }
 
 .file-status { font-size: 0.75rem; padding: 0.35rem 0.75rem; border-radius: 999px; background: var(--primary-light); color: var(--primary); }
+.file-status-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.15rem; }
+.file-sync-btn { flex-shrink: 0; }
 .file-status.dirty { background: #fef3c7; color: #b45309; }
 html.dark .file-status.dirty { background: #422006; color: #fcd34d; }
 .file-status.connected { background: #d1fae5; color: #047857; }
@@ -2194,12 +2196,43 @@ button.course-status-line {
 .theory-master-table td { vertical-align: top; font-size: 0.8rem; min-width: 6rem; }
 .theory-day-cell { cursor: pointer; min-height: 3rem; }
 .theory-day-date { font-size: 0.7rem; color: var(--text-muted); }
-.theory-track-theory { background: #dbeafe; padding: 0.2rem; margin: 0.15rem 0; border-radius: 0.25rem; }
-.theory-track-skills { background: #dcfce7; padding: 0.2rem; margin: 0.15rem 0; border-radius: 0.25rem; }
-.theory-track-simulation { background: #fef3c7; padding: 0.2rem; margin: 0.15rem 0; border-radius: 0.25rem; }
-.theory-track-holiday { background: #fee2e2; padding: 0.2rem; margin: 0.15rem 0; border-radius: 0.25rem; }
+.theory-track-theory { background: #dbeafe; color: #1e3a8a; padding: 0.2rem; margin: 0.15rem 0; border-radius: 0.25rem; }
+.theory-track-skills { background: #ffedd5; color: #9a3412; padding: 0.2rem; margin: 0.15rem 0; border-radius: 0.25rem; }
+.theory-track-simulation { background: #ede9fe; color: #5b21b6; padding: 0.2rem; margin: 0.15rem 0; border-radius: 0.25rem; }
+.theory-track-holiday { background: #fee2e2; color: #991b1b; padding: 0.2rem; margin: 0.15rem 0; border-radius: 0.25rem; }
+.theory-track .theory-ev-time { color: inherit; opacity: 0.85; font-size: 0.75rem; }
+html.dark .theory-track-theory { background: #1e40af; color: #dbeafe; }
+html.dark .theory-track-skills { background: #c2410c; color: #ffedd5; }
+html.dark .theory-track-simulation { background: #6d28d9; color: #ede9fe; }
+html.dark .theory-track-holiday { background: #991b1b; color: #fecaca; }
 .theory-coordinator-header { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1rem; }
 .theory-coordinator-chip { font-size: 0.85rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; background: var(--surface-alt); }
+.theory-coordinator-wrap { overflow-x: auto; max-height: min(75vh, 52rem); overflow-y: auto; }
+.theory-coordinator-table { font-size: 0.78rem; min-width: 56rem; }
+.theory-coordinator-table td { vertical-align: top; }
+.theory-coord-day-cell { min-width: 5.5rem; min-height: 2.5rem; }
+.theory-coord-item {
+  font-size: 0.72rem; line-height: 1.25; padding: 0.15rem 0.3rem; margin: 0.12rem 0;
+  border-radius: 0.2rem; white-space: normal;
+}
+.theory-coord-item-theory { background: #dbeafe; color: #1e3a8a; }
+.theory-coord-item-skills { background: #ffedd5; color: #9a3412; }
+.theory-coord-item-simulation { background: #ede9fe; color: #5b21b6; }
+.theory-coord-item-clinical { background: #e0e7ff; color: #3730a3; }
+html.dark .theory-coord-item-theory { background: #1e40af; color: #dbeafe; }
+html.dark .theory-coord-item-skills { background: #c2410c; color: #ffedd5; }
+html.dark .theory-coord-item-simulation { background: #6d28d9; color: #ede9fe; }
+html.dark .theory-coord-item-clinical { background: #4338ca; color: #e0e7ff; }
+.theory-coord-week-totals { font-size: 0.72rem; line-height: 1.45; white-space: nowrap; min-width: 6.5rem; }
+.theory-coord-totals-col { min-width: 6.5rem; }
+.theory-coord-total-line { margin: 0.05rem 0; }
+.theory-coord-practicum-total { margin-top: 0.35rem; padding-top: 0.25rem; border-top: 1px solid var(--border); }
+.theory-coord-semester-totals td {
+  position: sticky; bottom: 0; z-index: 2;
+  background: var(--sticky-bg); border-top: 2px solid var(--border);
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.08);
+}
+html.dark .theory-coord-semester-totals td { box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.35); }
 .theory-chip-on_target { color: #166534; }
 .theory-chip-under { color: #b45309; }
 .theory-chip-over { color: #b91c1c; }
