@@ -17,6 +17,7 @@ import { regenerateAll } from './core/scheduler/index.js';
 import * as Storage from './storage/semester-storage.js';
 import * as SimFacultyStorage from './storage/sim-faculty-storage.js';
 import * as ClinicalSitesLibraryStorage from './storage/clinical-sites-library-storage.js';
+import * as TheoryLibraryStorage from './storage/theory-library-storage.js';
 import * as UserStorage from './storage/user-storage.js';
 import * as UsersRegistryStorage from './storage/users-registry-storage.js';
 import * as UserSession from './auth/user-session.js';
@@ -37,10 +38,13 @@ import * as NewSemesterBatch from './ui/new-semester-batch.js';
 import * as UsersAdmin from './ui/users-admin.js';
 import * as ClinicalSitesTab from './ui/clinical-sites-tab.js';
 import * as PlaygroundImport from './ui/playground-import.js';
-import * as TheoryStub from './ui/theory-stub.js';
+import * as Theory from './ui/theory/index.js';
+import { init as initLectureAssignments } from './ui/theory/lecture-assignments.js';
 import * as DateInputs from './ui/date-inputs.js';
+import { openLibraryTab, getNavShell } from './ui/course-selector.js';
 import {
   initSemesterMenu,
+  initCourseSelector,
   refresh,
   switchTab,
   closeMenu,
@@ -67,8 +71,20 @@ export function initUI() {
   UsersAdmin.init();
   ClinicalSitesTab.init();
   PlaygroundImport.init();
-  TheoryStub.init();
+  Theory.init();
+  initLectureAssignments();
+  initCourseSelector();
   initSemesterMenu();
+
+  var menuUsersBtn = document.getElementById('menuUsersLibraryBtn');
+  if (menuUsersBtn) {
+    menuUsersBtn.addEventListener('click', function () { openLibraryTab('users'); });
+  }
+  var menuSitesBtn = document.getElementById('menuClinicalSitesBtn');
+  if (menuSitesBtn) {
+    menuSitesBtn.addEventListener('click', function () { openLibraryTab('clinical-sites'); });
+  }
+
   if (getData() && DateInputs.init) {
     DateInputs.init(document.getElementById('view-setup'), getData());
   }
@@ -242,8 +258,10 @@ export function main() {
       if (fileRoot && ClinicalSitesLibraryStorage.migrateFromSemesterOverlay(fileRoot)) {
         ClinicalSitesLibraryStorage.saveCurrent();
       }
-      return SimFacultyStorage.init(fileRoot).then(function () {
-        return fileRoot;
+      return TheoryLibraryStorage.init().then(function () {
+        return SimFacultyStorage.init(fileRoot).then(function () {
+          return fileRoot;
+        });
       });
     });
   }).then(function (fileRoot) {
@@ -252,7 +270,8 @@ export function main() {
     initUI();
     if (UserSession.isValidated()) {
       UserSession.hideGateModal();
-      switchTab('dashboard');
+      var bootTab = getNavShell() === 'theory' ? 'theory-master' : 'dashboard';
+      switchTab(bootTab);
     }
     document.dispatchEvent(new Event('AppReady'));
   });

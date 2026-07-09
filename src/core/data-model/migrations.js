@@ -16,6 +16,7 @@ import {
   normalizeFacilities,
   migrateClinicalGroupFacilities
 } from './facilities.js';
+import { migrateTheory } from '../theory-data.js';
 import {
   defaultFaculty,
   defaultSections,
@@ -25,7 +26,7 @@ import {
   createDefaultFile
 } from './semester.js';
 
-export var FILE_VERSION = 4;
+export var FILE_VERSION = 5;
 export var VERSION = 1;
 export var AUDIT_PHASES = ['setup', 'active', 'makeup_review', 'audit_exported', 'locked'];
 
@@ -140,6 +141,7 @@ export function migrateSemester(semester) {
     );
   }
   if (!semester.proposals) semester.proposals = [];
+  migrateTheory(semester);
   return semester;
 }
 
@@ -156,6 +158,12 @@ export function migrateFile(raw) {
       raw.meta.schedulingDefaults = cloneConfig(source);
     }
     if (!raw.meta.revision) raw.meta.revision = 1;
+    if (!raw.meta.activeCourseCode) {
+      var activeSem = raw.semesters.find(function (s) {
+        return s.id === raw.meta.activeSemesterId;
+      }) || raw.semesters[0];
+      raw.meta.activeCourseCode = (activeSem && activeSem.meta && activeSem.meta.courseId) || 'REGN15P';
+    }
     raw.semesters.forEach(function (sem) {
       migrateSemester(sem);
       if (sem.meta.configCustomized === undefined) {

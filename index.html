@@ -48,8 +48,9 @@
                     <span id="fileStatus" class="file-status">Loading...</span>
                     <span id="userStatusLine" class="user-status-line"></span>
                 </div>
-                <div class="header-status-wrap">
-                    <div id="courseStatusLine" class="course-status-line" aria-live="polite">No semester file connected</div>
+                <div class="header-status-wrap course-status-wrap">
+                    <button id="courseStatusLine" type="button" class="course-status-line" aria-live="polite" aria-haspopup="listbox" aria-expanded="false" aria-controls="courseStatusDropdown">No semester file connected</button>
+                    <div id="courseStatusDropdown" class="course-status-dropdown hidden" role="listbox"></div>
                 </div>
                 <div class="menu-wrap">
                     <button id="menuToggle" class="btn btn-icon" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="menuDropdown">
@@ -78,6 +79,11 @@
                             <button id="importBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Open semester file…</button>
                             <button id="exportBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Export backup</button>
                         </div>
+                        <div class="menu-group" role="group" aria-labelledby="menuLibrariesLabel">
+                            <div id="menuLibrariesLabel" class="menu-group-label">Program libraries</div>
+                            <button id="menuUsersLibraryBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Users registry</button>
+                            <button id="menuClinicalSitesBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Clinical sites library</button>
+                        </div>
                         <hr class="menu-divider">
                         <button id="clearStorageBtn" class="menu-item menu-item-danger" type="button" role="menuitem">Clear storage &amp; restore defaults</button>
                         <button id="saveBtn" class="menu-item menu-item-primary" type="button" role="menuitem">Save</button>
@@ -87,20 +93,21 @@
                 <input type="file" id="importUserFileInput" class="hidden" accept=".json,application/json">
                 <input type="file" id="importRegistryFileInput" class="hidden" accept=".json,application/json">
                 <input type="file" id="importPlaygroundInput" class="hidden" accept=".json,application/json">
+                <input type="file" id="importTheoryLibraryInput" class="hidden" accept=".json,application/json">
             </header>
 
             <div id="closeoutBanner" class="closeout-banner hidden no-print" role="status"></div>
             <nav class="nav-tabs" aria-label="Main navigation">
-                <button class="nav-tab active" data-tab="dashboard" type="button">Dashboard</button>
-                <button class="nav-tab" data-tab="student" type="button">Student View</button>
-                <button class="nav-tab" data-tab="roles" type="button">Simulation Roles</button>
-                <button class="nav-tab" data-tab="makeup" type="button">Makeup Finder</button>
-                <button class="nav-tab" data-tab="audit" type="button">Audit</button>
-                <button class="nav-tab" data-tab="setup" type="button">Setup</button>
-                <button class="nav-tab" data-tab="playground" type="button">Playground</button>
-                <button class="nav-tab" data-tab="users" type="button">Users</button>
-                <button class="nav-tab" data-tab="clinical-sites" type="button">Clinical Sites</button>
-                <button class="nav-tab" data-tab="theory" type="button">Theory Scheduling</button>
+                <button class="nav-tab active" data-tab="dashboard" data-shell="clinical" type="button">Dashboard</button>
+                <button class="nav-tab" data-tab="student" data-shell="clinical" type="button">Student View</button>
+                <button class="nav-tab" data-tab="roles" data-shell="clinical" type="button">Simulation Roles</button>
+                <button class="nav-tab" data-tab="makeup" data-shell="clinical" type="button">Makeup Finder</button>
+                <button class="nav-tab" data-tab="audit" data-shell="clinical" type="button">Audit</button>
+                <button class="nav-tab" data-tab="setup" data-shell="clinical" type="button">Setup</button>
+                <button class="nav-tab" data-tab="playground" data-shell="clinical" type="button">Playground</button>
+                <button class="nav-tab hidden" data-tab="theory-master" data-shell="theory" type="button">Master Calendar</button>
+                <button class="nav-tab hidden" data-tab="theory-lecture" data-shell="theory" type="button">Lecture Assignments</button>
+                <button class="nav-tab hidden" data-tab="theory-coordinator" data-shell="theory" type="button">Coordinator</button>
             </nav>
         </div>
 
@@ -528,11 +535,40 @@
             </section>
         </div>
 
-        <!-- THEORY STUB -->
-        <div id="view-theory" class="view-panel">
+        <!-- THEORY MASTER -->
+        <div id="view-theory-master" class="view-panel">
             <section class="card" style="padding:1.25rem">
-                <h3 class="section-title">Theory Scheduling</h3>
-                <div id="theoryStubPanel"></div>
+                <h3 class="section-title">Master Calendar</h3>
+                <p class="section-sub">Sun–Sat week grid — all theory tracks for REGN15.</p>
+                <aside id="theoryTopicLibraryPanel" class="theory-topic-library">
+                    <h4 class="section-sub">Content library</h4>
+                    <ul id="theoryTopicLibraryList" class="theory-topic-list"></ul>
+                </aside>
+                <div id="theoryMasterGrid"></div>
+            </section>
+        </div>
+
+        <!-- THEORY LECTURE -->
+        <div id="view-theory-lecture" class="view-panel">
+            <section class="card" style="padding:1.25rem">
+                <h3 class="section-title">Lecture Assignments</h3>
+                <label class="filter-check"><input type="checkbox" id="theoryLectureMyFilter"> My assignments only</label>
+                <table class="data-table"><thead><tr><th>Week</th><th>Date</th><th>Day</th><th>Topic</th><th>Lecturer</th><th>Skills Lab</th></tr></thead>
+                <tbody id="theoryLectureTableBody"></tbody></table>
+            </section>
+        </div>
+
+        <!-- THEORY COORDINATOR -->
+        <div id="view-theory-coordinator" class="view-panel">
+            <section class="card" style="padding:1.25rem">
+                <div class="theory-coordinator-header">
+                    <h3 class="section-title">Coordinator</h3>
+                    <span id="theoryCoordinatorStatusChip" class="theory-coordinator-chip"></span>
+                    <button id="theoryHourSettingsBtn" class="btn btn-sm" type="button">Hour settings</button>
+                </div>
+                <div id="theorySimWarnBanner" class="closeout-banner hidden" role="status"></div>
+                <table class="data-table"><thead><tr><th>Week</th><th>Lecture</th><th>Skills lab</th><th>Clinical</th><th>Simulation</th><th>Total</th></tr></thead>
+                <tbody id="theoryCoordinatorTableBody"></tbody></table>
             </section>
         </div>
     </div>

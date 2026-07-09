@@ -9,14 +9,17 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:line-limit": "node scripts/check-line-limit.js",
-    "seed:mock-onedrive": "node scripts/seed-mock-onedrive.js"
+    "seed:mock-onedrive": "node scripts/seed-mock-onedrive.js",
+    "import:theory-prototypes": "node scripts/theory/import-theory-prototypes.js"
   },
   "dependencies": {
     "chart.js": "^4.4.9",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "fast-xml-parser": "^5.9.3",
     "jsdom": "^26.1.0",
+    "jszip": "^3.10.1",
     "vite": "^6.3.5",
     "vite-plugin-pwa": "^0.21.2",
     "vitest": "^3.2.4"

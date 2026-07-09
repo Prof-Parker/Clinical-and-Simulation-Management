@@ -2176,6 +2176,33 @@ html.dark .user-gate-step-indicator.done {
 .text-muted { color: var(--text-muted, #6b7280); }
 
 .clinical-sites-connect-prompt { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+
+.course-status-wrap { position: relative; }
+button.course-status-line {
+  background: none; border: none; cursor: pointer; padding: 0;
+  font: inherit; text-align: right; width: 100%;
+}
+.course-status-line:hover { text-decoration: underline; }
+.course-status-dropdown {
+  position: absolute; right: 0; top: 100%; z-index: 50;
+  min-width: 12rem; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.12); margin-top: 0.25rem;
+}
+.theory-master-table td { vertical-align: top; font-size: 0.8rem; min-width: 6rem; }
+.theory-day-cell { cursor: pointer; min-height: 3rem; }
+.theory-day-date { font-size: 0.7rem; color: var(--text-muted); }
+.theory-track-theory { background: #dbeafe; padding: 0.2rem; margin: 0.15rem 0; border-radius: 0.25rem; }
+.theory-track-skills { background: #dcfce7; padding: 0.2rem; margin: 0.15rem 0; border-radius: 0.25rem; }
+.theory-track-simulation { background: #fef3c7; padding: 0.2rem; margin: 0.15rem 0; border-radius: 0.25rem; }
+.theory-track-holiday { background: #fee2e2; padding: 0.2rem; margin: 0.15rem 0; border-radius: 0.25rem; }
+.theory-coordinator-header { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1rem; }
+.theory-coordinator-chip { font-size: 0.85rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; background: var(--surface-alt); }
+.theory-chip-on_target { color: #166534; }
+.theory-chip-under { color: #b45309; }
+.theory-chip-over { color: #b91c1c; }
+.theory-topic-library { margin-bottom: 1rem; padding: 0.75rem; background: var(--surface-alt); border-radius: 0.5rem; }
+.theory-topic-list { margin: 0.5rem 0 0; padding-left: 1.25rem; font-size: 0.85rem; max-height: 8rem; overflow-y: auto; }
+.theory-topic-ref { font-weight: 600; color: var(--text-muted); margin-right: 0.35rem; }
 .batch-step label { display: block; margin-bottom: 0.75rem; }
 .batch-step .btn { margin-top: 0.5rem; }
 .batch-holidays-card { margin: 1rem 0; }

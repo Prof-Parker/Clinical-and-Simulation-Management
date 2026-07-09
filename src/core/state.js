@@ -23,6 +23,8 @@ export const state = {
   playgroundRoot: null,
   clinicalSitesLibraryRoot: null,
   clinicalSitesLibraryFileHandle: null,
+  theoryLibraryRoot: null,
+  theoryLibraryFileHandle: null,
   fileLoadedRevision: null,
   currentTab: 'dashboard',
   listeners: []

@@ -6,36 +6,40 @@ var ROLES = {
     program_engineer: {
       id: 'program_engineer',
       displayName: 'Program Engineer',
-      tabs: ['dashboard', 'student', 'roles', 'makeup', 'audit', 'setup', 'playground', 'users', 'clinical-sites', 'theory'],
+      tabs: ['dashboard', 'student', 'roles', 'makeup', 'audit', 'setup', 'playground',
+        'theory-master', 'theory-lecture', 'theory-coordinator', 'users', 'clinical-sites'],
       actions: ['*'],
       dashboardReadOnly: false
     },
     admin_staff: {
       id: 'admin_staff',
       displayName: 'Administrative Staff',
-      tabs: ['dashboard', 'student', 'setup', 'audit', 'users', 'clinical-sites'],
+      tabs: ['dashboard', 'student', 'setup', 'audit', 'theory-master', 'theory-lecture', 'theory-coordinator', 'users', 'clinical-sites'],
       actions: [
         'setup.edit', 'setup.save', 'setup.regenerate', 'setup.importPlayground',
         'audit.admin', 'semester.batchCreate', 'semester.switch',
-        'users.manage', 'clinicalSites.edit', 'proposals.review'
+        'users.manage', 'clinicalSites.edit', 'proposals.review',
+        'theory.view', 'theory.edit', 'theory.export', 'theory.hourTargets.edit', 'theory.contactHourRules.edit'
       ],
       dashboardReadOnly: false
     },
     lead_course_faculty: {
       id: 'lead_course_faculty',
       displayName: 'Lead Course Faculty',
-      tabs: ['dashboard', 'student', 'setup', 'roles', 'makeup', 'playground', 'clinical-sites'],
+      tabs: ['dashboard', 'student', 'setup', 'roles', 'makeup', 'playground', 'clinical-sites',
+        'theory-master', 'theory-lecture', 'theory-coordinator'],
       actions: [
         'dashboard.propose', 'setup.propose', 'setup.saveDraft',
-        'roles.edit', 'makeup.edit', 'playground.edit', 'clinicalSites.propose', 'proposals.submit'
+        'roles.edit', 'makeup.edit', 'playground.edit', 'clinicalSites.propose', 'proposals.submit',
+        'theory.view', 'theory.edit', 'theory.export'
       ],
       dashboardReadOnly: false
     },
     adjunct_faculty: {
       id: 'adjunct_faculty',
       displayName: 'Adjunct Faculty',
-      tabs: ['dashboard', 'student', 'roles'],
-      actions: ['roles.edit'],
+      tabs: ['dashboard', 'student', 'roles', 'theory-lecture'],
+      actions: ['roles.edit', 'theory.view'],
       dashboardReadOnly: true
     }
   };
@@ -50,7 +54,9 @@ var ROLES = {
     playground: 'Playground',
     users: 'Users',
     'clinical-sites': 'Clinical Sites',
-    theory: 'Theory Scheduling'
+    'theory-master': 'Master Calendar',
+    'theory-lecture': 'Lecture Assignments',
+    'theory-coordinator': 'Coordinator'
   };
 
   function listRoles() {

@@ -21,7 +21,14 @@ import { render as renderAuditCloseout } from './audit-closeout.js';
 import { render as renderPlayground } from './playground.js';
 import { render as renderUsersAdmin } from './users-admin.js';
 import { render as renderClinicalSitesTab } from './clinical-sites-tab.js';
-import { render as renderTheoryStub } from './theory-stub.js';
+import * as Theory from './theory/index.js';
+import {
+  updateCourseStatusLabel,
+  applyNavShell,
+  getNavShell,
+  initCourseSelector,
+  renderCourseDropdown
+} from './course-selector.js';
 import { showAlert } from './dialogs.js';
 import * as Permissions from '../auth/permissions.js';
 import * as UserTemplate from '../auth/user-template.js';
@@ -48,19 +55,7 @@ export function buildSemesterLabelHtml(parts) {
 }
 
 export function updateCourseStatusLine() {
-  var el = document.getElementById('courseStatusLine');
-  var data = getData();
-  if (!el) return;
-  if (!data || !data.meta) {
-    el.textContent = 'No semester file connected';
-    return;
-  }
-  var parts = DataModel.parseSemesterDisplay(data);
-  var seasonLabel = parts.season === 'fall' ? 'Fall' : (parts.season === 'spring' ? 'Spring' : '');
-  var courseId = data.meta.courseId || '—';
-  var phase = Audit.getPhase(data);
-  el.textContent = (seasonLabel ? seasonLabel + ' ' : '') + (parts.year || '') +
-    ' · ' + courseId + ' · ' + phase.replace(/_/g, ' ');
+  updateCourseStatusLabel();
 }
 
 export function updateUserStatusLine() {
@@ -144,7 +139,11 @@ export function refresh() {
   if (tab === 'playground') renderPlayground();
   if (tab === 'users') renderUsersAdmin();
   if (tab === 'clinical-sites') renderClinicalSitesTab();
-  if (tab === 'theory') renderTheoryStub();
+  if (tab === 'theory-master' || tab === 'theory-lecture' || tab === 'theory-coordinator') {
+    Theory.renderTheoryTab(tab);
+  }
+  applyNavShell(getNavShell());
+  renderCourseDropdown();
   updateCloseoutBanner(data);
   Permissions.apply();
   updateCourseStatusLine();
@@ -188,7 +187,7 @@ export function switchTab(tabId) {
     showAlert('Not permitted', 'Your role cannot access this tab.');
     return;
   }
-  if (tabId !== 'dashboard' && setScheduleFullscreen) {
+  if (tabId !== 'dashboard' && tabId !== 'theory-master' && setScheduleFullscreen) {
     setScheduleFullscreen(false);
   }
   state.currentTab = tabId;
@@ -248,3 +247,5 @@ export function addSemester(season, year, courseId) {
   refresh();
   return newSem;
 }
+
+export { initCourseSelector } from './course-selector.js';

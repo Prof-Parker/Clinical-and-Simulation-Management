@@ -8,6 +8,7 @@ import * as UserTemplate from './user-template.js';
 import { showAlert } from '../ui/dialogs.js';
 import { getData } from '../core/state.js';
 import * as Audit from '../audit/audit.js';
+import { getNavShell } from '../ui/course-selector.js';
 
 function currentRole() {
     var s = UserSession && UserSession.getSession();
@@ -49,10 +50,12 @@ function currentRole() {
   }
 
   function applyNavGating() {
-    document.querySelectorAll('.nav-tab').forEach(function (btn) {
+    var shell = getNavShell();
+    document.querySelectorAll('.nav-tab[data-shell]').forEach(function (btn) {
       var tab = btn.dataset.tab;
       var allowed = canTab(tab);
-      btn.classList.toggle('hidden', !allowed);
+      var shellMatch = btn.dataset.shell === shell;
+      btn.classList.toggle('hidden', !allowed || !shellMatch);
       btn.disabled = !allowed;
     });
   }
@@ -71,6 +74,12 @@ function currentRole() {
       var perm = map[id];
       var show = perm === true || (role && canAction(perm));
       el.classList.toggle('hidden', !show);
+    });
+    ['menuUsersLibraryBtn', 'menuClinicalSitesBtn'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var tab = id === 'menuUsersLibraryBtn' ? 'users' : 'clinical-sites';
+      el.classList.toggle('hidden', !canTab(tab));
     });
     var logoutBtn = document.getElementById('logoutUserMenuBtn');
     if (logoutBtn) {

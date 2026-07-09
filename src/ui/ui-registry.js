@@ -1,19 +1,26 @@
 /**
  * UI surface registry — contract between index.html, tab routing, and smoke tests.
- *
- * When adding UI:
- * 1. Add markup to index.html (or a template partial).
- * 2. Register the tab, menu item, or anchor here.
- * 3. Wire behavior in main.js / feature module init.
- * 4. Run `npm test` — ui-smoke.test.js validates presence and routing.
  */
 
-export var UI_REGISTRY_VERSION = 1;
+export var UI_REGISTRY_VERSION = 2;
+
+export var UI_NAV_CLINICAL = [
+  'dashboard', 'student', 'roles', 'makeup', 'audit', 'setup', 'playground'
+];
+
+export var UI_NAV_THEORY = [
+  'theory-master', 'theory-lecture', 'theory-coordinator'
+];
+
+export var UI_NAV_LIBRARY = [
+  'users', 'clinical-sites'
+];
 
 /** Nav tabs: id must match .nav-tab[data-tab] and #view-{id}. */
 export var UI_TABS = [
   {
     id: 'dashboard',
+    shell: 'clinical',
     anchors: [
       'scheduleBody', 'scheduleHeadRow', 'scheduleExportXlsxBtn', 'scheduleFullscreenBtn',
       'scheduleGroupFilter', 'simTableBody', 'loadChart', 'weekFilter'
@@ -21,22 +28,27 @@ export var UI_TABS = [
   },
   {
     id: 'student',
+    shell: 'clinical',
     anchors: ['studentViewSelect', 'showMarkupToggle', 'printStudentBtn', 'studentCalendarPrint']
   },
   {
     id: 'roles',
+    shell: 'clinical',
     anchors: ['simFacultyBanner', 'roleSimSelect', 'roleGroupSelect', 'roleTableBody']
   },
   {
     id: 'makeup',
+    shell: 'clinical',
     anchors: ['makeupStudentSelect', 'makeupTypeSelect', 'makeupResults']
   },
   {
     id: 'audit',
+    shell: 'clinical',
     anchors: ['auditCloseout']
   },
   {
     id: 'setup',
+    shell: 'clinical',
     anchors: [
       'saveSetupBtn', 'regenerateSchedulesBtn', 'setupAdvancedConfigBtn', 'finalizeSemesterBtn',
       'setupSections', 'setupFaculty', 'setupFacilities', 'setupHolidays', 'setupRoster',
@@ -45,44 +57,55 @@ export var UI_TABS = [
   },
   {
     id: 'playground',
+    shell: 'clinical',
     anchors: [
       'playgroundStatus', 'playgroundLoadSemesterBtn', 'playgroundCourseSelect',
       'playgroundSaveBtn', 'playgroundConfigSummary'
     ]
   },
   {
+    id: 'theory-master',
+    shell: 'theory',
+    anchors: ['theoryMasterGrid', 'theoryTopicLibraryPanel', 'theoryTopicLibraryList']
+  },
+  {
+    id: 'theory-lecture',
+    shell: 'theory',
+    anchors: ['theoryLectureTableBody', 'theoryLectureMyFilter']
+  },
+  {
+    id: 'theory-coordinator',
+    shell: 'theory',
+    anchors: ['theoryCoordinatorTableBody', 'theoryCoordinatorStatusChip', 'theoryHourSettingsBtn', 'theorySimWarnBanner']
+  },
+  {
     id: 'users',
+    shell: 'library',
     anchors: ['usersAdminPanel']
   },
   {
     id: 'clinical-sites',
+    shell: 'library',
     anchors: ['clinicalSitesConnectBtn', 'clinicalSitesTabLibrary', 'clinicalSitesProposals']
-  },
-  {
-    id: 'theory',
-    anchors: ['theoryStubPanel']
   }
 ];
 
-/** Header, menu, and global chrome (always present when app shell loads). */
 export var UI_SHELL = [
-  'appMain', 'fileStatus', 'userStatusLine', 'courseStatusLine', 'menuToggle', 'menuDropdown',
-  'closeoutBanner', 'pwaInstallBanner', 'pwaIosInstallBanner', 'pwaOnedriveBanner'
+  'appMain', 'fileStatus', 'userStatusLine', 'courseStatusLine', 'courseStatusDropdown',
+  'menuToggle', 'menuDropdown', 'closeoutBanner', 'pwaInstallBanner', 'pwaIosInstallBanner', 'pwaOnedriveBanner'
 ];
 
-/** Menu actions wired in main.js initUI (may be hidden by role or FS API). */
 export var UI_MENU = [
   'darkModeToggle', 'loadUserFileMenuBtn', 'loadRegistryMenuBtn', 'logoutUserMenuBtn',
   'newSemesterBatchBtn', 'semesterSwitchMenu', 'openFileBtn', 'newFileBtn', 'importBtn',
-  'exportBtn', 'clearStorageBtn', 'saveBtn'
+  'exportBtn', 'menuUsersLibraryBtn', 'menuClinicalSitesBtn', 'clearStorageBtn', 'saveBtn'
 ];
 
-/** Hidden file inputs triggered from menu or tabs. */
 export var UI_FILE_INPUTS = [
-  'importFileInput', 'importUserFileInput', 'importRegistryFileInput', 'importPlaygroundInput'
+  'importFileInput', 'importUserFileInput', 'importRegistryFileInput', 'importPlaygroundInput',
+  'importTheoryLibraryInput'
 ];
 
-/** Modal overlays and primary dialog controls. */
 export var UI_MODALS = {
   userGate: [
     'userGateModal', 'userGateTitle', 'userGateLoadRegistryBtn', 'userGateLoadUserBtn',
@@ -113,7 +136,6 @@ export function allRegisteredElementIds() {
   return ids;
 }
 
-/** Registry self-check: no duplicate ids, valid tab id characters. */
 export function validateRegistry() {
   var errors = [];
   var seen = {};
@@ -125,7 +147,6 @@ export function validateRegistry() {
     if (!tab.id || !/^[a-z][a-z0-9-]*$/.test(tab.id)) {
       errors.push('Invalid tab id: ' + tab.id);
     }
-    if (viewIdForTab(tab.id) === 'view-') errors.push('Tab missing id');
   });
   return errors;
 }

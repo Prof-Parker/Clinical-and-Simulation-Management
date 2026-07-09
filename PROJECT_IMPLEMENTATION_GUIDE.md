@@ -28,7 +28,8 @@ index.html → src/main.js
 │   ├── core/scheduler/          Clinical + sim generation, makeup slots
 │   ├── core/calendar-engine.js  18-week calendar, holidays, inactive weeks
 │   ├── core/course-defaults.js  Per-course default config templates
-│   ├── core/clinical-sites-library.js  Program-wide site catalog
+│   ├── core/theory-data.js      Theory calendar schema, projections, contact-hour math
+│   ├── storage/theory-library-storage.js  REGN15 topic bank (separate JSON)
 │   ├── storage/semester-storage.js     Semester JSON: IDB + File System Access
 │   ├── auth/permissions.js      Tab/menu/action gating
 │   ├── ui/chrome.js             Tab router, menus, semester switch
@@ -42,7 +43,9 @@ Each `src/**/*.js` module is capped at **500 lines** and starts with a brief hea
 
 **Runtime model:** `state.fileRoot` holds all semesters; `getData()` returns the active semester. Simulation roles live in `meta.simRoles` (base64 obfuscated on disk) and are edited in memory via `state.simFacultyRoot`. UI modules call `notifyChange()` to persist the semester file.
 
-**Boot order:** `UserSession.init()` → `semester-storage.init()` → `clinical-sites-library-storage.init()` → `sim-faculty-storage.init()` → `initUI()`. Until the user session validates, `#userGateModal` blocks the app shell.
+**Boot order:** `UserSession.init()` → `semester-storage.init()` → `clinical-sites-library-storage.init()` → `theory-library-storage.init()` → `sim-faculty-storage.init()` → `initUI()`. Until the user session validates, `#userGateModal` blocks the app shell.
+
+**Course shell:** `#courseStatusLine` dropdown sets `meta.activeCourseCode` (`REGN15` theory shell vs `REGN15P` clinical shell). Users and Clinical Sites open from the hamburger **Program libraries** menu.
 
 **Local testing:** `npm test` runs Vitest. `node scripts/seed-mock-onedrive.js` creates gitignored `mock-onedrive/` fixtures. See [docs/MOCK_ONEDRIVE.md](docs/MOCK_ONEDRIVE.md).
 
@@ -58,10 +61,13 @@ Each `src/**/*.js` module is capped at **500 lines** and starts with a brief hea
 | **Users registry** | `users-registry.json` | Authoritative roles + key hashes |
 | **Clinical sites library** | `clinical-sites-library.json` | Program-wide site catalog |
 | **Playground** | `user_{token}_playground.json` | Isolated semester experiments |
-| **Semester file** | `{S\|F}{year}_{courseId}.json` (e.g. `F2026_REGN15P.json`); legacy `regn-tracker.json` | Roster, schedule, config, calendar, facilities, faculty, audit meta, **proposals**, and **simulation roles** (`meta.simRoles`, base64 obfuscated) |
+| **Theory content library** | `theory-content-library_REGN15.json` | Topic bank (`moduleRef`, title) — no dates |
+| **Semester file** | `{S\|F}{year}_{courseId}.json` (e.g. `F2026_REGN15P.json`); consolidated `F2026_REGN_program.json` for REGN15+15P; legacy `regn-tracker.json` | Roster, schedule, config, calendar, facilities, faculty, audit meta, **theory** (`semester.theory`), **proposals**, and **simulation roles** (`meta.simRoles`, base64 obfuscated) |
 | **Audit PDF** | `{Season}-{Year}-{courseId}-Audit-v{n}.pdf` (e.g. `Fall-2026-REGN15P-Audit-v1.pdf`) | Signed end-of-semester audit record (official record after closeout) |
 
 **Breaking change (fileVersion 4):** Separate `{token}_Faculty.json` files are no longer supported. Simulation role assignments must be stored in the semester file. Legacy plain `semester.roles` / `_legacySimRoles` embedded in old semester exports still migrate on load.
+
+**Breaking change (fileVersion 5):** Adds `semester.theory` (REGN15 calendar data), `meta.activeCourseCode` (theory vs clinical shell), and optional consolidated program semester files. Theory is excluded from audit hash snapshots initially. Seed: `npm run seed:mock-onedrive` imports prototype docx via `npm run import:theory-prototypes`.
 
 Course-aware names are suggested automatically when `meta.courseId` and semester season/year are set. Sim role edits remain allowed after audit export/lock — the audit lifecycle covers the semester file only.
 
@@ -70,8 +76,9 @@ Course-aware names are suggested automatically when `meta.courseId` and semester
 ```json
 {
   "meta": {
-    "fileVersion": 4,
+    "fileVersion": 5,
     "activeSemesterId": "…",
+    "activeCourseCode": "REGN15P",
     "schedulingDefaults": { },
     "simRoles": { "encoding": "b64v1", "data": "…" }
   },
@@ -80,6 +87,7 @@ Course-aware names are suggested automatically when `meta.courseId` and semester
     "meta": { "semesterName": "Spring 2026", "finalized": false },
     "config": { "clinicalDaysRequired": 10, "simDaysRequired": 5, "simDays": ["Mon","Tue"], … },
     "calendar": { "semesterStartDate": "2026-01-01", "weeks": [ ] },
+    "theory": { "version": 1, "days": [ ], "settings": { } },
     "holidays": [ ],
     "facilities": [ ],
     "faculty": [ ],

@@ -10,6 +10,9 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import { importTheoryFromPrototypes } from './theory/merge-prototypes.js';
+import { rebuildWeeks } from '../src/core/calendar-engine.js';
+import { migrateTheory } from '../src/core/theory-data.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..', 'mock-onedrive');
@@ -29,11 +32,14 @@ function writeJson(relPath, data) {
   console.log('  wrote ' + relPath);
 }
 
-function main() {
+async function main() {
   console.log('Seeding ' + ROOT);
   if (fs.existsSync(ROOT)) {
     fs.rmSync(ROOT, { recursive: true, force: true });
   }
+
+  var imported = await importTheoryFromPrototypes({ semesterStartDate: '2026-08-16' });
+  console.log('  theory import:', imported.validation);
 
   var registry = {
     meta: { version: 1, lastModified: new Date().toISOString(), revision: 1 },
@@ -70,10 +76,13 @@ function main() {
   writeJson('clinical-sites-library.json', {
     meta: { version: 1, lastModified: new Date().toISOString() },
     sites: [
-      { id: 'site_srmc', name: 'Sample Medical Center', shortName: 'SMC', contentTags: ['MS'] },
-      { id: 'site_stel', name: 'Sample Community Hospital', shortName: 'SCH', contentTags: ['MS'] }
+      { id: 'fac_srmc', name: 'Shasta Regional Medical Center', shortName: 'SRMC', contentTags: ['MS'] },
+      { id: 'fac_stel', name: "St. Elizabeth's", shortName: 'StE', contentTags: ['MS'] },
+      { id: 'fac_community_health', name: 'Community Health', shortName: 'CH', contentTags: ['MS'] }
     ]
   });
+
+  writeJson('theory-content-library_REGN15.json', imported.library);
 
   var semId = uid('sem');
   var students = [];
@@ -84,20 +93,20 @@ function main() {
       name: 'Student ' + i,
       clinicalGroup: 'C' + (((i - 1) % 5) + 1),
       simGroup: 'SG' + (((i - 1) % 4) + 1),
-      facilityId: null,
+      facilityId: i % 7 === 0 ? 'fac_community_health' : 'fac_srmc',
       section: 'F6011',
-      schedule: Array.from({ length: 18 }, function () {
+      schedule: Array.from({ length: 18 }, function (_, wi) {
         return {
-          clinical: false,
+          clinical: wi >= 4 && wi < 14 && i % 3 !== 0,
           clinicalMissed: false,
-          sim: null,
-          simDay: null,
+          sim: wi >= 5 && wi < 10 ? ((wi - 5) % 5) + 1 : null,
+          simDay: wi >= 5 ? 'Mon' : null,
           simGuestGroup: null,
           simOverload: false,
           simMakeup: false,
           makeupClinical: false,
-          inactive: false,
-          facilityId: null
+          inactive: wi === 14,
+          facilityId: i % 7 === 0 ? 'fac_community_health' : 'fac_srmc'
         };
       }),
       absences: [],
@@ -105,53 +114,71 @@ function main() {
     });
   }
 
-  writeJson(path.join('semesters', 'F2026_REGN15P.json'), {
+  var semester = {
+    id: semId,
     meta: {
-      fileVersion: 4,
+      courseId: 'REGN15P',
+      semesterSeason: 'fall',
+      semesterYear: 2026,
+      semesterName: 'Fall 2026',
+      auditPhase: 'setup',
+      finalized: false,
+      configCustomized: false,
+      version: 1,
+      lastModified: new Date().toISOString(),
+      leadFaculty: { name: 'Lead Faculty', email: 'lead@example.edu' }
+    },
+    config: {
+      clinicalDaysRequired: 10,
+      simDaysRequired: 5,
+      maxStudents: 30,
+      maxPerClinicalGroup: 6,
+      maxPerClinicalGroupOverload: 7,
+      maxStudentsPerSimSession: 8,
+      maxStudentsPerSimSessionOverload: 9,
+      simMakeupHeadroomReserved: 1,
+      clinicalStartWeek: 5,
+      simStartWeek: 5,
+      clinicalGroups: ['C1', 'C2', 'C3', 'C4', 'C5'],
+      clinicalGroupDays: { C1: 'Sat', C2: 'Mon', C3: 'Mon', C4: 'Mon', C5: 'Tue' },
+      simGroups: ['SG1', 'SG2', 'SG3', 'SG4'],
+      simDays: ['Mon', 'Tue']
+    },
+    calendar: { semesterStartDate: '2026-08-16', weeks: [] },
+    holidays: [
+      { date: '2026-09-07', label: 'Labor Day', type: 'holiday' },
+      { date: '2026-11-26', label: 'Thanksgiving break', type: 'break', weekIndex: 14 }
+    ],
+    orientations: [],
+    facilities: [
+      { id: 'fac_srmc', name: 'Shasta Regional Medical Center', shortName: 'SRMC' },
+      { id: 'fac_stel', name: "St. Elizabeth's", shortName: 'StE' },
+      { id: 'fac_community_health', name: 'Community Health', shortName: 'CH' }
+    ],
+    faculty: [],
+    sections: [{ id: uid('sec'), name: 'F6011' }],
+    students: students,
+    proposals: [],
+    theory: imported.theory
+  };
+
+  migrateTheory(semester);
+  rebuildWeeks(semester);
+
+  var fileRoot = {
+    meta: {
+      fileVersion: 5,
       activeSemesterId: semId,
+      activeCourseCode: 'REGN15P',
       revision: 1,
       schedulingDefaults: {},
       lastModified: new Date().toISOString()
     },
-    semesters: [{
-      id: semId,
-      meta: {
-        courseId: 'REGN15P',
-        semesterSeason: 'fall',
-        semesterYear: 2026,
-        semesterName: 'Fall 2026',
-        auditPhase: 'setup',
-        finalized: false,
-        configCustomized: false,
-        version: 1,
-        lastModified: new Date().toISOString()
-      },
-      config: {
-        clinicalDaysRequired: 10,
-        simDaysRequired: 5,
-        maxStudents: 30,
-        maxPerClinicalGroup: 6,
-        maxPerClinicalGroupOverload: 7,
-        maxStudentsPerSimSession: 8,
-        maxStudentsPerSimSessionOverload: 9,
-        simMakeupHeadroomReserved: 1,
-        clinicalStartWeek: 5,
-        simStartWeek: 5,
-        clinicalGroups: ['C1', 'C2', 'C3', 'C4', 'C5'],
-        clinicalGroupDays: { C1: 'Sat', C2: 'Mon', C3: 'Mon', C4: 'Mon', C5: 'Tue' },
-        simGroups: ['SG1', 'SG2', 'SG3', 'SG4'],
-        simDays: ['Mon', 'Tue']
-      },
-      calendar: { semesterStartDate: '2026-08-01', weeks: [] },
-      holidays: [],
-      orientations: [],
-      facilities: [],
-      faculty: [],
-      sections: [{ id: uid('sec'), name: 'F6011' }],
-      students: students,
-      proposals: []
-    }]
-  });
+    semesters: [semester]
+  };
+
+  writeJson(path.join('semesters', 'F2026_REGN_program.json'), fileRoot);
+  writeJson(path.join('semesters', 'F2026_REGN15P.json'), fileRoot);
 
   writeJson(path.join('playgrounds', 'user_F2026_REGN15P_playground.json'), {
     meta: {
@@ -173,7 +200,11 @@ function main() {
     }]
   });
 
-  console.log('\nDone. Test as admin: load mock-onedrive/users/admin.user.json + users-registry.json');
+  console.log('\nDone. Test: load mock-onedrive/semesters/F2026_REGN_program.json');
+  console.log('Theory library: mock-onedrive/theory-content-library_REGN15.json');
 }
 
-main();
+main().catch(function (err) {
+  console.error(err);
+  process.exit(1);
+});

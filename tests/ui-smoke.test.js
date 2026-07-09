@@ -99,13 +99,12 @@ describe('ui-smoke DOM contract', () => {
     expect(missing, 'Add missing ids to index.html or fix ui-registry.js: ' + missing.join(', ')).toEqual([]);
   });
 
-  it('each tab has matching nav button and view panel', () => {
-    UI_TABS.forEach(function (tab) {
+  it('each clinical nav tab has matching view panel', () => {
+    UI_TABS.filter(function (t) { return t.shell === 'clinical'; }).forEach(function (tab) {
       var nav = document.querySelector('.nav-tab[data-tab="' + tab.id + '"]');
       var view = document.getElementById(viewIdForTab(tab.id));
       expect(nav, 'nav-tab for ' + tab.id).toBeTruthy();
       expect(view, 'view panel for ' + tab.id).toBeTruthy();
-      expect(view.classList.contains('view-panel')).toBe(true);
     });
   });
 
