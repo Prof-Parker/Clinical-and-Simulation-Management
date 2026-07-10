@@ -26,6 +26,7 @@ export const state = {
   theoryLibraryRoot: null,
   theoryLibraryFileHandle: null,
   fileLoadedRevision: null,
+  semesterFileConnected: false,
   currentTab: 'dashboard',
   appShell: null,
   listeners: []

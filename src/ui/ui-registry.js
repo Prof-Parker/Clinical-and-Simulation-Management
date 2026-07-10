@@ -124,7 +124,8 @@ export var UI_FILE_INPUTS = [
 export var UI_MODALS = {
   userGate: [
     'userGateModal', 'userGateTitle', 'userGateLoadRegistryBtn', 'userGateLoadUserBtn',
-    'userGateStep1', 'userGateStep2'
+    'userGateLoadSemesterBtn', 'userGateChangeUserBtn', 'userGateStep1', 'userGateStep2',
+    'userGateStep3', 'userGateSemesterFileInput'
   ],
   config: ['configModal', 'configModalClose', 'configModalCancel', 'configModalSave', 'configModalBody'],
   dialog: ['dialogModal', 'dialogTitle', 'dialogBody', 'dialogCancel', 'dialogSave']

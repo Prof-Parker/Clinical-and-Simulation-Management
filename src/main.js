@@ -311,10 +311,13 @@ export function main() {
     Theme.init(fileRoot);
     Dashboard.populateFilters(getData());
     initUI();
-    if (UserSession.isValidated()) {
+    if (UserSession.isValidated() && Storage.isSemesterFileConnected()) {
       UserSession.hideGateModal();
       var bootTab = getNavShell() === 'theory' ? 'theory-master' : 'dashboard';
       switchTab(bootTab);
+    } else if (UserSession.isValidated()) {
+      UserSession.showGateModal('');
+      UserSession.updateGateStep('');
     }
     document.dispatchEvent(new Event('AppReady'));
   });

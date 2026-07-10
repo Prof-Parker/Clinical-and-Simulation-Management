@@ -6,8 +6,13 @@ import * as Permissions from './permissions.js';
 import * as UserData from './user-data.js';
 import * as UserStorage from '../storage/user-storage.js';
 import * as UsersRegistryStorage from '../storage/users-registry-storage.js';
+import * as Storage from '../storage/semester-storage.js';
+import * as SimFacultyStorage from '../storage/sim-faculty-storage.js';
+import * as Dashboard from '../ui/dashboard/index.js';
 import { state } from '../core/state.js';
-import { refresh } from '../ui/chrome.js';
+import { refresh, switchTab } from '../ui/chrome.js';
+import { initGateUI as wireGateUI } from './user-gate-ui.js';
+import { getNavShell } from '../ui/course-selector.js';
 
 var session = null;
 
@@ -157,7 +162,57 @@ var session = null;
 
     if (!UsersRegistryStorage || !UsersRegistryStorage.isReady()) return 1;
 
-    return 2;
+    if (!isValidated()) return 2;
+
+    if (!Storage.isSemesterFileConnected()) return 3;
+
+    return 0;
+
+  }
+
+
+
+  function gateTitleForStep(step) {
+
+    if (step === 1) return 'Connect users registry';
+
+    if (step === 2) return 'Load user file';
+
+    if (step === 3) return 'Load a semester file';
+
+    return 'Sign in';
+
+  }
+
+
+
+  function enterAppFromGate() {
+
+    hideGateModal();
+
+    var bootTab = getNavShell() === 'theory' ? 'theory-master' : 'dashboard';
+
+    switchTab(bootTab);
+
+  }
+
+
+
+  function finishSemesterLoad(fileRoot, fileName) {
+
+    var sem = Storage.activateFileRoot(fileRoot, fileName);
+
+    Storage.cacheData(fileRoot);
+
+    SimFacultyStorage.hydrateFromFileRoot(fileRoot);
+
+    Dashboard.populateFilters(sem);
+
+    if (Permissions) Permissions.apply();
+
+    refresh();
+
+    enterAppFromGate();
 
   }
 
@@ -167,15 +222,27 @@ var session = null;
 
     var step = getGateStep();
 
+    if (step === 0) {
+
+      enterAppFromGate();
+
+      return;
+
+    }
+
     var step1 = document.getElementById('userGateStep1');
 
     var step2 = document.getElementById('userGateStep2');
+
+    var step3 = document.getElementById('userGateStep3');
 
     var title = document.getElementById('userGateTitle');
 
     var errEl = document.getElementById('userGateError');
 
     var registryLine = document.getElementById('userGateRegistryName');
+
+    var userLine = document.getElementById('userGateUserName');
 
     var retryBtn = document.getElementById('userGateRetryBtn');
 
@@ -184,6 +251,8 @@ var session = null;
     if (step1) step1.classList.toggle('hidden', step !== 1);
 
     if (step2) step2.classList.toggle('hidden', step !== 2);
+
+    if (step3) step3.classList.toggle('hidden', step !== 3);
 
 
 
@@ -199,15 +268,17 @@ var session = null;
 
 
 
-    if (title) {
+    if (title) title.textContent = gateTitleForStep(step);
 
-      title.textContent = step === 1 ? 'Connect users registry' : 'Load user file';
+    if (registryLine && step >= 2) {
+
+      registryLine.textContent = state.usersRegistryFileName || 'Users registry connected';
 
     }
 
-    if (registryLine && step === 2) {
+    if (userLine && step === 3 && session) {
 
-      registryLine.textContent = state.usersRegistryFileName || 'Users registry connected';
+      userLine.textContent = session.name + ' signed in';
 
     }
 
@@ -277,95 +348,27 @@ var session = null;
 
   function initGateUI() {
 
-    var loadUserBtn = document.getElementById('userGateLoadUserBtn');
+    wireGateUI({
 
-    var loadRegBtn = document.getElementById('userGateLoadRegistryBtn');
+      validateAndSetSession: validateAndSetSession,
 
-    var changeRegBtn = document.getElementById('userGateChangeRegistryBtn');
+      updateGateStep: updateGateStep,
 
-    var retryBtn = document.getElementById('userGateRetryBtn');
+      showGateModal: showGateModal,
 
+      finishSemesterLoad: finishSemesterLoad,
 
+      refresh: refresh,
 
-    if (loadRegBtn) {
+      Storage: Storage,
 
-      loadRegBtn.addEventListener('click', function () {
+      UserStorage: UserStorage,
 
-        UsersRegistryStorage.openFilePicker().then(function () {
+      UsersRegistryStorage: UsersRegistryStorage,
 
-          updateGateStep('');
+      state: state
 
-          if (refresh) refresh();
-
-        }).catch(function () {
-
-          showGateModal('Could not load registry file');
-
-        });
-
-      });
-
-    }
-
-    if (changeRegBtn) {
-
-      changeRegBtn.addEventListener('click', function () {
-
-        UsersRegistryStorage.openFilePicker().then(function () {
-
-          updateGateStep('');
-
-          if (refresh) refresh();
-
-        }).catch(function () {
-
-          showGateModal('Could not load registry file');
-
-        });
-
-      });
-
-    }
-
-    if (loadUserBtn) {
-
-      loadUserBtn.addEventListener('click', function () {
-
-        UserStorage.openFilePicker().then(function () {
-
-          return validateAndSetSession();
-
-        }).then(function (r) {
-
-          if (r.ok) hideGateModal();
-
-          else updateGateStep(r.error);
-
-        }).catch(function () {
-
-          updateGateStep('Could not load user file');
-
-        });
-
-      });
-
-    }
-
-    if (retryBtn) {
-
-      retryBtn.addEventListener('click', function () {
-
-        validateAndSetSession().then(function (r) {
-
-          if (r.ok) hideGateModal();
-
-          else updateGateStep(r.error);
-
-        });
-
-      });
-
-    }
+    });
 
   }
 
@@ -382,5 +385,7 @@ export {
   hideGateModal,
   initGateUI,
   getGateStep,
-  updateGateStep
+  updateGateStep,
+  enterAppFromGate,
+  finishSemesterLoad
 };

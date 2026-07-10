@@ -660,6 +660,7 @@
                 <div class="user-gate-steps" aria-label="Sign-in progress">
                     <span class="user-gate-step-indicator active" data-step="1">1. Registry</span>
                     <span class="user-gate-step-indicator" data-step="2">2. User file</span>
+                    <span class="user-gate-step-indicator" data-step="3">3. Semester</span>
                 </div>
                 <div class="modal-header user-gate-header">
                     <h2 id="userGateTitle" style="margin:0">Connect users registry</h2>
@@ -673,13 +674,22 @@
                         </div>
                     </div>
                     <div id="userGateStep2" class="user-gate-step-panel hidden">
-                        <p class="section-sub user-gate-lead">Registry connected. Load your user file to sign in.</p>
+                        <p class="section-sub user-gate-lead">Registry connected. Load your user file to continue.</p>
                         <p id="userGateRegistryName" class="user-gate-connected-file"></p>
                         <div class="user-gate-actions">
                             <button id="userGateLoadUserBtn" class="btn btn-primary" type="button">Load user file…</button>
                             <button id="userGateRetryBtn" class="btn btn-sm hidden" type="button">Retry validation</button>
                             <button id="userGateChangeRegistryBtn" class="btn btn-sm" type="button">Use different registry…</button>
                         </div>
+                    </div>
+                    <div id="userGateStep3" class="user-gate-step-panel hidden">
+                        <p class="section-sub user-gate-lead">Signed in. Connect a program semester file from OneDrive (for example <code>F2026_REGN_program.json</code>).</p>
+                        <p id="userGateUserName" class="user-gate-connected-file"></p>
+                        <div class="user-gate-actions">
+                            <button id="userGateLoadSemesterBtn" class="btn btn-primary" type="button">Load semester file…</button>
+                            <button id="userGateChangeUserBtn" class="btn btn-sm" type="button">Use different user file…</button>
+                        </div>
+                        <input type="file" id="userGateSemesterFileInput" class="hidden" accept=".json,application/json">
                     </div>
                 </div>
             </div>

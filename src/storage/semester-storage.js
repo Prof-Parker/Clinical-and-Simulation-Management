@@ -86,6 +86,7 @@ var DB_NAME = 'regnTrackerDB';
       if (Scheduler) Scheduler.regenerateAll(sem);
       state.fileHandle = null;
       state.fileName = null;
+      state.semesterFileConnected = false;
       if (Theme) Theme.apply();
       setFileRoot(fileRoot);
       markClean();
@@ -331,6 +332,7 @@ var DB_NAME = 'regnTrackerDB';
     }).then(function (data) {
       return applyLoadedFileRoot(data);
     }).then(function (data) {
+      state.semesterFileConnected = true;
       return setMeta({
         lastImportedFileName: file.name,
         hasLoadedData: true
@@ -455,6 +457,7 @@ var DB_NAME = 'regnTrackerDB';
       }
       setFileRoot(fileRoot);
       markClean();
+      state.semesterFileConnected = loadedFromFile;
       if (!loadedFromFile) {
         return setMeta({ hasLoadedData: false, lastImportedFileName: '' }).then(function () {
           updateStatusUI();
@@ -467,6 +470,24 @@ var DB_NAME = 'regnTrackerDB';
       return fileRoot;
     });
   }
+  function isSemesterFileConnected() {
+    return !!(state.fileHandle || state.semesterFileConnected);
+  }
+  function activateFileRoot(fileRoot, fileName) {
+    var sem = fileRoot.semesters.find(function (s) {
+      return s.id === fileRoot.meta.activeSemesterId;
+    }) || fileRoot.semesters[0];
+    CalendarEngine.rebuildWeeks(sem);
+    if (needsRegeneration(sem) && Scheduler) {
+      Scheduler.regenerateAll(sem);
+    }
+    setFileRoot(fileRoot);
+    state.semesterFileConnected = true;
+    if (fileName != null) state.fileName = fileName;
+    markClean();
+    updateStatusUI();
+    return sem;
+  }
   function needsRegeneration(semester) {
     if (!semester || !semester.students || !semester.students.length) return false;
     return semester.students.every(function (s) {
@@ -475,4 +496,4 @@ var DB_NAME = 'regnTrackerDB';
       });
     });
   }
-export { supportsFS, init, saveCurrent, scheduleAutoSave, openFilePicker, createFilePicker, importFromFile, exportDownload, updateStatusUI, cacheData, shouldShowOnedriveBanner, configureImportInput, isIOSDevice, semesterFileToken, suggestedSemesterFileName, clearAndRestoreDefaults, applyLoadedFileRoot, writeFileRootToHandle, readFromHandle, writeToHandle, serialize, semesterFileTokenFromMeta, supportsDirectoryPicker, idbGet as _idbGet, idbSet as _idbSet };
+export { supportsFS, init, saveCurrent, scheduleAutoSave, openFilePicker, createFilePicker, importFromFile, exportDownload, updateStatusUI, cacheData, shouldShowOnedriveBanner, configureImportInput, isIOSDevice, semesterFileToken, suggestedSemesterFileName, clearAndRestoreDefaults, applyLoadedFileRoot, writeFileRootToHandle, readFromHandle, writeToHandle, serialize, semesterFileTokenFromMeta, supportsDirectoryPicker, isSemesterFileConnected, activateFileRoot, idbGet as _idbGet, idbSet as _idbSet };
