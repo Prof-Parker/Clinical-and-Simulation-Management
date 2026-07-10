@@ -1,21 +1,37 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import {
+  DataModel,
+  CalendarEngine,
+  Scheduler,
+  RosterBalance
+} from './_harness.js';
 import { buildSimRoleSessions, buildSimSummaryLabel } from '../src/ui/sim-roles.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const mockPath = join(__dirname, '..', 'mock-onedrive', 'semesters', 'F2026_REGN_program.json');
-
-function loadF2026() {
-  const program = JSON.parse(readFileSync(mockPath, { encoding: 'utf8' }));
-  const activeId = program.meta && program.meta.activeSemesterId;
-  return program.semesters.find(function (s) { return s.id === activeId; }) || program.semesters[0];
+function makeSemester() {
+  var cfg = DataModel.normalizeConfig(DataModel.defaultConfig());
+  var students = [];
+  for (var i = 0; i < 30; i++) {
+    students.push(DataModel.createStudent('Student ' + (i + 1), 'C1', 'SG1', 'fac0', ''));
+  }
+  RosterBalance.rebalance(students, cfg);
+  var sem = {
+    config: cfg,
+    students: students,
+    facilities: [{ id: 'fac0', name: 'Facility 1' }],
+    faculty: [],
+    sections: [],
+    holidays: [],
+    calendar: { semesterStartDate: '2026-01-12', weeks: [] },
+    meta: {}
+  };
+  CalendarEngine.rebuildWeeks(sem);
+  Scheduler.regenerateAll(sem);
+  return sem;
 }
 
 describe('sim roles session filters', () => {
   it('builds week-based session labels from the program sim calendar', () => {
-    const sem = loadF2026();
+    const sem = makeSemester();
     const sessions = buildSimRoleSessions(sem, 1);
     expect(sessions.length).toBeGreaterThan(0);
     expect(sessions[0].label).toMatch(/Monday|Tue/);

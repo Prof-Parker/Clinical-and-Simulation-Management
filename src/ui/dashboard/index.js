@@ -12,6 +12,7 @@ import * as DashboardExport from '../../export/dashboard-export.js';
 import { buildSemesterLabelHtml, refresh } from '../chrome.js';
 import { renderChart } from './chart.js';
 import { getScheduleFilteredStudents, populateFilters, escapeHtml } from './schedule-filters.js';
+import { resolveDisplayedSimGuestGroup } from './guest-group.js';
 
 var scheduleFullscreenActive = false;
 var tallyScrollSyncing = false;
@@ -207,23 +208,6 @@ function refreshScheduleView() {
     var data = getData();
     if (!data) return;
     render(data, { preserveView: true });
-  }
-
-function resolveDisplayedSimGuestGroup(student, cell, weekIndex, data) {
-    if (!cell || !cell.sim) return null;
-    if (cell.simGuestGroup) return cell.simGuestGroup;
-    var cal = data._simCalendar || Scheduler.buildProgramSimCalendar(data, data.config);
-    var simGroups = DataModel.getSimGroups(data.config);
-    var host = Scheduler.resolveSimSessionHost(
-      cell.sim,
-      weekIndex,
-      cell.simDay,
-      cal,
-      simGroups,
-      data.config
-    );
-    if (host && host !== student.simGroup) return host;
-    return null;
   }
 
 function render(data, options) {

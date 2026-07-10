@@ -475,30 +475,4 @@ var DB_NAME = 'regnTrackerDB';
       });
     });
   }
-export {
-  supportsFS,
-  init,
-  saveCurrent,
-  scheduleAutoSave,
-  openFilePicker,
-  createFilePicker,
-  importFromFile,
-  exportDownload,
-  updateStatusUI,
-  cacheData,
-  shouldShowOnedriveBanner,
-  configureImportInput,
-  isIOSDevice,
-  semesterFileToken,
-  suggestedSemesterFileName,
-  clearAndRestoreDefaults,
-  applyLoadedFileRoot,
-  writeFileRootToHandle,
-  readFromHandle,
-  writeToHandle,
-  serialize,
-  semesterFileTokenFromMeta,
-  supportsDirectoryPicker,
-  idbGet as _idbGet,
-  idbSet as _idbSet
-};
+export { supportsFS, init, saveCurrent, scheduleAutoSave, openFilePicker, createFilePicker, importFromFile, exportDownload, updateStatusUI, cacheData, shouldShowOnedriveBanner, configureImportInput, isIOSDevice, semesterFileToken, suggestedSemesterFileName, clearAndRestoreDefaults, applyLoadedFileRoot, writeFileRootToHandle, readFromHandle, writeToHandle, serialize, semesterFileTokenFromMeta, supportsDirectoryPicker, idbGet as _idbGet, idbSet as _idbSet };

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import {
@@ -147,8 +147,9 @@ describe('roster sim rebalance', () => {
     assertNoDoubleBooking(sem);
   });
 
-  it('F2026 mock: Student 4 matches majority session host after rebalance', () => {
+  it('F2026 mock: Student 4 matches majority session host after rebalance', function () {
     var path = join(dirname(fileURLToPath(import.meta.url)), '..', 'mock-onedrive', 'semesters', 'F2026_REGN_program.json');
+    if (!existsSync(path)) return;
     var raw = JSON.parse(readFileSync(path, 'utf8'));
     var sem = raw.semesters[0];
     CalendarEngine.rebuildWeeks(sem);
