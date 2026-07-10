@@ -38,7 +38,7 @@ export var UI_TABS = [
   {
     id: 'roles',
     shell: 'clinical',
-    anchors: ['simFacultyBanner', 'roleSimSelect', 'roleGroupSelect', 'roleTableBody']
+    anchors: ['simFacultyBanner', 'roleSimSelect', 'roleGroupSelect', 'roleSessionMeta', 'roleTableBody']
   },
   {
     id: 'makeup',
@@ -77,7 +77,10 @@ export var UI_TABS = [
   {
     id: 'theory-master',
     shell: 'theory',
-    anchors: ['theoryMasterGrid', 'theoryTopicLibraryPanel', 'theoryTopicLibraryList']
+    anchors: [
+      'theoryMasterGrid', 'theoryTopicLibraryPanel', 'theoryTopicLibraryList',
+      'theoryLibraryConnectPrompt', 'theoryLibraryConnectBtn', 'theoryLibraryCreateBtn', 'theoryLibraryStatus'
+    ]
   },
   {
     id: 'theory-lecture',

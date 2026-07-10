@@ -38,23 +38,9 @@ import * as UserSession from '../auth/user-session.js';
 import * as Audit from '../audit/audit.js';
 import * as Storage from '../storage/semester-storage.js';
 import * as Theme from './theme.js';
+import { buildSemesterLabelHtml } from './semester-label.js';
 
-export function buildSemesterLabelHtml(parts) {
-  var draftTip = 'Information for this semester hasn\'t been finalized yet, proceed with caution';
-  var html = '<span class="semester-label-inner">';
-  if (parts.season) {
-    var seasonLabel = parts.season === 'fall' ? 'Fall' : 'Spring';
-    html += '<span class="season-name season-' + parts.season + '">' + seasonLabel + '</span>';
-    html += '<span class="season-year">' + parts.year + '</span>';
-  } else {
-    html += '<span class="season-year">' + (parts.name || 'Semester') + '</span>';
-  }
-  if (!parts.finalized) {
-    html += '<span class="semester-draft" title="' + draftTip + '">*</span>';
-  }
-  html += '</span>';
-  return html;
-}
+export { buildSemesterLabelHtml };
 
 export function updateCourseStatusLine() {
   updateCourseStatusLabel();

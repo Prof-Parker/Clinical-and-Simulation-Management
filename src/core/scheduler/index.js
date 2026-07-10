@@ -47,6 +47,8 @@ import {
 import {
   SIM_GROUP_SCHEDULE,
   getSimWeekPatterns,
+  resolveSimBlockWeeks,
+  resolveSimSessionHost,
   buildProgramSimCalendar,
   getStudentSimSlot,
   getStudentSimSlotCandidates,
@@ -138,6 +140,8 @@ export function copyForward(data, newSemesterName) {
 export {
   SIM_GROUP_SCHEDULE,
   getSimWeekPatterns,
+  resolveSimBlockWeeks,
+  resolveSimSessionHost,
   buildProgramSimCalendar,
   getStudentSimSlot,
   getStudentSimSlotCandidates,

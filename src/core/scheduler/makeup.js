@@ -19,7 +19,8 @@ import {
   getDaySimAttendanceCount,
   findSimWeek,
   getExistingClinicalAtFacility,
-  wouldSimClinicalConflict
+  wouldSimClinicalConflict,
+  getStudentClinicalDay
 } from './helpers.js';
 import {
   buildProgramSimCalendar,
@@ -99,6 +100,16 @@ export function compareSimPlacementTier(a, b) {
   return (a.day || '').localeCompare(b.day || '');
 }
 
+function blocksClinicalMakeupJoin(cell, student, cfg, joinDay) {
+  if (!cell || cell.inactive) return true;
+  if (cell.makeupClinical) return true;
+  if (cell.sim && cell.simDay === joinDay) return true;
+  if (cell.clinical && !cell.clinicalMissed && getStudentClinicalDay(student, cfg) === joinDay) {
+    return true;
+  }
+  return false;
+}
+
 export function candidateToMakeupSlot(student, data, candidate, simNum) {
   var cfg = data.config;
   var caps = getSimCaps(cfg);
@@ -155,9 +166,7 @@ export function findMakeupSlots(data, studentId, type, targetSimNum) {
       getExistingClinicalAtFacility(data, searchFacId, student.id).forEach(function (session) {
         var wi = session.weekIndex;
         var cell = student.schedule[wi];
-        if (cell.sim) return;
-        if (cell.makeupClinical) return;
-        if (cell.clinical && !cell.clinicalMissed) return;
+        if (blocksClinicalMakeupJoin(cell, student, cfg, session.day)) return;
 
         var count = getClinicalGroupAttendanceCount(data, wi, session.group, session.day);
         var overload = false;

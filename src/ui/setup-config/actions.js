@@ -132,7 +132,7 @@ function handleSetupClick(e) {
       if (cfgRemove.clinicalGroupSiteWeeks) delete cfgRemove.clinicalGroupSiteWeeks[group];
       dataRemove.config = DataModel.normalizeConfig(cfgRemove);
       refreshDynamicLists(dataRemove);
-      touchSetupEdit(dataRemove);
+      finishSetupEdit(dataRemove, { rerender: false, refresh: true });
       return;
     }
 
@@ -159,7 +159,7 @@ function handleSetupClick(e) {
       cfgRemoveSg.simGroups = cfgRemoveSg.simGroups.filter(function (g) { return g !== sgGroup; });
       dataRemoveSg.config = DataModel.normalizeConfig(cfgRemoveSg);
       refreshDynamicLists(dataRemoveSg);
-      touchSetupEdit(dataRemoveSg);
+      finishSetupEdit(dataRemoveSg, { rerender: false, refresh: true });
       return;
     }
 

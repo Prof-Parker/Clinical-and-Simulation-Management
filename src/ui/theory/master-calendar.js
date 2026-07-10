@@ -56,10 +56,27 @@ export function render(data) {
     });
   });
 
-  renderTopicLibrary();
+  renderTopicLibraryPanel();
 }
 
-function renderTopicLibrary() {
+export function renderTopicLibraryPanel() {
+  var prompt = document.getElementById('theoryLibraryConnectPrompt');
+  var status = document.getElementById('theoryLibraryStatus');
+  var ready = TheoryLibrary.isReady();
+  if (prompt) prompt.classList.toggle('hidden', ready);
+  if (status) {
+    if (ready) {
+      status.textContent = 'Connected: ' + TheoryLibrary.getConnectionLabel();
+      status.classList.remove('hidden');
+    } else {
+      status.textContent = '';
+      status.classList.add('hidden');
+    }
+  }
+  renderTopicLibraryList();
+}
+
+function renderTopicLibraryList() {
   var list = document.getElementById('theoryTopicLibraryList');
   if (!list) return;
   var topics = TheoryLibrary.listTopics();

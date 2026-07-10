@@ -6,6 +6,8 @@ import { state } from '../core/state.js';
 import * as TheoryData from '../core/theory-data.js';
 import { applyNavShell, updateCourseStatusLabel } from './course-selector.js';
 import { getPlaygroundData } from './playground/index.js';
+import * as DataModel from '../core/data-model/index.js';
+import { buildCourseStatusHtml, courseStatusAriaLabel } from './semester-label.js';
 
 function chromeApi() {
   return import('./chrome.js');
@@ -56,9 +58,11 @@ export function updatePlaygroundStatusLine() {
   var data = getPlaygroundData();
   if (!data || !data.meta) {
     trigger.textContent = 'Playground — no file loaded';
+    trigger.removeAttribute('aria-label');
     return;
   }
-  var season = data.meta.semesterSeason === 'fall' ? 'Fall' : (data.meta.semesterSeason === 'spring' ? 'Spring' : '');
-  trigger.textContent = 'Playground · ' + (data.meta.courseId || 'Course') +
-    (season ? ' · ' + season + ' ' + (data.meta.semesterYear || '') : '');
+  var parts = DataModel.parseSemesterDisplay(data);
+  var code = 'Playground · ' + (data.meta.courseId || 'Course');
+  trigger.innerHTML = buildCourseStatusHtml(parts, code, '');
+  trigger.setAttribute('aria-label', 'Playground, ' + courseStatusAriaLabel(parts, data.meta.courseId, ''));
 }

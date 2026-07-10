@@ -161,11 +161,12 @@ function renderCellHtml(cell, student, data, weekIndex) {
         simCls += ' badge-sim-overload';
       }
       var simStar = cell.simMakeup && cell.simOverload ? '*' : '';
-      var guestNote = cell.simGuestGroup
-        ? ' (' + cell.simGuestGroup + '*)'
+      var guestGroup = resolveDisplayedSimGuestGroup(student, cell, weekIndex, data);
+      var guestNote = guestGroup
+        ? ' (' + guestGroup + '*)'
         : '';
-      var guestTitle = cell.simGuestGroup
-        ? ' title="Primary: ' + student.simGroup + ' · Guest: ' + cell.simGuestGroup + '"'
+      var guestTitle = guestGroup
+        ? ' title="Primary: ' + student.simGroup + ' · Guest: ' + guestGroup + '"'
         : '';
       html += '<span class="' + simCls + '"' + guestTitle + '>SIM ' + cell.sim + guestNote +
         ' (' + (cell.simDay || 'Mon').toUpperCase() + ')' + simStar + '</span>';
@@ -206,6 +207,23 @@ function refreshScheduleView() {
     var data = getData();
     if (!data) return;
     render(data, { preserveView: true });
+  }
+
+function resolveDisplayedSimGuestGroup(student, cell, weekIndex, data) {
+    if (!cell || !cell.sim) return null;
+    if (cell.simGuestGroup) return cell.simGuestGroup;
+    var cal = data._simCalendar || Scheduler.buildProgramSimCalendar(data, data.config);
+    var simGroups = DataModel.getSimGroups(data.config);
+    var host = Scheduler.resolveSimSessionHost(
+      cell.sim,
+      weekIndex,
+      cell.simDay,
+      cal,
+      simGroups,
+      data.config
+    );
+    if (host && host !== student.simGroup) return host;
+    return null;
   }
 
 function render(data, options) {
@@ -403,10 +421,11 @@ function renderSimTable(data, students) {
         student.schedule.forEach(function (cell, wi) {
           if (cell.sim === n) {
             content = CalendarEngine.getWeekDisplay(data, wi, true) + ' (' + (cell.simDay || 'Mon') + ')';
-            if (cell.simGuestGroup) {
+            var guestGroup = resolveDisplayedSimGuestGroup(student, cell, wi, data);
+            if (guestGroup) {
               tdClass = 'sim-prog-cell-guest';
-              content += ' · ' + cell.simGuestGroup;
-              title = 'Guest in ' + cell.simGuestGroup + ' (primary: ' + student.simGroup + ')';
+              content += ' · ' + guestGroup;
+              title = 'Guest in ' + guestGroup + ' (primary: ' + student.simGroup + ')';
             }
           }
         });

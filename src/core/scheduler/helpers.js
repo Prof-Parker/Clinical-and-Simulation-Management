@@ -82,25 +82,36 @@ export function getExistingClinicalAtFacility(data, facilityId, excludeStudentId
   var cfg = data.config;
   var makeupWeeks = CalendarEngine.resolveMakeupWeeks(data);
   var sessions = {};
+  function addSession(w, group, day) {
+    var key = w + '-' + day + '-' + group;
+    if (!sessions[key]) {
+      sessions[key] = {
+        weekIndex: w,
+        week: w + 1,
+        day: day,
+        group: group,
+        count: 0
+      };
+    }
+    sessions[key].count++;
+  }
   for (var w = 0; w < makeupWeeks.simLastResort; w++) {
     if (CalendarEngine.isWeekInactive(data, w)) continue;
     data.students.forEach(function (s) {
       if (s.id === excludeStudentId) return;
       var cell = s.schedule[w];
-      if (!cell || !cell.clinical || cell.clinicalMissed) return;
+      if (!cell || cell.inactive) return;
       if (!studentAtSite(data, s, facilityId, w)) return;
-      var day = getClinicalDayForGroup(s.clinicalGroup, cfg);
-      var key = w + '-' + day + '-' + s.clinicalGroup;
-      if (!sessions[key]) {
-        sessions[key] = {
-          weekIndex: w,
-          week: w + 1,
-          day: day,
-          group: s.clinicalGroup,
-          count: 0
-        };
+      if (cell.clinical && !cell.clinicalMissed) {
+        addSession(w, s.clinicalGroup, getClinicalDayForGroup(s.clinicalGroup, cfg));
       }
-      sessions[key].count++;
+      if (cell.makeupClinical) {
+        var makeup = findClinicalMakeupRecord(s, w);
+        if (makeup && makeup.hostGroup) {
+          var joinDay = makeup.joinedDay || getClinicalDayForGroup(makeup.hostGroup, cfg);
+          addSession(w, makeup.hostGroup, joinDay);
+        }
+      }
     });
   }
   return Object.keys(sessions).map(function (k) { return sessions[k]; });

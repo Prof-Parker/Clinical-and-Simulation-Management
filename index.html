@@ -306,20 +306,14 @@
                 <div id="simFacultyBanner" class="sim-faculty-banner hidden" role="status">
                     Open a semester file to manage simulation roles. Role data is saved inside the semester file (obfuscated in JSON exports).
                 </div>
-                <div class="filters" style="margin-bottom:1rem">
+                <div class="filters role-filters" style="margin-bottom:1rem">
                     <select id="roleSimSelect">
                         <option value="1">Simulation 1</option>
-                        <option value="2">Simulation 2</option>
-                        <option value="3">Simulation 3</option>
-                        <option value="4">Simulation 4</option>
-                        <option value="5">Simulation 5</option>
                     </select>
                     <select id="roleGroupSelect">
-                        <option value="MonA">Monday — Week A</option>
-                        <option value="TueA">Tuesday — Week A</option>
-                        <option value="MonB">Monday — Week B</option>
-                        <option value="TueB">Tuesday — Week B</option>
+                        <option value="0:Mon">Monday — Week 1</option>
                     </select>
+                    <span id="roleSessionMeta" class="role-session-meta" aria-live="polite"></span>
                 </div>
                 <div id="roleTableWrap" class="custom-scrollbar">
                     <table class="data-table">
@@ -500,7 +494,10 @@
                         <h3 class="section-title" style="margin:0">Student Roster</h3>
                         <p class="section-sub" style="margin:0.35rem 0 0">Drag students between cohorts. Set each student&rsquo;s registrar section individually, or use the cohort Section control to assign all at once (you can still split students across sections afterward).</p>
                     </div>
-                    <button id="rebalanceStudentsBtn" class="btn btn-sm" type="button" title="Evenly distribute students across clinical groups">Rebalance students</button>
+                    <div class="setup-roster-actions">
+                        <button id="rebalanceStudentsBtn" class="btn btn-sm btn-rebalance-clinical" type="button" title="Evenly distribute students across clinical groups">Rebalance clinical groups</button>
+                        <button id="rebalanceSimGroupsBtn" class="btn btn-sm btn-rebalance-sim" type="button" title="Reassign sim groups from schedules and regenerate until guest placements stop improving">Rebalance simulation groups</button>
+                    </div>
                 </div>
                 <div id="setupRoster"></div>
             </section>
@@ -620,6 +617,12 @@
                 <p class="section-sub">Sun–Sat week grid — all theory tracks for REGN15.</p>
                 <aside id="theoryTopicLibraryPanel" class="theory-topic-library">
                     <h4 class="section-sub">Content library</h4>
+                    <p class="section-sub theory-library-hint">Topic bank for the event editor — separate from the semester program file.</p>
+                    <div id="theoryLibraryConnectPrompt" class="clinical-sites-connect-prompt">
+                        <button id="theoryLibraryConnectBtn" class="btn btn-sm" type="button">Connect theory content library</button>
+                        <button id="theoryLibraryCreateBtn" class="btn btn-sm" type="button">New theory content library</button>
+                    </div>
+                    <p id="theoryLibraryStatus" class="theory-library-status hidden" role="status"></p>
                     <ul id="theoryTopicLibraryList" class="theory-topic-list"></ul>
                 </aside>
                 <div id="theoryMasterGrid"></div>

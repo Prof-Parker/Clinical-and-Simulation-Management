@@ -928,6 +928,35 @@ label.filter-check input[type="checkbox"] {
 }
 
 .flag-high { background: #d1fae5 !important; }
+.role-filters {
+  align-items: center;
+  gap: 0.75rem;
+}
+.role-filters select#roleSimSelect {
+  min-width: 8rem;
+  max-width: 11rem;
+}
+.role-filters select#roleGroupSelect {
+  min-width: 10rem;
+  max-width: 14rem;
+}
+.role-session-meta {
+  flex: 1 1 14rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+.role-session-meta strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.role-guest-tag {
+  color: #92400e;
+  font-weight: 600;
+}
+html.dark .role-guest-tag {
+  color: #fcd34d;
+}
 .flag-weak { background: #fef3c7 !important; }
 
 .sim-faculty-banner {
@@ -1565,6 +1594,26 @@ html.dark .audit-attested-banner {
   margin-bottom: 1rem;
 }
 
+.setup-roster-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-rebalance-clinical.needs-attention,
+.btn-rebalance-sim.needs-attention {
+  border-color: #d97706;
+  color: #b45309;
+  background: #fffbeb;
+}
+html.dark .btn-rebalance-clinical.needs-attention,
+html.dark .btn-rebalance-sim.needs-attention {
+  border-color: #f59e0b;
+  color: #fcd34d;
+  background: #422006;
+}
+
 #rebalanceStudentsBtn.needs-attention {
   border-color: #d97706;
   color: #b45309;
@@ -2058,6 +2107,63 @@ html.dark .schedule-master-table td.cell-orientation-conflict {
 html.dark .conflicts-panel { background: #450a0a; border-color: #7f1d1d; color: #fca5a5; }
 
 .course-status-line { font-size: 0.875rem; font-weight: 600; color: var(--text); text-align: right; }
+.course-status-display {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  line-height: 1.15;
+}
+.course-status-semester {
+  font-size: clamp(1.25rem, 3vw, 1.65rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.course-status-semester .semester-label-inner {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+.course-status-semester .season-year {
+  color: var(--text);
+  font-weight: 800;
+}
+.course-status-context {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+}
+.course-status-context-label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.course-status-context-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+.course-status-context-value {
+  color: var(--text);
+  white-space: nowrap;
+}
+.course-status-chevron {
+  flex-shrink: 0;
+  opacity: 0.65;
+  transition: transform 0.15s ease;
+}
+button.course-status-line[aria-expanded="true"] .course-status-chevron {
+  transform: rotate(180deg);
+}
 .user-status-line { display: block; font-size: 0.75rem; color: var(--text-muted, #64748b); margin-top: 0.25rem; }
 .header-status-wrap { display: flex; align-items: center; }
 
@@ -2187,7 +2293,10 @@ button.course-status-line {
   background: none; border: none; cursor: pointer; padding: 0;
   font: inherit; text-align: right; width: 100%;
 }
-.course-status-line:hover { text-decoration: underline; }
+.course-status-line:hover .course-status-context-value { text-decoration: underline; }
+button.course-status-line[aria-expanded="true"] .course-status-context-value {
+  text-decoration: underline;
+}
 .course-status-dropdown {
   position: absolute; right: 0; top: 100%; z-index: 50;
   min-width: 12rem; background: var(--bg); border: 1px solid var(--border);
@@ -2237,6 +2346,13 @@ html.dark .theory-coord-semester-totals td { box-shadow: 0 -2px 8px rgba(0, 0, 0
 .theory-chip-under { color: #b45309; }
 .theory-chip-over { color: #b91c1c; }
 .theory-topic-library { margin-bottom: 1rem; padding: 0.75rem; background: var(--surface-alt); border-radius: 0.5rem; }
+.theory-library-hint { margin: 0 0 0.65rem; font-size: 0.8125rem; }
+.theory-library-status {
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
 .theory-topic-list { margin: 0.5rem 0 0; padding-left: 1.25rem; font-size: 0.85rem; max-height: 8rem; overflow-y: auto; }
 .theory-topic-ref { font-weight: 600; color: var(--text-muted); margin-right: 0.35rem; }
 .batch-step label { display: block; margin-bottom: 0.75rem; }

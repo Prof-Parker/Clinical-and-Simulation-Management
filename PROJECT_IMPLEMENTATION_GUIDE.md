@@ -148,6 +148,8 @@ From `js/data-model.js` `defaultConfig()`:
 
 Program calendar pairs even+odd weeks into **sim blocks** (Sim 1 = weeks 5–6, Sim 2 = 7–8, …) via `buildProgramSimCalendar()`.
 
+**Holiday week-push:** When a nominal block week is inactive (Monday holiday or break), `resolveSimBlockWeeks()` advances that pattern stream (even or odd) to the next active week in the same sequence. If the pushed even week collides with the odd week for the same block, the odd stream cascades forward (skipping any further inactive weeks). Example (F2026, Sim 5): Veterans Day inactivates week 13 → even-pattern groups move to week 14; odd-pattern groups cascade to week 16 (Thanksgiving inactivates week 15). Matches the prototype in `docs/Design Docs/protypes/Clinical Schedule.html`.
+
 ---
 
 ## 5. Scheduling pipeline
@@ -223,7 +225,9 @@ Tests in `tests/scheduling-rules.test.js` assert program calendar, guest spread,
 | Simulation roles + flags | Simulation Roles | `src/ui/sim-roles.js` + `src/storage/sim-faculty-storage.js` |
 | Makeup search | Makeup Finder | `js/ui/makeup-finder.js` |
 | Audit lifecycle, attestation, audit PDF | Audit | `js/ui/audit-closeout.js`, `js/audit.js`, `js/audit-export.js` |
-| Roster, holidays, facilities, rebalance | Setup | `js/ui/setup.js`, `setup-config.js` |
+| Roster, holidays, facilities, rebalance | Setup | `src/ui/setup/roster.js`, `setup-config.js` |
+
+**Setup roster actions:** **Rebalance clinical groups** evenly spreads students across clinical cohorts only. **Rebalance simulation groups** infers each student’s sim group from scheduled session hosts, regenerates schedules, and repeats up to 5 passes until guest sim placements stop decreasing. Playground Setup uses the same controls (cloned markup); only the save target differs (`playground.json` vs semester program file).
 | Advanced caps / days / headroom / site library | Setup → Advanced | `js/ui/setup-config.js` |
 | Course selection | Header dropdown | `js/main.js`, `js/course-defaults.js` |
 | Semester add/switch | Header picker | `js/main.js`, `js/ui/config-modal.js` |

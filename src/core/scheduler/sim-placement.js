@@ -72,6 +72,62 @@ export function alternateSimDay(day, cfg) {
   return simDays[(idx + 1) % simDays.length];
 }
 
+function nextActiveWeekInStream(weekList, startListIndex, data) {
+  for (var j = startListIndex; j < weekList.length; j++) {
+    var wi = weekList[j];
+    if (wi == null || wi >= 18) continue;
+    if (!CalendarEngine.isWeekInactive(data, wi)) {
+      return { weekIndex: wi, listIndex: j };
+    }
+  }
+  return null;
+}
+
+/**
+ * Resolve effective even/odd weeks for one sim block when holidays inactivate nominal weeks.
+ * Even: use nominal even when active; else the next even slot (i+1) when active; else the
+ * block's partner odd week; else the next active even further in the stream.
+ * Odd: use nominal odd when active and distinct from even; else cascade forward in the odd stream.
+ */
+export function resolveSimBlockWeeks(data, evenWeeks, oddWeeks, blockIndex) {
+  var nominalEven = evenWeeks[blockIndex];
+  var nominalOdd = oddWeeks[blockIndex];
+  var effectiveEven = null;
+
+  if (nominalEven != null && !CalendarEngine.isWeekInactive(data, nominalEven)) {
+    effectiveEven = nominalEven;
+  } else {
+    var nextEvenSlot = nextActiveWeekInStream(evenWeeks, blockIndex + 1, data);
+    if (nextEvenSlot && nextEvenSlot.listIndex === blockIndex + 1) {
+      effectiveEven = nextEvenSlot.weekIndex;
+    } else if (nominalOdd != null && !CalendarEngine.isWeekInactive(data, nominalOdd)) {
+      effectiveEven = nominalOdd;
+    } else if (nextEvenSlot) {
+      effectiveEven = nextEvenSlot.weekIndex;
+    }
+  }
+
+  var effectiveOdd = null;
+  if (nominalOdd != null && !CalendarEngine.isWeekInactive(data, nominalOdd) &&
+      nominalOdd !== effectiveEven) {
+    effectiveOdd = nominalOdd;
+  } else {
+    var oddStart = (nominalOdd != null && nominalOdd === effectiveEven) ? blockIndex + 1 : blockIndex;
+    var odd = nextActiveWeekInStream(oddWeeks, oddStart, data);
+    while (odd && odd.weekIndex === effectiveEven) {
+      odd = nextActiveWeekInStream(oddWeeks, odd.listIndex + 1, data);
+    }
+    effectiveOdd = odd ? odd.weekIndex : null;
+  }
+
+  return {
+    evenWeekIndex: effectiveEven,
+    oddWeekIndex: effectiveOdd,
+    nominalEvenWeekIndex: nominalEven != null ? nominalEven : null,
+    nominalOddWeekIndex: nominalOdd != null ? nominalOdd : null
+  };
+}
+
 export function buildProgramSimCalendar(data, cfg) {
   var patterns = getSimWeekPatterns(cfg);
   var evenWeeks = patterns.evenWeeks.slice();
@@ -81,22 +137,24 @@ export function buildProgramSimCalendar(data, cfg) {
   var weekToSim = {};
 
   for (var i = 0; i < needed; i++) {
-    var evenWi = evenWeeks[i];
-    var oddWi = oddWeeks[i];
+    var resolved = resolveSimBlockWeeks(data, evenWeeks, oddWeeks, i);
     var block = {
       simNum: i + 1,
-      evenWeekIndex: evenWi,
-      oddWeekIndex: oddWi,
+      evenWeekIndex: resolved.evenWeekIndex,
+      oddWeekIndex: resolved.oddWeekIndex,
+      nominalEvenWeekIndex: resolved.nominalEvenWeekIndex,
+      nominalOddWeekIndex: resolved.nominalOddWeekIndex,
       weeks: []
     };
-    if (evenWi != null && evenWi < 18 && !CalendarEngine.isWeekInactive(data, evenWi)) {
-      block.weeks.push(evenWi);
-      weekToSim[evenWi] = i + 1;
+    if (resolved.evenWeekIndex != null) {
+      block.weeks.push(resolved.evenWeekIndex);
+      weekToSim[resolved.evenWeekIndex] = i + 1;
     }
-    if (oddWi != null && oddWi < 18 && !CalendarEngine.isWeekInactive(data, oddWi)) {
-      if (block.weeks.indexOf(oddWi) < 0) block.weeks.push(oddWi);
-      weekToSim[oddWi] = i + 1;
+    if (resolved.oddWeekIndex != null && block.weeks.indexOf(resolved.oddWeekIndex) < 0) {
+      block.weeks.push(resolved.oddWeekIndex);
+      weekToSim[resolved.oddWeekIndex] = i + 1;
     }
+    block.weeks.sort(function (a, b) { return a - b; });
     blocks.push(block);
   }
   return { blocks: blocks, weekToSim: weekToSim };
@@ -104,6 +162,21 @@ export function buildProgramSimCalendar(data, cfg) {
 
 export function getWeekSimNumber(calendar, weekIndex) {
   return calendar && calendar.weekToSim ? calendar.weekToSim[weekIndex] : null;
+}
+
+/** Sim group that owns the canonical week+day slot for this sim block. */
+export function resolveSimSessionHost(simNum, weekIndex, day, calendar, simGroups, cfg) {
+  var block = calendar.blocks[simNum - 1];
+  if (!block) return null;
+  for (var i = 0; i < simGroups.length; i++) {
+    var sg = simGroups[i];
+    var sch = getSimGroupSchedule(sg, simGroups, cfg);
+    if (sch.day !== day) continue;
+    var odd = usesOddPatternWeek(sg, simGroups, cfg);
+    var wi = odd ? block.oddWeekIndex : block.evenWeekIndex;
+    if (wi === weekIndex) return sg;
+  }
+  return null;
 }
 
 export function getStudentSimSlot(student, simNum, calendar, simGroups, data) {
@@ -356,13 +429,17 @@ function tryPlaceSim(student, data, wi, simNum, day, hostSimGroup, state, option
 
   var cfg = data.config;
   var cell = student.schedule[wi];
-  var isGuest = hostSimGroup && hostSimGroup !== student.simGroup;
+  var simGroups = getSimGroups(cfg);
+  var calendar = data._simCalendar || buildProgramSimCalendar(data, cfg);
+  var sessionHost = resolveSimSessionHost(simNum, wi, day, calendar, simGroups, cfg) ||
+    hostSimGroup;
+  var isGuest = sessionHost && sessionHost !== student.simGroup;
   var conflict = wouldSimClinicalConflict(cell, student, cfg, day);
   var overload = !!options.overload;
 
   cell.sim = simNum;
   cell.simDay = day;
-  cell.simGuestGroup = isGuest ? hostSimGroup : null;
+  cell.simGuestGroup = isGuest ? sessionHost : null;
   cell.simOverload = overload;
   if (isGuest) state.guestCount++;
 

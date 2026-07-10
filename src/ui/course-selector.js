@@ -8,6 +8,7 @@ import * as TheoryData from '../core/theory-data.js';
 import * as Audit from '../audit/audit.js';
 import { showConfirm } from './dialogs.js';
 import { resolveNavShell, isPlaygroundShell, updatePlaygroundStatusLine } from './playground-shell.js';
+import { buildCourseStatusHtml, courseStatusAriaLabel } from './semester-label.js';
 
 function chromeApi() {
   return import('./chrome.js');
@@ -36,14 +37,14 @@ export function updateCourseStatusLabel() {
   if (!trigger) return;
   if (!data || !data.meta) {
     trigger.textContent = 'No semester file connected';
+    trigger.removeAttribute('aria-label');
     return;
   }
   var parts = DataModel.parseSemesterDisplay(data);
-  var seasonLabel = parts.season === 'fall' ? 'Fall' : (parts.season === 'spring' ? 'Spring' : '');
   var code = getActiveCourseCode() || data.meta.courseId || '—';
-  var phase = Audit.getPhase(data).replace(/_/g, ' ');
-  trigger.textContent = (seasonLabel ? seasonLabel + ' ' : '') + (parts.year || '') +
-    ' · ' + code + ' · ' + phase;
+  var phase = Audit.getPhase(data);
+  trigger.innerHTML = buildCourseStatusHtml(parts, code, phase);
+  trigger.setAttribute('aria-label', courseStatusAriaLabel(parts, code, phase));
 }
 
 export function applyNavShell(shell) {

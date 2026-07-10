@@ -391,9 +391,6 @@ var DB_NAME = 'regnTrackerDB';
         parts.push('Open a semester file from OneDrive to begin');
         el.className = 'file-status';
       }
-      if (SimFacultyStorage && SimFacultyStorage.isReady()) {
-        parts.push('Sim roles stored in semester file');
-      }
       el.textContent = parts.join(' · ');
       var syncBtn = document.getElementById('syncOneDriveBtn');
       if (syncBtn) {

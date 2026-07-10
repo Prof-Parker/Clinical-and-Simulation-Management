@@ -3,6 +3,7 @@
 import { getData } from '../../core/state.js';
 import { showAlert, showConfirm } from '../dialogs.js';
 import * as DataModel from '../../core/data-model/index.js';
+import * as ClinicalSites from '../../core/clinical-sites.js';
 import * as SiteLibrary from '../../core/clinical-sites-library.js';
 import * as UserDirectory from '../../storage/user-directory.js';
 import { isReady as isRegistryReady } from '../../storage/users-registry-storage.js';

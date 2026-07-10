@@ -222,13 +222,23 @@ function rebalanceStudents(data, syncCount) {
       }
     }
 
-    RosterBalance.rebalance(data.students, data.config);
+    RosterBalance.rebalanceClinicalGroups(data.students, data.config);
+  }
+
+function rebalanceSimGroups(data) {
+    return RosterBalance.rebalanceSimGroups(data);
   }
 
 function updateRebalanceButton(data) {
     var btn = setupEl('rebalanceStudentsBtn');
     if (!btn) return;
     btn.classList.toggle('needs-attention', needsRebalance(data));
+  }
+
+function updateRebalanceSimButton(data) {
+    var btn = setupEl('rebalanceSimGroupsBtn');
+    if (!btn) return;
+    btn.classList.toggle('needs-attention', RosterBalance.needsSimRebalance(data));
   }
 
 function renderRoster(data) {
@@ -275,6 +285,7 @@ function renderRoster(data) {
     });
 
     updateRebalanceButton(data);
+    updateRebalanceSimButton(data);
   }
 
 function addStudent(data, clinicalGroup) {
@@ -424,6 +435,7 @@ export {
   initRosterDragDrop,
   needsRebalance,
   rebalanceStudents,
+  rebalanceSimGroups,
   getCohortFacilityIdForGroup,
   cohortFacilitySelectHtml,
   addStudent,

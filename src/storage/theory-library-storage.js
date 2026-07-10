@@ -131,6 +131,14 @@ export function listTopics() {
   return root && root.topics ? root.topics.slice() : [];
 }
 
+export function getConnectionLabel() {
+  if (!isReady()) return '';
+  if (state.theoryLibraryFileHandle && state.theoryLibraryFileHandle.name) {
+    return state.theoryLibraryFileHandle.name;
+  }
+  return 'Theory content library (on this device)';
+}
+
 export function init() {
   return idbGet(HANDLE_KEY).then(function (handle) {
     if (!handle || !supportsFS()) return idbGet(CACHE_KEY);

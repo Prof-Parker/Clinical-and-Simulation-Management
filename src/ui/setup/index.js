@@ -30,7 +30,7 @@ import {
   weekSelectHtml, semesterWeekHintForIndex, collectHolidaysFromDom
 } from './holidays-orientations.js';
 import {
-  renderRoster, initRosterDragDrop, needsRebalance, rebalanceStudents, getCohortFacilityIdForGroup,
+  renderRoster, initRosterDragDrop, needsRebalance, rebalanceStudents, rebalanceSimGroups, getCohortFacilityIdForGroup,
   cohortFacilitySelectHtml
 } from './roster.js';
 import { collectFromForm, collectFromFormInto } from './form-collect.js';
@@ -139,7 +139,7 @@ function setupAfterChange(data, opts) {
 function updateReadOnlyButtons(data) {
     if (getSetupScope().isPlayground) return;
     var readOnly = !!(Audit && Audit.isReadOnly(data));
-    ['saveSetupBtn', 'regenerateSchedulesBtn', 'rebalanceStudentsBtn'].forEach(function (id) {
+    ['saveSetupBtn', 'regenerateSchedulesBtn', 'rebalanceStudentsBtn', 'rebalanceSimGroupsBtn'].forEach(function (id) {
       var btn = setupEl(id);
       if (!btn) return;
       btn.disabled = readOnly;
@@ -457,7 +457,7 @@ function init() {
       var msg = syncCount
         ? 'Adjust roster to ' + (data.config.maxStudents || 30) + ' students and evenly assign across clinical groups?'
         : 'Evenly assign all students across clinical groups?';
-      showConfirm('Rebalance roster?', msg, function () {
+      showConfirm('Rebalance clinical groups?', msg, function () {
         rebalanceStudents(data, syncCount);
         if (isProposeOnlyMode()) {
           setupAfterChange(data);
@@ -466,6 +466,37 @@ function init() {
           refresh();
         }
       }, { confirmLabel: 'Rebalance' });
+    });
+
+    bindScoped('rebalanceSimGroupsBtn', 'click', function () {
+      if (!guardSetupEdit()) return;
+      var data = resolveSetupData();
+      collectFromForm(data);
+      showConfirm(
+        'Rebalance simulation groups?',
+        'Reassign simulation groups from current schedules and regenerate until guest placements stop improving (up to 5 passes)? Manual schedule edits will be lost.',
+        function () {
+          var result = rebalanceSimGroups(data);
+          if (isProposeOnlyMode()) {
+            setupAfterChange(data);
+          } else {
+            notifyChange();
+            refresh();
+          }
+          if (result && result.guestBefore != null && result.guestAfter != null) {
+            var summary = 'Simulation groups updated (' + result.changed + ' assignment(s), ' +
+              result.passes + ' pass(es)). Guest sim placements: ' + result.guestBefore +
+              ' → ' + result.guestAfter;
+            if (result.mismatchBefore != null && result.mismatchAfter != null) {
+              summary += '. Group mismatches: ' + result.mismatchBefore +
+                ' → ' + result.mismatchAfter;
+            }
+            summary += '.';
+            showAlert('Simulation groups rebalanced', summary);
+          }
+        },
+        { confirmLabel: 'Rebalance' }
+      );
     });
   }
 
@@ -483,6 +514,7 @@ export {
   markSetupDraft,
   needsRebalance,
   rebalanceStudents,
+  rebalanceSimGroups,
   getCohortFacilityIdForGroup,
   cohortFacilitySelectHtml,
   weekSelectHtml,
