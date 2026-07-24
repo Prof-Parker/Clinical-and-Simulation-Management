@@ -90,6 +90,8 @@ function readFormIntoConfig(cfg, data) {
     cfg.maxPerClinicalGroupOverload = parseInt(setupEl('cfgMaxClinOverload').value, 10);
     cfg.maxStudentsPerSimSession = parseInt(setupEl('cfgMaxSimSession').value, 10);
     cfg.maxStudentsPerSimSessionOverload = parseInt(setupEl('cfgMaxSimOverload').value, 10);
+    var guestSoftEl = setupEl('cfgMaxGuestSims');
+    if (guestSoftEl) cfg.maxGuestSimsPerStudent = parseInt(guestSoftEl.value, 10);
     cfg.simMakeupHeadroomReserved = parseInt(setupEl('cfgSimHeadroom').value, 10);
     cfg.clinicalStartWeek = parseInt(setupEl('cfgClinStart').value, 10);
     cfg.simStartWeek = parseInt(setupEl('cfgSimStart').value, 10);
@@ -157,6 +159,7 @@ function renderAdvancedFields(cfg) {
     set('cfgMaxClinOverload', cfg.maxPerClinicalGroupOverload);
     set('cfgMaxSimSession', cfg.maxStudentsPerSimSession);
     set('cfgMaxSimOverload', cfg.maxStudentsPerSimSessionOverload);
+    set('cfgMaxGuestSims', cfg.maxGuestSimsPerStudent != null ? cfg.maxGuestSimsPerStudent : 1);
     set('cfgSimHeadroom', cfg.simMakeupHeadroomReserved != null ? cfg.simMakeupHeadroomReserved : 1);
     set('cfgClinStart', cfg.clinicalStartWeek);
     set('cfgSimStart', cfg.simStartWeek);

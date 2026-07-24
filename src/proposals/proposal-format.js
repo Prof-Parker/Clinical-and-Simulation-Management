@@ -19,6 +19,7 @@ var SENTINEL = {
     maxPerClinicalGroupOverload: 'Clinical group overload cap',
     maxStudentsPerSimSession: 'Max students per sim session',
     maxStudentsPerSimSessionOverload: 'Sim session overload cap',
+    maxGuestSimsPerStudent: 'Max guest sims per student',
     simMakeupHeadroomReserved: 'Sim makeup headroom (seats reserved)',
     numSimGroups: 'Simulation groups count',
     numClinicalGroups: 'Clinical groups count',

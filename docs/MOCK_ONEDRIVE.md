@@ -23,8 +23,7 @@ mock-onedrive/
 │   ├── lead-faculty.user.json
 │   └── adjunct.user.json
 ├── semesters/
-│   ├── F2026_REGN_program.json   ← consolidated term file (theory + REGN15P)
-│   └── F2026_REGN15P.json        ← alias of same payload (legacy path)
+│   └── F2026_REGN_program.json   ← consolidated term file (theory + REGN15P)
 ├── theory-content-library_REGN15.json
 ├── playgrounds/
 │   └── user_F2026_REGN15P_playground.json
@@ -40,7 +39,7 @@ All names use placeholders only (`Student 1`, `Program Engineer`, etc.).
 1. Open the app (local server or GitHub Pages build).
 2. **Sign in:** Menu → **Load user file…** → pick `mock-onedrive/users/admin.user.json` (or another role file).
 3. **Registry:** Menu → **Connect users registry…** → pick `mock-onedrive/users/users-registry.json`.
-4. **Semester:** Menu → **Connect OneDrive file** → `mock-onedrive/semesters/F2026_REGN_program.json` (or `F2026_REGN15P.json`).
+4. **Semester:** Menu → **Connect OneDrive file** → `mock-onedrive/semesters/F2026_REGN_program.json`.
 5. **Theory library (optional):** Connect `mock-onedrive/theory-content-library_REGN15.json` when the app supports it.
 
 ### Role files

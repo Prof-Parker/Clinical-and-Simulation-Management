@@ -437,7 +437,7 @@ function init() {
       collectFromForm(data);
       showConfirm(
         'Rebalance simulation groups?',
-        'Reassign simulation groups from current schedules and regenerate until guest placements stop improving (up to 5 passes)? Manual schedule edits will be lost.',
+        'Balance simulation groups to the session size cap, keep clinical cohorts aligned when possible, and regenerate until each student is at or under the guest soft cap (up to 5 passes)? Manual schedule edits will be lost.',
         function () {
           var result = rebalanceSimGroups(data);
           if (isProposeOnlyMode()) {
@@ -447,15 +447,25 @@ function init() {
             refresh();
           }
           if (result && result.guestBefore != null && result.guestAfter != null) {
+            var softCap = result.softCap != null ? result.softCap : 1;
             var summary = 'Simulation groups updated (' + result.changed + ' assignment(s), ' +
               result.passes + ' pass(es)). Guest sim placements: ' + result.guestBefore +
-              ' → ' + result.guestAfter;
-            if (result.mismatchBefore != null && result.mismatchAfter != null) {
-              summary += '. Group mismatches: ' + result.mismatchBefore +
-                ' → ' + result.mismatchAfter;
+              ' → ' + result.guestAfter +
+              '. Max guests per student: ' + (result.maxGuestAfter != null ? result.maxGuestAfter : '?') +
+              ' (soft cap ' + softCap + ')';
+            if (result.oversizedBefore != null && result.oversizedAfter != null) {
+              summary += '. Oversized sim groups: ' + result.oversizedBefore +
+                ' → ' + result.oversizedAfter;
             }
             summary += '.';
-            showAlert('Simulation groups rebalanced', summary);
+            if (result.metSoftCap === false) {
+              var over = result.studentsOverSoftCap != null ? result.studentsOverSoftCap : 0;
+              summary += ' Warning: ' + over +
+                ' student(s) still exceed the guest soft cap after ' + result.passes + ' pass(es).';
+              showAlert('Simulation groups rebalanced — soft cap unmet', summary);
+            } else {
+              showAlert('Simulation groups rebalanced', summary);
+            }
           }
         },
         { confirmLabel: 'Rebalance' }

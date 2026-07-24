@@ -120,6 +120,8 @@ function assertValidation(sem, label) {
 }
 
 function assertGuestSimSpread(sem, label) {
+  var softCap = sem.config.maxGuestSimsPerStudent;
+  if (softCap == null || isNaN(softCap) || softCap < 0) softCap = 1;
   var guestCounts = sem.students.map(function (s) {
     var guest = 0;
     s.schedule.forEach(function (c) { if (c.simGuestGroup) guest++; });
@@ -127,8 +129,10 @@ function assertGuestSimSpread(sem, label) {
   });
   var maxGuest = Math.max.apply(null, guestCounts.concat([0]));
   var withGuest = guestCounts.filter(function (n) { return n > 0; }).length;
-  if (maxGuest > 1 && withGuest > 0) {
-    assert(withGuest >= 2 || maxGuest <= 2,
+  // Raw regenerate (without capacity rebalance) may still concentrate guests when
+  // clinical→sim mapping overfills a group; require spread rather than soft-cap.
+  if (maxGuest > softCap && withGuest > 0) {
+    assert(withGuest >= 2 || maxGuest <= softCap + 1,
       label + ': guest sim load spread (max ' + maxGuest + ' guests on one student, ' +
       withGuest + ' students guesting)');
   }
@@ -385,10 +389,18 @@ function assertDistinctSimGroupDaysSchedule(label) {
   sem.config.simGroupPattern.SG2 = 'odd';
   DataModel.normalizeConfig(sem.config);
   Scheduler.regenerateAll(sem);
-  var sg1 = sem.students.find(function (s) { return s.simGroup === 'SG1'; });
-  var sg2 = sem.students.find(function (s) { return s.simGroup === 'SG2'; });
-  assert(sg1 && sg1.schedule.some(function (c) { return c.sim && c.simDay === 'Mon'; }), label + ': SG1 Mon');
-  assert(sg2 && sg2.schedule.some(function (c) { return c.sim && c.simDay === 'Tue'; }), label + ': SG2 Tue');
+  var sg1HostMon = sem.students.some(function (s) {
+    return s.simGroup === 'SG1' && s.schedule.some(function (c) {
+      return c.sim && c.simDay === 'Mon' && !c.simGuestGroup;
+    });
+  });
+  var sg2HostTue = sem.students.some(function (s) {
+    return s.simGroup === 'SG2' && s.schedule.some(function (c) {
+      return c.sim && c.simDay === 'Tue' && !c.simGuestGroup;
+    });
+  });
+  assert(sg1HostMon, label + ': SG1 Mon');
+  assert(sg2HostTue, label + ': SG2 Tue');
 }
 
 function assertMakeupWeeksDerived(label) {

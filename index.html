@@ -412,6 +412,7 @@
                         <label>Max per clinical group<input type="number" id="cfgMaxClinGroup"></label>
                         <label>Max clinical group (makeup overload only)<input type="number" id="cfgMaxClinOverload"></label>
                         <label>Max students per sim session<input type="number" id="cfgMaxSimSession" title="Program-wide cap per weekday; also limits effective sim group size"></label>
+                        <label>Max guest sims per student<input type="number" id="cfgMaxGuestSims" min="0" title="Soft cap: prefer moving sim groups during rebalance so each student guests at most this many times (default 1)"></label>
                         <label>Max sim session (makeup overload only)<input type="number" id="cfgMaxSimOverload"></label>
                         <label>Sim makeup headroom (seats reserved per session)<input type="number" id="cfgSimHeadroom" min="0" max="3" title="During initial schedule generation, reserve this many seats per sim session for absence makeups"></label>
                         <label>Clinical start week<input type="number" id="cfgClinStart"></label>
@@ -496,7 +497,7 @@
                     </div>
                     <div class="setup-roster-actions">
                         <button id="rebalanceStudentsBtn" class="btn btn-sm btn-rebalance-clinical" type="button" title="Evenly distribute students across clinical groups">Rebalance clinical groups</button>
-                        <button id="rebalanceSimGroupsBtn" class="btn btn-sm btn-rebalance-sim" type="button" title="Reassign sim groups from schedules and regenerate until guest placements stop improving">Rebalance simulation groups</button>
+                        <button id="rebalanceSimGroupsBtn" class="btn btn-sm btn-rebalance-sim" type="button" title="Balance sim groups to session cap and regenerate until guest soft cap is met">Rebalance simulation groups</button>
                     </div>
                 </div>
                 <div id="setupRoster"></div>

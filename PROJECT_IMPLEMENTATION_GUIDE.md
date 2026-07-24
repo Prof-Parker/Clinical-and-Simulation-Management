@@ -227,7 +227,7 @@ Tests in `tests/scheduling-rules.test.js` assert program calendar, guest spread,
 | Audit lifecycle, attestation, audit PDF | Audit | `js/ui/audit-closeout.js`, `js/audit.js`, `js/audit-export.js` |
 | Roster, holidays, facilities, rebalance | Setup | `src/ui/setup/roster.js`, `setup-config.js` |
 
-**Setup roster actions:** **Rebalance clinical groups** evenly spreads students across clinical cohorts only. **Rebalance simulation groups** infers each student’s sim group from scheduled session hosts, regenerates schedules, and repeats up to 5 passes until guest sim placements stop decreasing. Playground Setup uses the same controls (cloned markup); only the save target differs (`playground.json` vs semester program file).
+**Setup roster actions:** **Rebalance clinical groups** evenly spreads students across clinical cohorts only. **Rebalance simulation groups** balances sim group sizes to the session cap (preferring clinical-cohort affinity and non-overlapping sim weekdays), regenerates with a per-student guest soft cap (`maxGuestSimsPerStudent`, default 1), and nudges membership up to 5 passes. Warns if the soft cap cannot be met (e.g. more Mon-clinical students than Tue sim seats). Playground Setup uses the same controls (cloned markup); only the save target differs (`playground.json` vs semester program file).
 | Advanced caps / days / headroom / site library | Setup → Advanced | `js/ui/setup-config.js` |
 | Course selection | Header dropdown | `js/main.js`, `js/course-defaults.js` |
 | Semester add/switch | Header picker | `js/main.js`, `js/ui/config-modal.js` |

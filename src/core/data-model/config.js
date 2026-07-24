@@ -20,6 +20,7 @@ export function defaultConfig() {
     maxStudentsPerSimSession: 8,
     maxStudentsPerSimSessionOverload: 9,
     simMakeupHeadroomReserved: 1,
+    maxGuestSimsPerStudent: 1,
     numSimGroups: 4,
     numClinicalGroups: 5,
     clinicalStartWeek: 5,
@@ -119,6 +120,9 @@ export function normalizeConfig(cfg) {
   if (isNaN(headroom) || headroom < 0) headroom = 1;
   if (headroom >= simNormal) headroom = Math.max(0, simNormal - 1);
   cfg.simMakeupHeadroomReserved = headroom;
+  var guestSoft = parseInt(cfg.maxGuestSimsPerStudent, 10);
+  if (isNaN(guestSoft) || guestSoft < 0) guestSoft = 1;
+  cfg.maxGuestSimsPerStudent = guestSoft;
   return cfg;
 }
 
