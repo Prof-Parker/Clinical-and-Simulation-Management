@@ -6,6 +6,13 @@ import '../css/app.css';
 import '../css/print.css';
 import '../css/audit-print.css';
 import './pwa.js';
+import { formatAppVersionLabel } from './app-version.js';
+
+function paintAppVersionBadge() {
+  var el = document.getElementById('appVersionBadge');
+  if (el) el.textContent = formatAppVersionLabel();
+}
+paintAppVersionBadge();
 
 import {
   state,

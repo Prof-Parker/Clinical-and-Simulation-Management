@@ -1,0 +1,38 @@
+---
+description: Bump app semver (major.minor.patch) on every commit
+alwaysApply: true
+---
+
+# App Version Bump — Required on Every Commit
+
+The UI shows a sequence-based semver next to the app title (`major.minor.patch`).
+**Baseline after the Vite refactor: `2.1.1`.**
+
+## Source of truth
+
+- [`src/app-version.js`](src/app-version.js) — `APP_VERSION` (header badge + audit exports)
+- [`package.json`](package.json) — `"version"` field (must match `APP_VERSION`)
+
+Keep both values identical.
+
+## When creating a commit
+
+Before staging the commit (or as part of the same commit):
+
+1. Read the current `APP_VERSION` in `src/app-version.js`.
+2. Bump using Conventional Commits intent:
+   - **patch** (`x.y.Z+1`) — fix, docs, style, refactor, test, chore (default)
+   - **minor** (`x.Y+1.0`) — feat (new user-facing capability)
+   - **major** (`X+1.0.0`) — breaking change (`BREAKING CHANGE` footer or `type!:`)
+3. Update `APP_VERSION` in `src/app-version.js` and `"version"` in `package.json`.
+4. Stage those files with the rest of the commit.
+
+## Exceptions
+
+- Do **not** bump for empty commits, version-only commits that only sync a prior miss, or when the user explicitly says to skip the bump.
+- If the user specifies a version, use that instead of auto-choosing.
+
+## Display
+
+Header renders `formatAppVersionLabel(APP_VERSION)` (e.g. `v2.1.1`) beside the app name.
+Do not hard-code the version string in `index.html`.

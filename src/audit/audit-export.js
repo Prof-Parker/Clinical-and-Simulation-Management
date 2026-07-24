@@ -9,8 +9,9 @@ import * as DataModel from '../core/data-model/index.js';
 import * as Validator from '../core/validator.js';
 import { notifyChange } from '../core/state.js';
 import { showAlert, showDialog } from '../ui/dialogs.js';
+import { APP_VERSION, formatAppVersionLabel } from '../app-version.js';
 
-var AUDIT_APP_VERSION = 'clin-sim-tracker v8';
+var AUDIT_APP_VERSION = formatAppVersionLabel(APP_VERSION);
 
   function esc(s) {
     return String(s == null ? '' : s)
