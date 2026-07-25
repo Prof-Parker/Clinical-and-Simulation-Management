@@ -295,9 +295,14 @@
         <div id="view-student" class="view-panel">
             <section class="card no-print" style="padding:1.25rem;margin-bottom:1rem">
                 <div class="filters">
-                    <select id="studentViewSelect"><option value="">Select student...</option></select>
+                    <select id="studentViewSelect" class="select-control" aria-label="Select student"><option value="">Select student...</option></select>
+                    <select id="studentCalendarType" class="select-control" aria-label="Calendar view">
+                        <option value="summary">Clinical and Sim Summary</option>
+                        <option value="detailed">Detailed Weekly</option>
+                    </select>
                     <label class="filter-check" for="showMarkupToggle"><input type="checkbox" id="showMarkupToggle"> Show missed / makeup markup</label>
                     <button id="printStudentBtn" class="btn btn-primary" type="button">Print Calendar</button>
+                    <button id="batchExportStudentCalBtn" class="btn" type="button">Batch export…</button>
                 </div>
             </section>
             <div id="studentCalendarPrint"></div>
@@ -480,6 +485,19 @@
                             </div>
                             <p class="section-sub">Primary weekday and even/odd week pattern per simulation group. Count may differ from clinical groups; when counts match, regenerate aligns C1→SG1, etc.</p>
                             <div id="cfgSimGroupsList" class="config-list"></div>
+                            <div class="setup-sim-times-block">
+                                <h4 style="margin:0">Simulation times</h4>
+                                <p class="section-sub">Default session window for calendars and audit hours. Optional overrides per sim number.</p>
+                                <div class="setup-sim-times-grid">
+                                    <label>Default start
+                                        <input type="time" id="cfgSimDefaultStart" aria-label="Default simulation start time">
+                                    </label>
+                                    <label>Default end
+                                        <input type="time" id="cfgSimDefaultEnd" aria-label="Default simulation end time">
+                                    </label>
+                                </div>
+                                <div id="cfgSimTimeOverrides" class="config-list" style="margin-top:0.65rem"></div>
+                            </div>
                             <h4 style="margin:0">Simulation days</h4>
                             <p class="section-sub">Days of the week when simulation sessions may be scheduled.</p>
                             <div id="cfgSimDaysList" class="config-list"></div>

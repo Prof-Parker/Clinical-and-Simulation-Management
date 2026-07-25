@@ -6,6 +6,7 @@ import * as Audit from './audit.js';
 import * as AuditSnapshot from './audit-snapshot.js';
 import * as CourseDefaults from '../core/course-defaults.js';
 import * as DataModel from '../core/data-model/index.js';
+import * as ScheduleHours from '../core/schedule-hours.js';
 import * as Validator from '../core/validator.js';
 import { notifyChange } from '../core/state.js';
 import { showAlert, showDialog } from '../ui/dialogs.js';
@@ -64,7 +65,7 @@ var AUDIT_APP_VERSION = formatAppVersionLabel(APP_VERSION);
 
   /**
    * Per-student requirements summary; day counts from DataModel.countStats,
-   * validity from Validator.validateAll.
+   * hours from Setup clinical/sim/orientation times, validity from Validator.
    */
   function buildRequirementsSummary(semester) {
     var validation = Validator.validateAll(semester);
@@ -72,6 +73,7 @@ var AUDIT_APP_VERSION = formatAppVersionLabel(APP_VERSION);
       return a.name.localeCompare(b.name);
     }).map(function (s) {
       var stats = DataModel.countStats(s);
+      var hours = ScheduleHours.studentHoursSummary(s, semester);
       var v = validation.students[s.id];
       return {
         studentName: s.name,
@@ -79,6 +81,9 @@ var AUDIT_APP_VERSION = formatAppVersionLabel(APP_VERSION);
         simGroup: s.simGroup,
         clinicals: stats.clinicals,
         sims: stats.sims,
+        clinicalHours: hours.clinicalHours,
+        simHours: hours.simHours,
+        orientationHours: hours.orientationHours,
         clinicalsRequired: semester.config.clinicalDaysRequired,
         simsRequired: semester.config.simDaysRequired,
         makeupCount: (s.makeups || []).length,
@@ -122,20 +127,40 @@ var AUDIT_APP_VERSION = formatAppVersionLabel(APP_VERSION);
 
   function requirementsHtml(semester) {
     var rows = buildRequirementsSummary(semester);
+    var totClinH = 0;
+    var totSimH = 0;
+    var totOrientH = 0;
     var body = rows.map(function (r) {
+      totClinH += r.clinicalHours || 0;
+      totSimH += r.simHours || 0;
+      totOrientH += r.orientationHours || 0;
       return '<tr>' +
         '<td>' + esc(r.studentName) + '</td>' +
         '<td>' + esc(r.clinicalGroup) + '</td>' +
         '<td>' + esc(r.simGroup) + '</td>' +
         '<td>' + r.clinicals + ' / ' + r.clinicalsRequired + '</td>' +
+        '<td>' + r.clinicalHours + '</td>' +
         '<td>' + r.sims + ' / ' + r.simsRequired + '</td>' +
+        '<td>' + r.simHours + '</td>' +
+        '<td>' + r.orientationHours + '</td>' +
         '<td>' + r.makeupCount + '</td>' +
         '<td>' + (r.met ? 'Met' : 'NOT MET') + '</td>' +
         '</tr>';
     }).join('');
+    body += '<tr class="audit-print-totals">' +
+      '<td colspan="4"><strong>Cohort hours</strong></td>' +
+      '<td><strong>' + ScheduleHours.roundHours(totClinH) + '</strong></td>' +
+      '<td></td>' +
+      '<td><strong>' + ScheduleHours.roundHours(totSimH) + '</strong></td>' +
+      '<td><strong>' + ScheduleHours.roundHours(totOrientH) + '</strong></td>' +
+      '<td colspan="2"></td></tr>';
     return '<section class="audit-print-section"><h2>Requirements summary</h2>' +
+      '<p class="audit-print-hours-note">Hours derived from Setup clinical site times, simulation times, and orientation times. ' +
+      'Met / NOT MET is based on required clinical and simulation <em>days</em>.</p>' +
       '<table class="audit-print-table"><thead><tr>' +
-      '<th>Student</th><th>Clin group</th><th>Sim group</th><th>Clinical days</th><th>Sim days</th><th>Makeups</th><th>Status</th>' +
+      '<th>Student</th><th>Clin group</th><th>Sim group</th>' +
+      '<th>Clin days</th><th>Clin hours</th><th>Sim days</th><th>Sim hours</th>' +
+      '<th>Orient hours</th><th>Makeups</th><th>Status</th>' +
       '</tr></thead><tbody>' + body + '</tbody></table></section>';
   }
 

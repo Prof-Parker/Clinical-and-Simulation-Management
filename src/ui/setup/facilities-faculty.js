@@ -5,6 +5,7 @@ import { showAlert, showConfirm } from '../dialogs.js';
 import * as DataModel from '../../core/data-model/index.js';
 import * as ClinicalSites from '../../core/clinical-sites.js';
 import * as SiteLibrary from '../../core/clinical-sites-library.js';
+import * as ScheduleHours from '../../core/schedule-hours.js';
 import * as UserDirectory from '../../storage/user-directory.js';
 import { isReady as isRegistryReady } from '../../storage/users-registry-storage.js';
 import { escAttr, escHtml, configListAddRow } from './dom-utils.js';
@@ -59,12 +60,27 @@ function renderFacilities(data) {
     var container = setupEl('setupFacilities');
     container.innerHTML = '';
     DataModel.getUniqueFacilitiesForSelect(data).forEach(function (f) {
+      ScheduleHours.ensureFacilityTimes(f);
       var canRemove = data.facilities.length > 1;
+      var hours = ScheduleHours.roundHours(
+        ScheduleHours.resolveClinicalDayHours(data, f.id)
+      );
       container.innerHTML +=
-        '<div class="config-list-row setup-facility-row">' +
+        '<div class="config-list-row setup-facility-row setup-facility-row-times">' +
         '<select data-fac="site" data-fac-id="' + f.id + '" aria-label="Clinical site">' +
         facilitySiteSelectHtml(data, f) + '</select>' +
         facilityTagsHtml(f) +
+        '<label class="setup-facility-time">' +
+        '<span class="setup-facility-time-label">Start</span>' +
+        '<input type="time" data-fac="start" data-fac-id="' + f.id + '" value="' +
+        escAttr(ScheduleHours.hhmmToTimeInput(f.clinicalStart)) + '" aria-label="Clinical start time">' +
+        '</label>' +
+        '<label class="setup-facility-time">' +
+        '<span class="setup-facility-time-label">End</span>' +
+        '<input type="time" data-fac="end" data-fac-id="' + f.id + '" value="' +
+        escAttr(ScheduleHours.hhmmToTimeInput(f.clinicalEnd)) + '" aria-label="Clinical end time">' +
+        '</label>' +
+        '<span class="section-sub setup-facility-hours" title="Hours per clinical day">' + hours + ' h</span>' +
         (canRemove
           ? '<button class="btn btn-icon-remove remove-facility" type="button" data-fac-id="' + f.id + '" aria-label="Remove facility" title="Remove facility">&times;</button>'
           : '<span class="section-sub" style="font-size:0.75rem;white-space:nowrap">Min. 1</span>') +

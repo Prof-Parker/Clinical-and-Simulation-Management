@@ -1,80 +1,61 @@
 /**
- * Per-student schedule view tab.
+ * Per-student schedule view tab — Clinical and Sim Summary / Detailed Weekly.
  */
 
-import * as CalendarEngine from '../core/calendar-engine.js';
-import * as DataModel from '../core/data-model/index.js';
-import * as Validator from '../core/validator.js';
+import { getData } from '../core/state.js';
 import { refresh } from './chrome.js';
+import { buildCalendarHtml } from '../export/student-calendar-html.js';
+import { promptBatchExport } from '../export/student-calendar-batch.js';
+
+function selectedCalendarType() {
+  var el = document.getElementById('studentCalendarType');
+  return el && el.value === 'detailed' ? 'detailed' : 'summary';
+}
 
 function render(data) {
-    var select = document.getElementById('studentViewSelect');
-    var container = document.getElementById('studentCalendarPrint');
-    if (!select || !container) return;
+  var select = document.getElementById('studentViewSelect');
+  var container = document.getElementById('studentCalendarPrint');
+  if (!select || !container) return;
 
-    var prev = select.value;
-    select.innerHTML = '<option value="">Select student...</option>';
-    data.students.forEach(function (s) {
-      select.innerHTML += '<option value="' + s.id + '">' + s.name + ' (' + s.clinicalGroup + ')</option>';
+  var prev = select.value;
+  select.innerHTML = '<option value="">Select student...</option>';
+  data.students.forEach(function (s) {
+    select.innerHTML += '<option value="' + s.id + '">' + s.name + ' (' + s.clinicalGroup + ')</option>';
+  });
+  if (prev && data.students.some(function (s) { return s.id === prev; })) select.value = prev;
+
+  var sid = select.value;
+  if (!sid) {
+    container.innerHTML = '<p class="section-sub">Select a student to view their calendar.</p>';
+    return;
+  }
+
+  var student = data.students.find(function (s) { return s.id === sid; });
+  if (!student) return;
+
+  var showMarkup = document.getElementById('showMarkupToggle');
+  var markup = showMarkup ? showMarkup.checked : false;
+  container.innerHTML = buildCalendarHtml(data, student, selectedCalendarType(), {
+    showMarkup: markup
+  });
+}
+
+function init() {
+  var select = document.getElementById('studentViewSelect');
+  if (select) select.addEventListener('change', function () { refresh(); });
+  var markup = document.getElementById('showMarkupToggle');
+  if (markup) markup.addEventListener('change', function () { refresh(); });
+  var typeEl = document.getElementById('studentCalendarType');
+  if (typeEl) typeEl.addEventListener('change', function () { refresh(); });
+  var printBtn = document.getElementById('printStudentBtn');
+  if (printBtn) printBtn.addEventListener('click', function () { window.print(); });
+  var batchBtn = document.getElementById('batchExportStudentCalBtn');
+  if (batchBtn) {
+    batchBtn.addEventListener('click', function () {
+      promptBatchExport(getData());
     });
-    if (prev && data.students.some(function (s) { return s.id === prev; })) select.value = prev;
-
-    var sid = select.value;
-    if (!sid) {
-      container.innerHTML = '<p class="section-sub">Select a student to view their 18-week calendar.</p>';
-      return;
-    }
-
-    var student = data.students.find(function (s) { return s.id === sid; });
-    if (!student) return;
-
-    var showMarkup = document.getElementById('showMarkupToggle').checked;
-    var vr = Validator.validateStudent(student, data);
-    var cfg = data.config;
-
-    var html = '<div class="print-student-calendar card" style="padding:1.25rem">' +
-      '<h2 style="margin:0 0 0.25rem">' + esc(student.name) + '</h2>' +
-      '<p class="section-sub">' + student.clinicalGroup + ' · ' + (student.section || 'No section') + ' · ' +
-      'Clinical: ' + vr.stats.clinicals + '/' + cfg.clinicalDaysRequired + ' · Sim: ' + vr.stats.sims + '/' + cfg.simDaysRequired + '</p>' +
-      '<table class="data-table"><thead><tr><th>Week</th><th>Date</th><th>Activity</th></tr></thead><tbody>';
-
-    for (var i = 0; i < 18; i++) {
-      var cell = student.schedule[i];
-      var week = data.calendar.weeks[i];
-      var rowCls = '';
-      var activity = '—';
-      if (cell.inactive) activity = 'Holiday / Break';
-      else if (cell.makeupClinical) activity = 'Makeup Clinical';
-      else {
-        var parts = [];
-        if (cell.clinicalMissed && showMarkup) rowCls = 'markup-missed';
-        if (cell.makeupClinical && showMarkup) rowCls = 'markup-makeup';
-        if (cell.clinical || cell.clinicalMissed) {
-          parts.push('Clinical (' + DataModel.getClinicalDayForGroup(student.clinicalGroup, cfg) + ')' + (cell.clinicalMissed ? ' [MISSED]' : ''));
-        }
-        if (cell.sim) parts.push('Simulation ' + cell.sim +
-          (cell.simGuestGroup ? ' (guest ' + cell.simGuestGroup + ', primary ' + student.simGroup + ')' : '') +
-          ' (' + (cell.simDay || 'Mon') + ')');
-        activity = parts.join(' + ') || '—';
-      }
-      html += '<tr class="' + rowCls + '"><td>Week ' + (i + 1) + '</td><td>' +
-        (week ? CalendarEngine.formatDisplayDate(week.startDate) : '') + '</td><td>' + activity + '</td></tr>';
-    }
-    html += '</tbody></table></div>';
-    container.innerHTML = html;
   }
-
-  function esc(s) {
-    var d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-  }
-
-  function init() {
-    document.getElementById('studentViewSelect').addEventListener('change', function () { refresh(); });
-    document.getElementById('showMarkupToggle').addEventListener('change', function () { refresh(); });
-    document.getElementById('printStudentBtn').addEventListener('click', function () { window.print(); });
-  }
+}
 
 export {
   render,

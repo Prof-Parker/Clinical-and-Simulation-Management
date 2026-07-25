@@ -155,6 +155,7 @@ function studentRowHtml(data, student) {
       '<select class="move-cohort-select" data-student-id="' + student.id + '" aria-label="Move to clinical group" title="Move to clinical group">' +
       moveCohortSelectHtml(data, student) + '</select>' +
       '<input type="text" data-field="name" data-id="' + student.id + '" value="' + escAttr(student.name) + '" placeholder="Student name" aria-label="Student name">' +
+      '<input type="email" data-field="email" data-id="' + student.id + '" value="' + escAttr(student.email || '') + '" placeholder="student@example.edu" aria-label="Student email">' +
       '<select data-field="section" data-id="' + student.id + '" aria-label="Section">' + sectionSelectHtml(data, student) + '</select>' +
       '<select data-field="simGroup" data-id="' + student.id + '" aria-label="Simulation group">' +
       DataModel.getSimGroups(data.config).map(function (sg) {
@@ -248,7 +249,7 @@ function renderRoster(data) {
     var maxPer = data.config.maxPerClinicalGroup || 6;
     var columnHeadersHtml =
       '<div class="setup-roster-columns" aria-hidden="true">' +
-      '<span></span><span>Move</span><span>Name</span><span>Section</span><span>Sim</span><span>Site</span><span></span>' +
+      '<span></span><span>Move</span><span>Name</span><span>Email</span><span>Section</span><span>Sim</span><span>Site</span><span></span>' +
       '</div>';
 
     DataModel.getClinicalGroups(data.config).forEach(function (g) {

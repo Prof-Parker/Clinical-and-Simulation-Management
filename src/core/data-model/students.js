@@ -43,6 +43,7 @@ export function createStudent(name, clinicalGroup, simGroup, facilityId, section
   return {
     id: uid(),
     name: name == null ? 'Student' : name,
+    email: '',
     clinicalGroup: clinicalGroup,
     simGroup: simGroup || 'SG1',
     section: section || '',
