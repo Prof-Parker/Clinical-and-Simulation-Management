@@ -7,4 +7,37 @@
   .print-student-calendar th, .print-student-calendar td { border: 1px solid #ccc; padding: 4px 6px; }
   .markup-missed { text-decoration: line-through; background: #fee2e2 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .markup-makeup { background: #fef3c7 !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .student-calendar-page { page-break-after: always; }
+  .student-calendar-page:last-child { page-break-after: auto; }
+  .student-cal-week { page-break-inside: avoid; margin-bottom: 0.75rem; }
+  .student-cal-intro { margin-bottom: 0.75rem; }
+  .student-cal-title { margin: 0 0 0.25rem; font-size: 14pt; }
+  .student-cal-subtitle { margin: 0 0 0.35rem; font-size: 10pt; }
+  .student-cal-meta { margin: 0.35rem 0 0; padding-left: 1.1rem; font-size: 9pt; }
+  .student-cal-week h3 { margin: 0.5rem 0 0.25rem; font-size: 11pt; }
+  .holiday-row td { background: #f3f4f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+.student-cal-intro { margin-bottom: 1rem; }
+.student-cal-title { margin: 0 0 0.25rem; }
+.student-cal-subtitle { margin: 0 0 0.35rem; color: var(--text-muted); }
+.student-cal-meta {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+.student-cal-week {
+  margin: 1rem 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+.student-cal-week h3 { margin: 0 0 0.25rem; font-size: 1rem; }
+.student-cal-week-summary { margin: 0 0 0.5rem; }
+.print-student-calendar-summary,
+.print-student-calendar-detailed {
+  padding: 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
 }

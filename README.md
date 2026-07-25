@@ -6,6 +6,8 @@ Browser-based app for REGN 15P cohort scheduling, clinical and simulation requir
 
 On the **Dashboard**, use **Export to Excel** on the Master Interactive Schedule panel to download a filtered `.xlsx` workbook (master schedule + sim progression sheets).
 
+On **Student View**, use **Batch export…** to download a ZIP of per-student calendar PDFs plus a Power Automate CSV (see [docs/POWER_AUTOMATE_STUDENT_CALENDARS.md](docs/POWER_AUTOMATE_STUDENT_CALENDARS.md)).
+
 ## Install the app
 
 ### iPad (Safari)

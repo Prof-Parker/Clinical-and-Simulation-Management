@@ -16,8 +16,18 @@ var DEFAULT_CLINICAL_GROUP_SITE = {
 
 export function defaultFacilities() {
   return [
-    { id: uid(), name: 'Shasta Regional Medical Center' },
-    { id: uid(), name: 'Saint Elizabeth' }
+    {
+      id: uid(),
+      name: 'Shasta Regional Medical Center',
+      clinicalStart: '0600',
+      clinicalEnd: '1830'
+    },
+    {
+      id: uid(),
+      name: 'Saint Elizabeth',
+      clinicalStart: '0600',
+      clinicalEnd: '1830'
+    }
   ];
 }
 
@@ -182,6 +192,8 @@ export function linkFacilitiesToSiteLibrary(facilities) {
     }
     if (f.siteId === undefined) f.siteId = null;
     if (f.shortName === undefined) f.shortName = '';
+    if (!f.clinicalStart) f.clinicalStart = '0600';
+    if (!f.clinicalEnd) f.clinicalEnd = '1830';
   });
 }
 
@@ -204,7 +216,9 @@ export function normalizeFacilities(semester) {
         name: name,
         siteId: f.siteId || null,
         shortName: f.shortName || '',
-        contentTags: f.contentTags
+        contentTags: f.contentTags,
+        clinicalStart: f.clinicalStart || '0600',
+        clinicalEnd: f.clinicalEnd || '1830'
       };
     } else {
       idRemap[f.id] = canonical[key].id;
@@ -213,6 +227,12 @@ export function normalizeFacilities(semester) {
       if (!canonical[key].shortName && f.shortName) canonical[key].shortName = f.shortName;
       if ((!canonical[key].contentTags || !canonical[key].contentTags.length) && f.contentTags) {
         canonical[key].contentTags = f.contentTags;
+      }
+      if (!canonical[key].clinicalStart && f.clinicalStart) {
+        canonical[key].clinicalStart = f.clinicalStart;
+      }
+      if (!canonical[key].clinicalEnd && f.clinicalEnd) {
+        canonical[key].clinicalEnd = f.clinicalEnd;
       }
     }
   });

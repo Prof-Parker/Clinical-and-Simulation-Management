@@ -33,7 +33,10 @@ export var UI_TABS = [
   {
     id: 'student',
     shell: 'clinical',
-    anchors: ['studentViewSelect', 'showMarkupToggle', 'printStudentBtn', 'studentCalendarPrint']
+    anchors: [
+      'studentViewSelect', 'studentCalendarType', 'showMarkupToggle',
+      'printStudentBtn', 'batchExportStudentCalBtn', 'studentCalendarPrint'
+    ]
   },
   {
     id: 'roles',
@@ -56,7 +59,8 @@ export var UI_TABS = [
     anchors: [
       'saveSetupBtn', 'regenerateSchedulesBtn', 'setupAdvancedConfigBtn', 'finalizeSemesterBtn',
       'setupSections', 'setupFaculty', 'setupFacilities', 'setupHolidays', 'setupRoster',
-      'cfgClinicalGroupsList', 'cfgSimGroupsList', 'cfgSimDaysList', 'setupAdvancedPanel'
+      'cfgClinicalGroupsList', 'cfgSimGroupsList', 'cfgSimDaysList', 'cfgSimDefaultStart',
+      'cfgSimDefaultEnd', 'cfgSimTimeOverrides', 'setupAdvancedPanel'
     ]
   },
   {

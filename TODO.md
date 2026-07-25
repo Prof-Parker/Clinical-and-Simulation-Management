@@ -40,8 +40,8 @@ TODO.md
 -[X] Flag for unsaved changes vs unsynced changes, revamp sync behavior (pull from oneDrive, merge, push)
 -[X] Theory support
 -[ ] Hide connect vs open semester file desktop vs ipad
--[ ] Print merged theory and clinical calendar for each student.
--[ ] Batch print and send student calendars
+-[X] Print merged theory and clinical calendar for each student.
+-[X] Batch print and send student calendars
 
 ## Phase 2 [ ]
 -[ ] Improve theory scheduling

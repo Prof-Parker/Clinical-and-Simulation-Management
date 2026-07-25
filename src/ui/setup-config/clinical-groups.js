@@ -4,8 +4,11 @@ import * as DataModel from '../../core/data-model/index.js';
 import * as ClinicalSites from '../../core/clinical-sites.js';
 import { getCohortFacilityIdForGroup, cohortFacilitySelectHtml } from '../setup/roster.js';
 import { weekSelectHtml, semesterWeekHintForIndex } from '../setup/holidays-orientations.js';
-import { daySelectHtml, renderSimGroupsList, renderSimDaysList } from './sim-groups.js';
+import {
+  daySelectHtml, renderSimGroupsList, renderSimDaysList, renderSimTimeOverrides
+} from './sim-groups.js';
 import { setupEl, setupQueryAll } from '../setup/scope.js';
+import * as ScheduleHours from '../../core/schedule-hours.js';
 
 function getGroupFacilityIds(data, group) {
     if (ClinicalSites) {
@@ -237,10 +240,17 @@ function refreshDynamicLists(data) {
     var clinList = setupEl('cfgClinicalGroupsList');
     var simGroupsList = setupEl('cfgSimGroupsList');
     var simList = setupEl('cfgSimDaysList');
+    var simOverrides = setupEl('cfgSimTimeOverrides');
     var cfg = data.config;
+    ScheduleHours.ensureSimTimes(cfg);
     if (clinList) clinList.innerHTML = renderClinicalGroupsList(data);
     if (simGroupsList) simGroupsList.innerHTML = renderSimGroupsList(cfg);
     if (simList) simList.innerHTML = renderSimDaysList(cfg);
+    if (simOverrides) simOverrides.innerHTML = renderSimTimeOverrides(cfg);
+    var startEl = setupEl('cfgSimDefaultStart');
+    var endEl = setupEl('cfgSimDefaultEnd');
+    if (startEl) startEl.value = ScheduleHours.hhmmToTimeInput(cfg.simDefaultStart);
+    if (endEl) endEl.value = ScheduleHours.hhmmToTimeInput(cfg.simDefaultEnd);
     updateAllWeekRangeHints(data);
   }
 

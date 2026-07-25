@@ -74,6 +74,13 @@
     background: #eee;
     font-weight: 700;
   }
+  .audit-print-hours-note {
+    font-size: 9pt;
+    margin: 0 0 0.5rem;
+  }
+  .audit-print-totals td {
+    border-top: 2px solid #111;
+  }
 
   .audit-print-table thead {
     display: table-header-group;

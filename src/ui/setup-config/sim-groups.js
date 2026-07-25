@@ -2,6 +2,9 @@
 
 import * as DataModel from '../../core/data-model/index.js';
 import { WEEKDAY_OPTIONS } from '../../core/data-model/config.js';
+import * as ScheduleHours from '../../core/schedule-hours.js';
+import { escAttr } from '../setup/dom-utils.js';
+import { setupEl, setupQueryAll } from '../setup/scope.js';
 
 function daySelectHtml(selected) {
     return WEEKDAY_OPTIONS.map(function (d) {
@@ -65,8 +68,67 @@ function renderSimGroupsList(cfg) {
       '</div>';
   }
 
+function renderSimTimeOverrides(cfg) {
+    ScheduleHours.ensureSimTimes(cfg);
+    var required = cfg.simDaysRequired || 5;
+    var rows = (cfg.simTimeOverrides || []).map(function (o, i) {
+      return '<div class="setup-sim-override-row" data-sim-override-row="' + i + '">' +
+        '<label>Sim #<input type="number" min="1" max="18" data-sim-override="num" value="' +
+        escAttr(String(o.simNum)) + '" aria-label="Simulation number override"></label>' +
+        '<label>Start<input type="time" data-sim-override="start" value="' +
+        escAttr(ScheduleHours.hhmmToTimeInput(o.start)) + '" aria-label="Sim override start"></label>' +
+        '<label>End<input type="time" data-sim-override="end" value="' +
+        escAttr(ScheduleHours.hhmmToTimeInput(o.end)) + '" aria-label="Sim override end"></label>' +
+        '<button type="button" class="btn btn-icon-remove remove-sim-time-override" data-idx="' + i +
+        '" aria-label="Remove sim time override" title="Remove override">&times;</button>' +
+        '</div>';
+    }).join('');
+    return rows +
+      '<div class="config-list-add-row">' +
+      '<button type="button" class="btn btn-sm add-sim-time-override" data-next-sim="' +
+      ((cfg.simTimeOverrides || []).length + 1) + '" data-max-sim="' + required +
+      '">Add sim override</button>' +
+      '</div>';
+  }
+
+function collectSimTimesIntoConfig(cfg) {
+    var simStartEl = setupEl('cfgSimDefaultStart');
+    var simEndEl = setupEl('cfgSimDefaultEnd');
+    if (simStartEl) {
+      cfg.simDefaultStart = ScheduleHours.timeInputToHhmm(
+        simStartEl.value, ScheduleHours.DEFAULT_SIM_START
+      );
+    }
+    if (simEndEl) {
+      cfg.simDefaultEnd = ScheduleHours.timeInputToHhmm(
+        simEndEl.value, ScheduleHours.DEFAULT_SIM_END
+      );
+    }
+    cfg.simTimeOverrides = [];
+    setupQueryAll('cfgSimTimeOverrides', '[data-sim-override-row]').forEach(function (row) {
+      var numEl = row.querySelector('[data-sim-override="num"]');
+      var startEl = row.querySelector('[data-sim-override="start"]');
+      var endEl = row.querySelector('[data-sim-override="end"]');
+      var simNum = numEl ? parseInt(numEl.value, 10) : NaN;
+      if (isNaN(simNum) || simNum < 1) return;
+      cfg.simTimeOverrides.push({
+        simNum: simNum,
+        start: ScheduleHours.timeInputToHhmm(
+          startEl && startEl.value, cfg.simDefaultStart || ScheduleHours.DEFAULT_SIM_START
+        ),
+        end: ScheduleHours.timeInputToHhmm(
+          endEl && endEl.value, cfg.simDefaultEnd || ScheduleHours.DEFAULT_SIM_END
+        )
+      });
+    });
+    ScheduleHours.ensureSimTimes(cfg);
+    return cfg;
+  }
+
 export {
   renderSimDaysList,
   renderSimGroupsList,
+  renderSimTimeOverrides,
+  collectSimTimesIntoConfig,
   daySelectHtml
 };

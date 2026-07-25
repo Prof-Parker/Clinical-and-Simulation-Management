@@ -20,7 +20,8 @@ var ROLES = {
         'setup.edit', 'setup.save', 'setup.regenerate', 'setup.importPlayground',
         'audit.admin', 'semester.batchCreate', 'semester.switch',
         'users.manage', 'clinicalSites.edit', 'proposals.review',
-        'theory.view', 'theory.edit', 'theory.export', 'theory.hourTargets.edit', 'theory.contactHourRules.edit'
+        'theory.view', 'theory.edit', 'theory.export', 'theory.hourTargets.edit', 'theory.contactHourRules.edit',
+        'student.calendar.export'
       ],
       dashboardReadOnly: false
     },
@@ -33,7 +34,8 @@ var ROLES = {
       actions: [
         'dashboard.propose', 'setup.propose', 'setup.saveDraft',
         'roles.edit', 'makeup.edit', 'playground.edit', 'clinicalSites.propose', 'proposals.submit',
-        'theory.view', 'theory.edit', 'theory.export'
+        'theory.view', 'theory.edit', 'theory.export',
+        'student.calendar.export'
       ],
       dashboardReadOnly: false
     },

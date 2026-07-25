@@ -18,6 +18,11 @@ import {
 } from './facilities.js';
 import { migrateTheory } from '../theory-data.js';
 import {
+  ensureFacilityTimes,
+  ensureSimTimes,
+  ensureOrientationTimes
+} from '../schedule-hours.js';
+import {
   defaultFaculty,
   defaultSections,
   buildSemesterName,
@@ -99,6 +104,7 @@ export function migrateSemester(semester) {
   semester.students.forEach(function (s) {
     if (!s.schedule || s.schedule.length !== 18) s.schedule = emptySchedule();
     if (!s.id) s.id = uid();
+    if (s.email === undefined) s.email = '';
     if (!s.absences) s.absences = [];
     if (!s.makeups) s.makeups = [];
     s.makeups.forEach(function (m) {
@@ -118,6 +124,9 @@ export function migrateSemester(semester) {
       if (c.facilityId === undefined) c.facilityId = null;
     });
   });
+  (semester.facilities || []).forEach(ensureFacilityTimes);
+  ensureSimTimes(semester.config);
+  (semester.orientations || []).forEach(ensureOrientationTimes);
   semester.meta.version = VERSION;
   if (semester.meta.configCustomized === undefined) semester.meta.configCustomized = false;
   if (semester.meta.finalized === undefined) semester.meta.finalized = false;

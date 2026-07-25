@@ -5,6 +5,7 @@ import { showAlert, showConfirm } from '../dialogs.js';
 import * as DataModel from '../../core/data-model/index.js';
 import { WEEKDAY_OPTIONS } from '../../core/data-model/config.js';
 import * as SiteLibrary from '../../core/clinical-sites-library.js';
+import * as ScheduleHours from '../../core/schedule-hours.js';
 import * as Setup from '../setup/index.js';
 import {
   resolveSetupData, collectFormInto, finishSetupEdit, touchSetupEdit, draftConfigFromForm,
@@ -196,6 +197,38 @@ function handleSetupClick(e) {
       dataSimRemove.config = DataModel.normalizeConfig(cfgSimRemove);
       refreshDynamicLists(dataSimRemove);
       touchSetupEdit(dataSimRemove);
+      return;
+    }
+
+    if (e.target.classList.contains('add-sim-time-override')) {
+      var dataOv = resolveSetupData();
+      collectFormInto(dataOv);
+      ScheduleHours.ensureSimTimes(dataOv.config);
+      var used = {};
+      (dataOv.config.simTimeOverrides || []).forEach(function (o) { used[o.simNum] = true; });
+      var nextSim = 1;
+      var maxSim = dataOv.config.simDaysRequired || 5;
+      while (nextSim <= maxSim && used[nextSim]) nextSim++;
+      if (nextSim > maxSim) nextSim = (dataOv.config.simTimeOverrides || []).length + 1;
+      dataOv.config.simTimeOverrides.push({
+        simNum: nextSim,
+        start: dataOv.config.simDefaultStart,
+        end: dataOv.config.simDefaultEnd
+      });
+      refreshDynamicLists(dataOv);
+      touchSetupEdit(dataOv);
+      return;
+    }
+
+    if (e.target.closest('.remove-sim-time-override')) {
+      var ovBtn = e.target.closest('.remove-sim-time-override');
+      var dataOvRm = resolveSetupData();
+      collectFormInto(dataOvRm);
+      ScheduleHours.ensureSimTimes(dataOvRm.config);
+      var ovIdx = parseInt(ovBtn.getAttribute('data-idx'), 10);
+      if (!isNaN(ovIdx)) dataOvRm.config.simTimeOverrides.splice(ovIdx, 1);
+      refreshDynamicLists(dataOvRm);
+      touchSetupEdit(dataOvRm);
     }
   }
 
