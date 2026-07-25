@@ -6,6 +6,7 @@
 
 import { hoursFromTimes, getContactHourRules, clinicalHoursForDay, simHoursForDay } from './theory-data.js';
 import { findFacilityById } from './data-model/facilities.js';
+import { getClinicalGroups, getSimGroups } from './data-model/config.js';
 import { getGroupOrientations } from './orientation.js';
 
 export var DEFAULT_CLINICAL_START = '0600';
@@ -178,4 +179,69 @@ export function studentHoursSummary(student, semester) {
     simHours: studentSimHours(student, semester),
     orientationHours: studentOrientationHours(student, semester)
   };
+}
+
+/**
+ * Weekly clinical/sim hours from Setup times (one session per week).
+ * options.clinicalGroup / options.simGroup — limit to that cohort path (semester totals).
+ * Without filters, any group's session counts (weekly coordinator column).
+ */
+export function rollPracticumHoursByWeek(semester, options) {
+  options = options || {};
+  var clinicalGroup = options.clinicalGroup || null;
+  var simGroup = options.simGroup || null;
+  var byWeek = {};
+  for (var wi = 0; wi < 18; wi++) {
+    var clinical = 0;
+    var simulation = 0;
+    var clinSet = false;
+    var simSet = false;
+    (semester.students || []).forEach(function (student) {
+      var cell = student.schedule && student.schedule[wi];
+      if (!cell || cell.inactive) return;
+      if (!clinSet && cell.clinical && !cell.clinicalMissed &&
+          (!clinicalGroup || student.clinicalGroup === clinicalGroup)) {
+        clinical = resolveClinicalDayHours(semester, cellFacilityId(student, cell));
+        clinSet = true;
+      }
+      if (!simSet && cell.sim &&
+          (!simGroup || student.simGroup === simGroup)) {
+        simulation = resolveSimDayHours(semester, cell.sim);
+        simSet = true;
+      }
+    });
+    byWeek[wi + 1] = {
+      clinical: roundHours(clinical),
+      simulation: roundHours(simulation)
+    };
+  }
+  return byWeek;
+}
+
+/** First clinical group that has students (stable cohort path for semester totals). */
+export function representativeClinicalGroup(semester) {
+  var groups = getClinicalGroups((semester && semester.config) || {});
+  for (var i = 0; i < groups.length; i++) {
+    var g = groups[i];
+    if ((semester.students || []).some(function (s) { return s.clinicalGroup === g; })) return g;
+  }
+  return groups[0] || null;
+}
+
+/** First sim group that has students (stable cohort path for semester totals). */
+export function representativeSimGroup(semester) {
+  var groups = getSimGroups((semester && semester.config) || {});
+  for (var i = 0; i < groups.length; i++) {
+    var g = groups[i];
+    if ((semester.students || []).some(function (s) { return s.simGroup === g; })) return g;
+  }
+  return groups[0] || null;
+}
+
+/** One-cohort clinical + sim hours by week (for semester / contact-hour totals). */
+export function rollPracticumHoursForCohort(semester) {
+  return rollPracticumHoursByWeek(semester, {
+    clinicalGroup: representativeClinicalGroup(semester),
+    simGroup: representativeSimGroup(semester)
+  });
 }

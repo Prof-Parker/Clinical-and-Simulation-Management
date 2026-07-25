@@ -59,6 +59,16 @@ describe('schedule-hours.test.js', () => {
     assert(summary.clinicalHours > 0, 'student clinical hours > 0');
     assert(summary.simHours > 0, 'student sim hours > 0');
 
+    var byWeek = ScheduleHours.rollPracticumHoursByWeek(sem);
+    var clinWeek = Object.keys(byWeek).find(function (wl) { return byWeek[wl].clinical > 0; });
+    var simWeek = Object.keys(byWeek).find(function (wl) { return byWeek[wl].simulation > 0; });
+    assert(!!clinWeek, 'has a clinical week');
+    assert(!!simWeek, 'has a sim week');
+    assert(byWeek[clinWeek].clinical === 12.5,
+      'cohort clinical week is 12.5 not multi-group sum (got ' + byWeek[clinWeek].clinical + ')');
+    assert(byWeek[simWeek].simulation === 6 || byWeek[simWeek].simulation === 8,
+      'cohort sim week is one session (got ' + byWeek[simWeek].simulation + ')');
+
     expect(failed).toBe(0);
   });
 });

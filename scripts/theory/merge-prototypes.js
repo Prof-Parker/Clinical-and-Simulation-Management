@@ -87,6 +87,8 @@ export async function importTheoryFromPrototypes(options) {
         events: []
       };
     }
+    // Skip theory simulation markers — Coordinator pulls sims from the practicum scheduler.
+    if (m.type === 'simulation') return;
     markersToEvents([m], date, wi).forEach(function (ev) {
       ev.id = uid();
       ev.sourcePrototype = 'detailed';

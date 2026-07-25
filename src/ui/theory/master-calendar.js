@@ -31,10 +31,15 @@ export function render(data) {
     html += '<tr><td class="theory-week-label">Wk ' + w + '</td>';
     WEEK_COLS.forEach(function (wd) {
       var day = byWeek[w] && byWeek[w][wd];
-      html += '<td class="theory-day-cell" data-date="' + (day ? day.date : '') + '">';
+      var date = (day && day.date) || TheoryData.dateForWeekdayInWeek(data, w - 1, wd) || '';
+      html += '<td class="theory-day-cell" data-date="' + date + '">';
+      if (date) {
+        html += '<div class="theory-day-date">' + formatDisplayDate(date) + '</div>';
+      }
       if (day) {
-        html += '<div class="theory-day-date">' + formatDisplayDate(day.date) + '</div>';
         (day.events || []).forEach(function (ev) {
+          // Simulation is shown on Coordinator from the practicum scheduler only.
+          if (ev.track === 'simulation') return;
           html += '<div class="' + trackClass(ev.track) + '" data-event-id="' + ev.id + '">' +
             '<strong>' + esc(ev.title || ev.track) + '</strong>';
           if (ev.timeStart) html += '<div class="theory-ev-time">' + ev.timeStart + '–' + (ev.timeEnd || '') + '</div>';
@@ -48,7 +53,7 @@ export function render(data) {
   html += '</tbody></table></div>';
   grid.innerHTML = html;
 
-  grid.querySelectorAll('.theory-day-cell[data-date]').forEach(function (cell) {
+  grid.querySelectorAll('.theory-day-cell').forEach(function (cell) {
     cell.addEventListener('click', function () {
       var date = cell.dataset.date;
       if (!date) return;
