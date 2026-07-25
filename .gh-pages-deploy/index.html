@@ -19,8 +19,8 @@
     <link rel="icon" href="/Clinical-and-Simulation-Management/icons/favicon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/Clinical-and-Simulation-Management/icons/icon-180.png">
     <link rel="manifest" href="/Clinical-and-Simulation-Management/manifest.webmanifest">
-  <script type="module" crossorigin src="/Clinical-and-Simulation-Management/assets/index-D1g14CI-.js"></script>
-  <link rel="stylesheet" crossorigin href="/Clinical-and-Simulation-Management/assets/index-4J4A35O5.css">
+  <script type="module" crossorigin src="/Clinical-and-Simulation-Management/assets/index-KMqvfFfC.js"></script>
+  <link rel="stylesheet" crossorigin href="/Clinical-and-Simulation-Management/assets/index-DjJ1EygE.css">
 <link rel="manifest" href="/Clinical-and-Simulation-Management/manifest.webmanifest"></head>
 <body>
     <div class="app-container" id="appMain">
@@ -45,7 +45,10 @@
         <div class="sticky-top no-print">
             <header class="header-row">
                 <div class="header-brand">
-                    <h1 class="header-title">Shasta College ADN Course Manager</h1>
+                    <div class="header-title-row">
+                        <h1 class="header-title">Shasta College ADN Course Manager</h1>
+                        <span id="appVersionBadge" class="header-version" aria-label="App version"></span>
+                    </div>
                     <p class="section-sub header-tagline">Clinical &amp; simulation scheduling, requirement tracking, and resource allocation</p>
                     <div class="file-status-row">
                         <span id="fileStatus" class="file-status">Loading...</span>
@@ -308,20 +311,14 @@
                 <div id="simFacultyBanner" class="sim-faculty-banner hidden" role="status">
                     Open a semester file to manage simulation roles. Role data is saved inside the semester file (obfuscated in JSON exports).
                 </div>
-                <div class="filters" style="margin-bottom:1rem">
+                <div class="filters role-filters" style="margin-bottom:1rem">
                     <select id="roleSimSelect">
                         <option value="1">Simulation 1</option>
-                        <option value="2">Simulation 2</option>
-                        <option value="3">Simulation 3</option>
-                        <option value="4">Simulation 4</option>
-                        <option value="5">Simulation 5</option>
                     </select>
                     <select id="roleGroupSelect">
-                        <option value="MonA">Monday — Week A</option>
-                        <option value="TueA">Tuesday — Week A</option>
-                        <option value="MonB">Monday — Week B</option>
-                        <option value="TueB">Tuesday — Week B</option>
+                        <option value="0:Mon">Monday — Week 1</option>
                     </select>
+                    <span id="roleSessionMeta" class="role-session-meta" aria-live="polite"></span>
                 </div>
                 <div id="roleTableWrap" class="custom-scrollbar">
                     <table class="data-table">
@@ -420,6 +417,7 @@
                         <label>Max per clinical group<input type="number" id="cfgMaxClinGroup"></label>
                         <label>Max clinical group (makeup overload only)<input type="number" id="cfgMaxClinOverload"></label>
                         <label>Max students per sim session<input type="number" id="cfgMaxSimSession" title="Program-wide cap per weekday; also limits effective sim group size"></label>
+                        <label>Max guest sims per student<input type="number" id="cfgMaxGuestSims" min="0" title="Soft cap: prefer moving sim groups during rebalance so each student guests at most this many times (default 1)"></label>
                         <label>Max sim session (makeup overload only)<input type="number" id="cfgMaxSimOverload"></label>
                         <label>Sim makeup headroom (seats reserved per session)<input type="number" id="cfgSimHeadroom" min="0" max="3" title="During initial schedule generation, reserve this many seats per sim session for absence makeups"></label>
                         <label>Clinical start week<input type="number" id="cfgClinStart"></label>
@@ -502,7 +500,10 @@
                         <h3 class="section-title" style="margin:0">Student Roster</h3>
                         <p class="section-sub" style="margin:0.35rem 0 0">Drag students between cohorts. Set each student&rsquo;s registrar section individually, or use the cohort Section control to assign all at once (you can still split students across sections afterward).</p>
                     </div>
-                    <button id="rebalanceStudentsBtn" class="btn btn-sm" type="button" title="Evenly distribute students across clinical groups">Rebalance students</button>
+                    <div class="setup-roster-actions">
+                        <button id="rebalanceStudentsBtn" class="btn btn-sm btn-rebalance-clinical" type="button" title="Evenly distribute students across clinical groups">Rebalance clinical groups</button>
+                        <button id="rebalanceSimGroupsBtn" class="btn btn-sm btn-rebalance-sim" type="button" title="Balance sim groups to session cap and regenerate until guest soft cap is met">Rebalance simulation groups</button>
+                    </div>
                 </div>
                 <div id="setupRoster"></div>
             </section>
@@ -622,6 +623,12 @@
                 <p class="section-sub">Sun–Sat week grid — all theory tracks for REGN15.</p>
                 <aside id="theoryTopicLibraryPanel" class="theory-topic-library">
                     <h4 class="section-sub">Content library</h4>
+                    <p class="section-sub theory-library-hint">Topic bank for the event editor — separate from the semester program file.</p>
+                    <div id="theoryLibraryConnectPrompt" class="clinical-sites-connect-prompt">
+                        <button id="theoryLibraryConnectBtn" class="btn btn-sm" type="button">Connect theory content library</button>
+                        <button id="theoryLibraryCreateBtn" class="btn btn-sm" type="button">New theory content library</button>
+                    </div>
+                    <p id="theoryLibraryStatus" class="theory-library-status hidden" role="status"></p>
                     <ul id="theoryTopicLibraryList" class="theory-topic-list"></ul>
                 </aside>
                 <div id="theoryMasterGrid"></div>
@@ -659,6 +666,7 @@
                 <div class="user-gate-steps" aria-label="Sign-in progress">
                     <span class="user-gate-step-indicator active" data-step="1">1. Registry</span>
                     <span class="user-gate-step-indicator" data-step="2">2. User file</span>
+                    <span class="user-gate-step-indicator" data-step="3">3. Semester</span>
                 </div>
                 <div class="modal-header user-gate-header">
                     <h2 id="userGateTitle" style="margin:0">Connect users registry</h2>
@@ -672,13 +680,22 @@
                         </div>
                     </div>
                     <div id="userGateStep2" class="user-gate-step-panel hidden">
-                        <p class="section-sub user-gate-lead">Registry connected. Load your user file to sign in.</p>
+                        <p class="section-sub user-gate-lead">Registry connected. Load your user file to continue.</p>
                         <p id="userGateRegistryName" class="user-gate-connected-file"></p>
                         <div class="user-gate-actions">
                             <button id="userGateLoadUserBtn" class="btn btn-primary" type="button">Load user file…</button>
                             <button id="userGateRetryBtn" class="btn btn-sm hidden" type="button">Retry validation</button>
                             <button id="userGateChangeRegistryBtn" class="btn btn-sm" type="button">Use different registry…</button>
                         </div>
+                    </div>
+                    <div id="userGateStep3" class="user-gate-step-panel hidden">
+                        <p class="section-sub user-gate-lead">Signed in. Connect a program semester file from OneDrive (for example <code>F2026_REGN_program.json</code>).</p>
+                        <p id="userGateUserName" class="user-gate-connected-file"></p>
+                        <div class="user-gate-actions">
+                            <button id="userGateLoadSemesterBtn" class="btn btn-primary" type="button">Load semester file…</button>
+                            <button id="userGateChangeUserBtn" class="btn btn-sm" type="button">Use different user file…</button>
+                        </div>
+                        <input type="file" id="userGateSemesterFileInput" class="hidden" accept=".json,application/json">
                     </div>
                 </div>
             </div>

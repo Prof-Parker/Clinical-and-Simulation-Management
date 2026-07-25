@@ -87,13 +87,15 @@ describe('clinical makeup finder', () => {
       expect(weeks).toContain(6);
       expect(weeks).toContain(8);
       expect(weeks).toContain(10);
-      expect(weeks).toContain(14);
+      expect(weeks).toContain(12);
       expect(weeks).toContain(16);
       expect(weeks).not.toContain(5);
       expect(weeks).not.toContain(7);
       expect(weeks).not.toContain(9);
       expect(weeks).not.toContain(11);
-      expect(weeks).not.toContain(17);
+      // Week 14/15 is Thanksgiving break — no Monday join clinicals that week.
+      expect(weeks).not.toContain(14);
+      expect(weeks).not.toContain(15);
     }
   });
 

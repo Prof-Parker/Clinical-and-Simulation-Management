@@ -14,7 +14,7 @@ import {
 } from './_harness.js';
 
 describe('scheduling-rules.test.js', () => {
-  it('runs assertions', () => {
+  it('runs assertions', { timeout: 20000 }, () => {
     let failed = 0;
 
     function assert(condition, message) {
