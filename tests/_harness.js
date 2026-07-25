@@ -18,6 +18,7 @@ export * as SetupDraft from '../src/proposals/setup-draft.js';
 export * as AuditSnapshot from '../src/audit/audit-snapshot.js';
 export * as AuditExport from '../src/audit/audit-export.js';
 export * as DashboardExport from '../src/export/dashboard-export.js';
+export * as ScheduleHours from '../src/core/schedule-hours.js';
 export * as UserTemplate from '../src/auth/user-template.js';
 export * as UserData from '../src/auth/user-data.js';
 export * as UserSession from '../src/auth/user-session.js';

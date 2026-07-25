@@ -11,23 +11,22 @@ import * as CourseDefaults from '../../core/course-defaults.js';
 import * as SetupDraft from '../../proposals/setup-draft.js';
 import { canAction } from '../../auth/permissions.js';
 import { refresh, switchTab } from '../chrome.js';
-import { WEEKDAY_OPTIONS } from '../../core/data-model/config.js';
 import {
-  LIVE, PLAYGROUND, getSetupScope, setSetupScope, setupEl, setupQueryAll, resolveScopeFileRoot,
-  scopeRootEl
+  LIVE, PLAYGROUND, getSetupScope, setSetupScope, setupEl, setupQueryAll, resolveScopeFileRoot
 } from '../setup/scope.js';
 import {
   renderClinicalGroupsList, refreshDynamicLists, getGroupFacilityIds, addSiteToGroup, addRangeToGroup,
-  updateWeekRangeHint, updateAllWeekRangeHints, nextFacilityForGroup
+  updateWeekRangeHint, updateAllWeekRangeHints
 } from './clinical-groups.js';
-import { renderSimDaysList, renderSimGroupsList, daySelectHtml } from './sim-groups.js';
 import {
-  renderSiteLibrary, collectSiteLibraryFromDom, siteLibraryRow, siteLibraryContainer
+  renderSimDaysList, renderSimGroupsList, collectSimTimesIntoConfig
+} from './sim-groups.js';
+import {
+  renderSiteLibrary, collectSiteLibraryFromDom, siteLibraryRow
 } from './site-library.js';
 import { handleSetupClick } from './actions.js';
 
 var pendingNewSemester = false;
-var dayOptions = WEEKDAY_OPTIONS;
 
 function resolveSetupData() {
     if (Setup.resolveSetupData) return Setup.resolveSetupData();
@@ -62,10 +61,6 @@ function collectFormInto(data) {
       return Setup.collectFromForm(data);
     }
     return null;
-  }
-
-function field(label, id, val, type) {
-    return '<label>' + label + '<input type="' + type + '" id="' + id + '" value="' + val + '"></label>';
   }
 
 function configModeBadge(customized) {
@@ -133,6 +128,8 @@ function readFormIntoConfig(cfg, data) {
       cfg.simGroupDays[g] = dayEl ? dayEl.value : 'Mon';
       cfg.simGroupPattern[g] = patEl ? patEl.value : 'even';
     });
+
+    collectSimTimesIntoConfig(cfg);
 
     var normalized = DataModel.normalizeConfig(cfg);
     if (data && ClinicalSites) {

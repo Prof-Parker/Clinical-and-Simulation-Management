@@ -30,7 +30,10 @@ export function defaultConfig() {
     simGroups: SIM_GROUPS.slice(),
     simGroupDays: { SG1: 'Mon', SG2: 'Tue', SG3: 'Mon', SG4: 'Tue' },
     simGroupPattern: { SG1: 'even', SG2: 'even', SG3: 'odd', SG4: 'odd' },
-    simDays: ['Mon', 'Tue']
+    simDays: ['Mon', 'Tue'],
+    simDefaultStart: '0900',
+    simDefaultEnd: '1500',
+    simTimeOverrides: []
   };
 }
 
@@ -123,6 +126,9 @@ export function normalizeConfig(cfg) {
   var guestSoft = parseInt(cfg.maxGuestSimsPerStudent, 10);
   if (isNaN(guestSoft) || guestSoft < 0) guestSoft = 1;
   cfg.maxGuestSimsPerStudent = guestSoft;
+  if (!cfg.simDefaultStart) cfg.simDefaultStart = '0900';
+  if (!cfg.simDefaultEnd) cfg.simDefaultEnd = '1500';
+  if (!Array.isArray(cfg.simTimeOverrides)) cfg.simTimeOverrides = [];
   return cfg;
 }
 

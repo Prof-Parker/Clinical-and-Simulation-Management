@@ -4,6 +4,7 @@ import { getData, notifyChange } from '../../core/state.js';
 import * as DataModel from '../../core/data-model/index.js';
 import * as CalendarEngine from '../../core/calendar-engine.js';
 import * as ClinicalSites from '../../core/clinical-sites.js';
+import * as ScheduleHours from '../../core/schedule-hours.js';
 import { escAttr, escHtml, configListAddRow } from './dom-utils.js';
 import {
   markSetupDraft, resolveRenderData, guardSetupEdit, resolveSetupData, setupAfterChange, collectFromForm,
@@ -251,14 +252,21 @@ function nextOrientationDefault(data) {
           return DataModel.sameFacilitySite(data, o.facilityId, facId);
         });
         if (!exists) {
-          return { clinicalGroup: group, facilityId: facId };
+          return {
+            clinicalGroup: group,
+            facilityId: facId,
+            timeStart: ScheduleHours.DEFAULT_ORIENT_START,
+            timeEnd: ScheduleHours.DEFAULT_ORIENT_END
+          };
         }
       }
     }
     var fallbackGroup = groups[0] || 'C1';
     return {
       clinicalGroup: fallbackGroup,
-      facilityId: getCohortFacilityIdForGroup(data, fallbackGroup)
+      facilityId: getCohortFacilityIdForGroup(data, fallbackGroup),
+      timeStart: ScheduleHours.DEFAULT_ORIENT_START,
+      timeEnd: ScheduleHours.DEFAULT_ORIENT_END
     };
   }
 
@@ -273,11 +281,13 @@ function renderOrientations(data) {
     if (orientations.length) {
       container.innerHTML =
         '<div class="setup-orientations-head" aria-hidden="true">' +
-        '<span>Clinical group</span><span>Orientation date</span><span>Facility</span><span></span>' +
+        '<span>Clinical group</span><span>Orientation date</span><span>Facility</span>' +
+        '<span>Start</span><span>End</span><span></span>' +
         '</div>';
     }
     var clinicalGroups = DataModel.getClinicalGroups(data.config);
     orientations.forEach(function (o, i) {
+      ScheduleHours.ensureOrientationTimes(o);
       var groupOptions = clinicalGroups.map(function (g) {
         return '<option value="' + g + '"' + (o.clinicalGroup === g ? ' selected' : '') + '>' + g + '</option>';
       }).join('');
@@ -297,6 +307,14 @@ function renderOrientations(data) {
         '<label class="setup-orientation-field setup-orientation-facility">' +
         '<span class="setup-orientation-field-label">Facility</span>' +
         '<select data-orient="facility" data-idx="' + i + '">' + orientationFacilitySelectHtml(data, facId) + '</select></label>' +
+        '<label class="setup-orientation-field setup-orientation-start">' +
+        '<span class="setup-orientation-field-label">Start</span>' +
+        '<input type="time" data-orient="start" data-idx="' + i + '" value="' +
+        escAttr(ScheduleHours.hhmmToTimeInput(o.timeStart)) + '" aria-label="Orientation start time"></label>' +
+        '<label class="setup-orientation-field setup-orientation-end">' +
+        '<span class="setup-orientation-field-label">End</span>' +
+        '<input type="time" data-orient="end" data-idx="' + i + '" value="' +
+        escAttr(ScheduleHours.hhmmToTimeInput(o.timeEnd)) + '" aria-label="Orientation end time"></label>' +
         '<button class="btn btn-icon-remove remove-orientation" type="button" data-idx="' + i + '" aria-label="Remove orientation" title="Remove orientation">&times;</button>' +
         '</div>';
     });

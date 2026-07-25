@@ -8,6 +8,7 @@ import { collectHolidaysFromDom } from './holidays-orientations.js';
 import { collectSemesterMeta } from './semester-fields.js';
 import { applyGroupFacilitiesFromConfig } from './facilities-faculty.js';
 import * as SetupConfig from '../setup-config/index.js';
+import * as ScheduleHours from '../../core/schedule-hours.js';
 import { markSetupDraft } from './index.js';
 import { getSetupScope, setupEl, setupQueryAll } from './scope.js';
 
@@ -50,6 +51,17 @@ export function collectFromFormInto(data, opts) {
       f.contentTags = site.contentTags.slice();
     }
   });
+  setupQueryAll('setupFacilities', '[data-fac="start"]').forEach(function (el) {
+    var f = data.facilities.find(function (fac) { return fac.id === el.dataset.facId; });
+    if (!f) return;
+    f.clinicalStart = ScheduleHours.timeInputToHhmm(el.value, ScheduleHours.DEFAULT_CLINICAL_START);
+  });
+  setupQueryAll('setupFacilities', '[data-fac="end"]').forEach(function (el) {
+    var f = data.facilities.find(function (fac) { return fac.id === el.dataset.facId; });
+    if (!f) return;
+    f.clinicalEnd = ScheduleHours.timeInputToHhmm(el.value, ScheduleHours.DEFAULT_CLINICAL_END);
+  });
+  (data.facilities || []).forEach(ScheduleHours.ensureFacilityTimes);
   setupQueryAll('setupFaculty', '[data-faculty]').forEach(function (el) {
     var f = data.faculty[parseInt(el.dataset.idx, 10)];
     if (f) f.name = el.value;
@@ -76,8 +88,15 @@ export function collectFromFormInto(data, opts) {
     if (el.dataset.orient === 'date') o.date = el.value;
     if (el.dataset.orient === 'group') o.clinicalGroup = el.value;
     if (el.dataset.orient === 'facility') o.facilityId = el.value;
+    if (el.dataset.orient === 'start') {
+      o.timeStart = ScheduleHours.timeInputToHhmm(el.value, ScheduleHours.DEFAULT_ORIENT_START);
+    }
+    if (el.dataset.orient === 'end') {
+      o.timeEnd = ScheduleHours.timeInputToHhmm(el.value, ScheduleHours.DEFAULT_ORIENT_END);
+    }
   });
   (data.orientations || []).forEach(function (o) {
+    ScheduleHours.ensureOrientationTimes(o);
     if (o.date) {
       o.weekIndex = CalendarEngine.getWeekIndexForDate(data, o.date);
     }

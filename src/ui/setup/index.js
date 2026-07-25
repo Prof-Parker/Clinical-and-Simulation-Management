@@ -386,7 +386,9 @@ function init() {
           id: DataModel.uid(),
           clinicalGroup: next.clinicalGroup,
           date: '',
-          facilityId: next.facilityId
+          facilityId: next.facilityId,
+          timeStart: next.timeStart || '0800',
+          timeEnd: next.timeEnd || '1200'
         });
         markSetupDraft(data);
         setupAfterChange(data);
