@@ -4,9 +4,7 @@ import { getData, notifyChange } from '../../core/state.js';
 import { showAlert, showConfirm } from '../dialogs.js';
 import { guardEditable } from '../../auth/permissions.js';
 import { canAction } from '../../auth/permissions.js';
-import { isValidated } from '../../auth/user-session.js';
 import * as SetupDraft from '../../proposals/setup-draft.js';
-import * as Audit from '../../audit/audit.js';
 import * as ScheduleStatus from '../../core/schedule-status.js';
 import * as Scheduler from '../../core/scheduler/index.js';
 import * as DataModel from '../../core/data-model/index.js';
@@ -14,11 +12,10 @@ import * as SiteLibrary from '../../core/clinical-sites-library.js';
 import { reloadFromHandle } from '../../storage/users-registry-storage.js';
 import { init as initDateInputs } from '../date-inputs.js';
 import { renderSetupProposalsPanel } from '../setup-proposals.js';
-import { refresh, updateSemesterDisplay } from '../chrome.js';
+import { refresh } from '../chrome.js';
 import * as SetupConfig from '../setup-config/index.js';
-import { escAttr, escHtml } from './dom-utils.js';
 import {
-  renderSemesterFields, updateFinalizeButtonState, updateStartDateFromSeasonYear, renderScheduleWarnings
+  renderSemesterFields, updateStartDateFromSeasonYear, renderScheduleWarnings
 } from './semester-fields.js';
 import {
   renderSections, renderFacilities, renderFaculty, renderSimInstructors, handleSimInstructorClick,
@@ -38,48 +35,20 @@ import {
 import { collectFromForm, collectFromFormInto } from './form-collect.js';
 import {
   LIVE, PLAYGROUND, getSetupScope, setSetupScope, scopeRootEl,
-  resolveScopeData, syncPlaygroundSemester, setupEl
+  syncPlaygroundSemester
 } from './scope.js';
 import {
   bindScoped, bindScopedContainer, updateSetupStickyOffset, scrollSetupToTop
 } from './scoped-bindings.js';
-
-function guardSetupEdit() {
-    if (getSetupScope().isPlayground) {
-      if (isValidated()) {
-        if (!canAction('playground.edit') && !canAction('setup.edit') && !canAction('*')) {
-          showAlert('Not permitted', 'Your role cannot edit the playground.');
-          return false;
-        }
-      }
-      return true;
-    }
-    if (isValidated()) {
-      if (!canAction('setup.edit') &&
-          !canAction('setup.saveDraft') &&
-          !canAction('proposals.submit')) {
-        showAlert('Not permitted', 'Your role cannot edit setup.');
-        return false;
-      }
-    }
-    return guardEditable('setup');
-  }
-
-function isProposeOnlyMode() {
-    return SetupDraft && SetupDraft.usesDraftMode();
-  }
-
-function resolveSetupData() {
-    if (getSetupScope().isPlayground) return resolveScopeData();
-    if (isProposeOnlyMode()) return SetupDraft.getWorkingForEdit();
-    return getData();
-  }
-
-function resolveRenderData(passed) {
-    if (passed && !isProposeOnlyMode()) return passed;
-    if (isProposeOnlyMode()) return SetupDraft.getWorking();
-    return passed || getData();
-  }
+import {
+  guardSetupEdit,
+  isProposeOnlyMode,
+  resolveSetupData,
+  resolveRenderData,
+  updateReadOnlyButtons,
+  markSetupDraft,
+  handleSetupDraftInput
+} from './setup-guards.js';
 
 function setupAfterChange(data, opts) {
     if (getSetupScope().isPlayground) {
@@ -99,63 +68,6 @@ function setupAfterChange(data, opts) {
       SetupConfig.maybeRegenerateAfterChange(data, opts.configBefore);
     }
     if (!opts || opts.rerender !== false) render(data);
-  }
-
-function updateReadOnlyButtons(data) {
-    if (getSetupScope().isPlayground) return;
-    var readOnly = !!(Audit && Audit.isReadOnly(data));
-    ['saveSetupBtn', 'regenerateSchedulesBtn', 'rebalanceStudentsBtn', 'rebalanceSimGroupsBtn'].forEach(function (id) {
-      var btn = setupEl(id);
-      if (!btn) return;
-      btn.disabled = readOnly;
-      if (readOnly) btn.title = 'Semester in closeout — editing disabled';
-      else if (btn.title === 'Semester in closeout — editing disabled') btn.title = '';
-    });
-    document.querySelectorAll('#view-setup .config-list-add-row .btn').forEach(function (btn) {
-      btn.disabled = readOnly;
-      if (readOnly) btn.title = 'Semester in closeout — editing disabled';
-      else if (btn.title === 'Semester in closeout — editing disabled') btn.title = '';
-    });
-    if (readOnly) {
-      var finalizeBtn = setupEl('finalizeSemesterBtn');
-      if (finalizeBtn) {
-        finalizeBtn.disabled = true;
-        finalizeBtn.title = 'Semester in closeout — editing disabled';
-      }
-    }
-  }
-
-function markSetupDraft(data) {
-    if (getSetupScope().isPlayground) return;
-    if (!data || !data.meta || !data.meta.finalized) return;
-    data.meta.finalized = false;
-    updateFinalizeButtonState(data);
-    updateSemesterDisplay();
-  }
-
-function isSetupDraftArea(el) {
-    if (!el) return false;
-    var inView = el.closest('#view-setup') || el.closest('#playgroundSetupRoot');
-    if (!inView) return false;
-    if (el.closest('.setup-actions-sticky')) return false;
-    if (el.closest('#setupRoster') || el.closest('#pg-setupRoster')) return false;
-    return !!(
-      el.closest('#view-setup > section.card') ||
-      el.closest('#playgroundSetupRoot > section.card') ||
-      el.closest('.setup-program-card') ||
-      el.closest('.setup-holidays-card') ||
-      el.closest('.setup-orientations-card') ||
-      el.closest('#setupAdvancedPanel')
-    );
-  }
-
-function handleSetupDraftInput(e) {
-    if (!isSetupDraftArea(e.target)) return;
-    if (isProposeOnlyMode()) {
-      SetupDraft.syncFromDom();
-      return;
-    }
-    markSetupDraft(resolveSetupData());
   }
 
 function render(data) {
