@@ -4,11 +4,15 @@
 
 import * as Storage from './semester-storage.js';
 import * as UserData from '../auth/user-data.js';
+import * as FileKind from '../core/file-kind.js';
+import { assertKindOrThrow } from './guarded-write.js';
+import { readHandleText } from './fs-handle.js';
 import { state } from '../core/state.js';
 
 var CACHE_KEY = 'userProfileData';
   var HANDLE_KEY = 'userProfileFileHandle';
   var META_KEY = 'userProfileMeta';
+  var KIND = FileKind.FILE_KINDS.USER_CREDENTIAL;
 
   function idbGet(key) { return Storage._idbGet(key); }
   function idbSet(key, val) { return Storage._idbSet(key, val); }
@@ -39,32 +43,20 @@ var CACHE_KEY = 'userProfileData';
   }
 
   function readFromHandle(handle) {
-    return handle.getFile().then(function (file) {
-      return file.text();
-    }).then(function (text) {
-      return UserData.migrateUserFile(JSON.parse(text));
+    return readHandleText(handle, 'read').then(function (text) {
+      var userFile = UserData.migrateUserFile(JSON.parse(text));
+      if (!userFile) throw new Error('Invalid user file');
+      return assertKindOrThrow(userFile, KIND, {
+        fileName: handle.name,
+        suggestedName: 'lastname.user.json'
+      });
     });
   }
 
   function openFilePicker() {
-    if (!supportsFS()) return importViaInput();
-    return window.showOpenFilePicker({
-      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
-      multiple: false
-    }).then(function (handles) {
-      var handle = handles[0];
-      state.userFileHandle = handle;
-      state.userFileName = handle.name;
-      return idbSet(HANDLE_KEY, handle).then(function () {
-        return readFromHandle(handle);
-      }).then(function (userFile) {
-        if (!userFile) throw new Error('Invalid user file');
-        setUserFile(userFile);
-        return idbSet(CACHE_KEY, userFile).then(function () {
-          return setMeta({ lastImportedFileName: handle.name, hasLoadedData: true });
-        }).then(function () { return userFile; });
-      });
-    });
+    // Classic <input type="file"> — one picker (avoids FS getFile NotAllowedError
+    // on OneDrive Desktop paths).
+    return importViaInput();
   }
 
   function importViaInput() {
@@ -80,6 +72,10 @@ var CACHE_KEY = 'userProfileData';
           try {
             var userFile = UserData.migrateUserFile(JSON.parse(reader.result));
             if (!userFile) return reject(new Error('Invalid user file'));
+            assertKindOrThrow(userFile, KIND, {
+              fileName: file.name,
+              suggestedName: 'lastname.user.json'
+            });
             state.userFileHandle = null;
             state.userFileName = file.name;
             setUserFile(userFile);
@@ -102,6 +98,10 @@ var CACHE_KEY = 'userProfileData';
         try {
           var userFile = UserData.migrateUserFile(JSON.parse(reader.result));
           if (!userFile) return reject(new Error('Invalid user file'));
+          assertKindOrThrow(userFile, KIND, {
+            fileName: file && file.name,
+            suggestedName: 'lastname.user.json'
+          });
           resolve(userFile);
         } catch (e) { reject(e); }
       };

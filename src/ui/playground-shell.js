@@ -62,7 +62,13 @@ export function updatePlaygroundStatusLine() {
     return;
   }
   var parts = DataModel.parseSemesterDisplay(data);
+  var fileBit = state.playgroundFileName ? ' · ' + state.playgroundFileName : '';
   var code = 'Playground · ' + (data.meta.courseId || 'Course');
   trigger.innerHTML = buildCourseStatusHtml(parts, code, '');
-  trigger.setAttribute('aria-label', 'Playground, ' + courseStatusAriaLabel(parts, data.meta.courseId, ''));
+  trigger.setAttribute('aria-label', 'Playground, ' + courseStatusAriaLabel(parts, data.meta.courseId, '') + fileBit);
+  if (fileBit) {
+    trigger.title = 'playground file: ' + state.playgroundFileName;
+  } else {
+    trigger.removeAttribute('title');
+  }
 }

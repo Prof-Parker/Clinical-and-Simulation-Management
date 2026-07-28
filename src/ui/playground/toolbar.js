@@ -1,5 +1,5 @@
 /**
- * Shared playground file toolbar (load, import, save).
+ * Shared playground file toolbar (load, import, save, save as).
  */
 
 import * as CourseDefaults from '../../core/course-defaults.js';
@@ -28,20 +28,50 @@ export function updatePlaygroundToolbar(data) {
     status.textContent = 'No playground loaded. Use the toolbar to copy a semester, load a template, or import a file.';
     return;
   }
+  var fileBit = PlaygroundStorage.connectionLabel();
   status.textContent = (data.meta.courseId || 'Course') + ' — ' + (data.meta.semesterName || 'Playground') +
-    ' (isolated from live semester file)';
+    ' (isolated from live semester file)' +
+    (fileBit ? ' · connected: ' + fileBit : '');
 }
 
 function afterLoad() {
   updatePlaygroundStatusLine();
   PlaygroundDashboard.render();
   renderSetupTab();
+  updatePlaygroundToolbar(getPlaygroundData());
+}
+
+function suggestedNameFromData(data) {
+  return PlaygroundStorage.suggestedFileName(
+    data.meta.courseId,
+    data.meta.semesterSeason,
+    data.meta.semesterYear
+  );
+}
+
+function savePlayground(forcePicker) {
+  flushPlaygroundForm();
+  var root = state.playgroundRoot;
+  var data = getPlaygroundData();
+  if (!root || !data) {
+    showAlert('Playground', 'Nothing to save.');
+    return;
+  }
+  var name = suggestedNameFromData(data);
+  var saveFn = forcePicker ? PlaygroundStorage.saveToPicker : PlaygroundStorage.saveCurrent;
+  saveFn(root, name).then(function (savedName) {
+    state.playgroundDirty = false;
+    updatePlaygroundToolbar(data);
+    updatePlaygroundStatusLine();
+    showAlert('Saved', 'Playground saved as ' + (savedName || name));
+  }).catch(function () {});
 }
 
 export function initToolbar() {
   var loadSemBtn = document.getElementById('playgroundLoadSemesterBtn');
   var loadCourseBtn = document.getElementById('playgroundLoadCourseBtn');
   var saveBtn = document.getElementById('playgroundSaveBtn');
+  var saveAsBtn = document.getElementById('playgroundSaveAsBtn');
   var importBtn = document.getElementById('playgroundImportBtn');
   var select = document.getElementById('playgroundCourseSelect');
 
@@ -74,24 +104,10 @@ export function initToolbar() {
   }
 
   if (saveBtn) {
-    saveBtn.addEventListener('click', function () {
-      flushPlaygroundForm();
-      var root = state.playgroundRoot;
-      var data = getPlaygroundData();
-      if (!root || !data) {
-        showAlert('Playground', 'Nothing to save.');
-        return;
-      }
-      var name = PlaygroundStorage.suggestedFileName(
-        data.meta.courseId,
-        data.meta.semesterSeason,
-        data.meta.semesterYear
-      );
-      PlaygroundStorage.saveToPicker(root, name).then(function (savedName) {
-        state.playgroundDirty = false;
-        showAlert('Saved', 'Playground saved as ' + (savedName || name));
-      }).catch(function () {});
-    });
+    saveBtn.addEventListener('click', function () { savePlayground(false); });
+  }
+  if (saveAsBtn) {
+    saveAsBtn.addEventListener('click', function () { savePlayground(true); });
   }
 
   if (importBtn) {
@@ -103,4 +119,8 @@ export function initToolbar() {
       }).catch(function () {});
     });
   }
+
+  PlaygroundStorage.reconnectHandle().then(function () {
+    updatePlaygroundToolbar(getPlaygroundData());
+  });
 }

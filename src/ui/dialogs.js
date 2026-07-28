@@ -25,6 +25,7 @@ export function closeDialog() {
   var modal = document.getElementById('dialogModal');
   var saveBtn = document.getElementById('dialogSave');
   var cancelBtn = document.getElementById('dialogCancel');
+  var extraBtn = document.getElementById('dialogExtra');
   if (modal) modal.classList.remove('open');
   var content = modal && modal.querySelector('.modal-content');
   if (content) content.style.maxWidth = '28rem';
@@ -36,6 +37,11 @@ export function closeDialog() {
   if (cancelBtn) {
     cancelBtn.textContent = _dialogDefaults.cancelLabel;
     cancelBtn.style.display = '';
+  }
+  if (extraBtn) {
+    extraBtn.textContent = 'Extra';
+    extraBtn.className = 'btn';
+    extraBtn.style.display = 'none';
   }
 }
 

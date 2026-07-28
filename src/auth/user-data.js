@@ -51,7 +51,12 @@ var REGISTRY_VERSION = 1;
 
   function createEmptyRegistry() {
     return {
-      meta: { version: REGISTRY_VERSION, lastModified: new Date().toISOString(), revision: 1 },
+      meta: {
+        version: REGISTRY_VERSION,
+        fileKind: 'users_registry',
+        lastModified: new Date().toISOString(),
+        revision: 1
+      },
       users: {}
     };
   }
@@ -107,7 +112,8 @@ var REGISTRY_VERSION = 1;
       lastName: String(lastName || ''),
       name: formatFullName(firstName, lastName),
       email: String(email || ''),
-      key: key
+      key: key,
+      fileKind: 'user_credential'
     };
   }
 
@@ -164,10 +170,14 @@ var REGISTRY_VERSION = 1;
 
   function serializeRegistry(registry) {
     registry.meta.lastModified = new Date().toISOString();
+    if (!registry.meta.fileKind) registry.meta.fileKind = 'users_registry';
     return JSON.stringify(registry, null, 2);
   }
 
   function serializeUserFile(userFile) {
+    if (userFile && typeof userFile === 'object') {
+      userFile.fileKind = 'user_credential';
+    }
     return JSON.stringify(userFile, null, 2);
   }
 

@@ -4,17 +4,27 @@
 
 import * as SiteLibrary from '../core/clinical-sites-library.js';
 import * as Storage from './semester-storage.js';
+import * as FileKind from '../core/file-kind.js';
+import { assertKindOrThrow, guardedWrite } from './guarded-write.js';
 import { state } from '../core/state.js';
 
 var CACHE_KEY = 'clinicalSitesLibraryData';
   var HANDLE_KEY = 'clinicalSitesLibraryFileHandle';
+  var KIND = FileKind.FILE_KINDS.CLINICAL_SITES_LIBRARY;
 
   function idbGet(key) { return Storage._idbGet(key); }
   function idbSet(key, val) { return Storage._idbSet(key, val); }
   function supportsFS() { return Storage && Storage.supportsFS(); }
 
   function createEmpty() {
-    return { meta: { version: 1, lastModified: new Date().toISOString() }, sites: [] };
+    return {
+      meta: {
+        version: 1,
+        fileKind: KIND,
+        lastModified: new Date().toISOString()
+      },
+      sites: []
+    };
   }
 
   function migrate(raw) {
@@ -40,18 +50,24 @@ var CACHE_KEY = 'clinicalSitesLibraryData';
 
   function serialize(root) {
     root.meta.lastModified = new Date().toISOString();
+    FileKind.stampFileKind(root, KIND);
     return JSON.stringify(root, null, 2);
   }
 
   function writeToHandle(handle, root) {
-    return handle.createWritable().then(function (w) {
-      return w.write(serialize(root)).then(function () { return w.close(); });
+    return guardedWrite(handle, KIND, function () {
+      return handle.createWritable().then(function (w) {
+        return w.write(serialize(root)).then(function () { return w.close(); });
+      });
     });
   }
 
   function readFromHandle(handle) {
     return handle.getFile().then(function (f) { return f.text(); }).then(function (t) {
-      return migrate(JSON.parse(t));
+      return assertKindOrThrow(migrate(JSON.parse(t)), KIND, {
+        fileName: handle.name,
+        suggestedName: 'clinical-sites-library.json'
+      });
     });
   }
 
@@ -69,12 +85,12 @@ var CACHE_KEY = 'clinicalSitesLibraryData';
       types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
     }).then(function (handles) {
       var handle = handles[0];
-      state.clinicalSitesLibraryFileHandle = handle;
-      return idbSet(HANDLE_KEY, handle).then(function () {
-        return readFromHandle(handle);
-      }).then(function (root) {
+      return readFromHandle(handle).then(function (root) {
+        state.clinicalSitesLibraryFileHandle = handle;
         setRoot(root);
-        return idbSet(CACHE_KEY, root).then(function () { return root; });
+        return idbSet(HANDLE_KEY, handle).then(function () {
+          return idbSet(CACHE_KEY, root).then(function () { return root; });
+        });
       });
     });
   }

@@ -4,11 +4,15 @@
 
 import * as Storage from './semester-storage.js';
 import * as UserData from '../auth/user-data.js';
+import * as FileKind from '../core/file-kind.js';
+import { assertKindOrThrow, guardedWrite } from './guarded-write.js';
+import { readHandleText } from './fs-handle.js';
 import { state } from '../core/state.js';
 
 var CACHE_KEY = 'usersRegistryData';
   var HANDLE_KEY = 'usersRegistryFileHandle';
   var META_KEY = 'usersRegistryMeta';
+  var KIND = FileKind.FILE_KINDS.USERS_REGISTRY;
 
   function idbGet(key) { return Storage._idbGet(key); }
   function idbSet(key, val) { return Storage._idbSet(key, val); }
@@ -39,22 +43,26 @@ var CACHE_KEY = 'usersRegistryData';
   }
 
   function serialize(registry) {
+    FileKind.stampFileKind(registry, KIND);
     return UserData.serializeRegistry(registry);
   }
 
   function writeToHandle(handle, registry) {
-    return handle.createWritable().then(function (writable) {
-      return writable.write(serialize(registry)).then(function () {
-        return writable.close();
+    return guardedWrite(handle, KIND, function () {
+      return handle.createWritable().then(function (writable) {
+        return writable.write(serialize(registry)).then(function () {
+          return writable.close();
+        });
       });
     });
   }
 
   function readFromHandle(handle) {
-    return handle.getFile().then(function (file) {
-      return file.text();
-    }).then(function (text) {
-      return UserData.migrateRegistry(JSON.parse(text));
+    return readHandleText(handle, 'read').then(function (text) {
+      return assertKindOrThrow(UserData.migrateRegistry(JSON.parse(text)), KIND, {
+        fileName: handle.name,
+        suggestedName: 'users-registry.json'
+      });
     });
   }
 
@@ -101,24 +109,9 @@ var CACHE_KEY = 'usersRegistryData';
   }
 
   function openFilePicker() {
-    if (!supportsFS()) return importViaInput();
-    return window.showOpenFilePicker({
-      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
-      multiple: false
-    }).then(function (handles) {
-      var handle = handles[0];
-      state.usersRegistryFileHandle = handle;
-      state.usersRegistryFileName = handle.name;
-      return idbSet(HANDLE_KEY, handle).then(function () {
-        return readFromHandle(handle);
-      }).then(function (registry) {
-        setRegistry(registry);
-        state.usersRegistryLoadedRevision = registry.meta.revision;
-        return idbSet(CACHE_KEY, registry).then(function () {
-          return setMeta({ lastImportedFileName: handle.name, hasLoadedData: true });
-        }).then(function () { return registry; });
-      });
-    });
+    // Classic <input type="file"> — one picker. showOpenFilePicker + getFile()
+    // often throws NotAllowedError on OneDrive Desktop paths.
+    return importViaInput();
   }
 
   function importViaInput() {
@@ -133,6 +126,10 @@ var CACHE_KEY = 'usersRegistryData';
         reader.onload = function () {
           try {
             var registry = UserData.migrateRegistry(JSON.parse(reader.result));
+            assertKindOrThrow(registry, KIND, {
+              fileName: file.name,
+              suggestedName: 'users-registry.json'
+            });
             state.usersRegistryFileHandle = null;
             state.usersRegistryFileName = file.name;
             setRegistry(registry);

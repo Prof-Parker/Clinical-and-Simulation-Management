@@ -38,9 +38,11 @@ function initGateUI(ctx) {
 
         if (ctx.refresh) ctx.refresh();
 
-      }).catch(function () {
+      }).catch(function (err) {
 
-        ctx.showGateModal('Could not load registry file');
+        ctx.showGateModal((err && err.name === 'AbortError')
+          ? 'Registry file picker was cancelled'
+          : ((err && err.message) || 'Could not load registry file'));
 
       });
 
@@ -60,9 +62,11 @@ function initGateUI(ctx) {
 
         if (ctx.refresh) ctx.refresh();
 
-      }).catch(function () {
+      }).catch(function (err) {
 
-        ctx.showGateModal('Could not load registry file');
+        ctx.showGateModal((err && err.name === 'AbortError')
+          ? 'Registry file picker was cancelled'
+          : ((err && err.message) || 'Could not load registry file'));
 
       });
 
@@ -86,9 +90,11 @@ function initGateUI(ctx) {
 
         else ctx.updateGateStep(r.error);
 
-      }).catch(function () {
+      }).catch(function (err) {
 
-        ctx.updateGateStep('Could not load user file');
+        ctx.updateGateStep((err && err.name === 'AbortError')
+          ? 'User file picker was cancelled'
+          : ((err && err.message) || 'Could not load user file'));
 
       });
 
@@ -108,9 +114,19 @@ function initGateUI(ctx) {
 
           ctx.finishSemesterLoad(fileRoot, state.fileName);
 
-        }).catch(function () {
+        }).catch(function (err) {
 
-          ctx.updateGateStep('Could not load semester file');
+          var msg = (err && err.guard && err.guard.message) || (err && err.message) || '';
+
+          if (err && err.guard && err.guard.detected === 'playground') {
+
+            ctx.updateGateStep('This is a playground file. Open it from the Playground tab instead.');
+
+          } else {
+
+            ctx.updateGateStep(msg || 'Could not load semester file');
+
+          }
 
         });
 
@@ -148,9 +164,17 @@ function initGateUI(ctx) {
 
         ctx.finishSemesterLoad(fileRoot, file.name);
 
-      }).catch(function () {
+      }).catch(function (err) {
 
-        ctx.updateGateStep('Invalid semester file');
+        if (err && err.guard && err.guard.detected === 'playground') {
+
+          ctx.updateGateStep('This is a playground file. Open it from the Playground tab instead.');
+
+        } else {
+
+          ctx.updateGateStep((err && err.message) || 'Invalid semester file');
+
+        }
 
       });
 
@@ -174,9 +198,11 @@ function initGateUI(ctx) {
 
         else ctx.updateGateStep(r.error);
 
-      }).catch(function () {
+      }).catch(function (err) {
 
-        ctx.updateGateStep('Could not load user file');
+        ctx.updateGateStep((err && err.name === 'AbortError')
+          ? 'User file picker was cancelled'
+          : ((err && err.message) || 'Could not load user file'));
 
       });
 

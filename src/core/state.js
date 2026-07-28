@@ -21,6 +21,8 @@ export const state = {
   usersRegistryLoadedRevision: null,
   userSession: null,
   playgroundRoot: null,
+  playgroundFileHandle: null,
+  playgroundFileName: null,
   clinicalSitesLibraryRoot: null,
   clinicalSitesLibraryFileHandle: null,
   theoryLibraryRoot: null,

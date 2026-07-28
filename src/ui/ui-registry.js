@@ -68,7 +68,8 @@ export var UI_TABS = [
     shell: 'playground',
     anchors: [
       'playgroundStatus', 'playgroundLoadSemesterBtn', 'playgroundCourseSelect',
-      'playgroundSaveBtn', 'playgroundImportBtn', 'pgDashEmptyState', 'pgDashContent',
+      'playgroundSaveBtn', 'playgroundSaveAsBtn', 'playgroundImportBtn',
+      'pgDashEmptyState', 'pgDashContent',
       'pgDashConflictsPanel', 'pgDashScheduleHeadRow', 'pgDashScheduleBody', 'pgDashSimTableBody',
       'pgDashLoadChart', 'pgDashReqClinLabel', 'pgDashReqSimLabel'
     ]
@@ -139,7 +140,7 @@ export var UI_MODALS = {
     'userGateStep3', 'userGateSemesterFileInput'
   ],
   config: ['configModal', 'configModalClose', 'configModalCancel', 'configModalSave', 'configModalBody'],
-  dialog: ['dialogModal', 'dialogTitle', 'dialogBody', 'dialogCancel', 'dialogSave']
+  dialog: ['dialogModal', 'dialogTitle', 'dialogBody', 'dialogCancel', 'dialogExtra', 'dialogSave']
 };
 
 export function viewIdForTab(tabId) {

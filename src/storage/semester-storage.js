@@ -4,20 +4,23 @@
 
 import * as CalendarEngine from '../core/calendar-engine.js';
 import * as DataModel from '../core/data-model/index.js';
+import * as FileKind from '../core/file-kind.js';
 import * as Proposals from '../proposals/proposals.js';
 import * as Scheduler from '../core/scheduler/index.js';
 import * as SimFacultyData from '../auth/sim-faculty-data.js';
 import * as SimFacultyStorage from './sim-faculty-storage.js';
 import * as Theme from '../ui/theme.js';
+import { assertKindOrThrow, guardedWrite } from './guarded-write.js';
 import { getData, getFileRoot, markClean, onStateChange, setFileRoot, state, syncSemesterToFile } from '../core/state.js';
 import { refresh } from '../ui/chrome.js';
 import { showAlert, showConfirm } from '../ui/dialogs.js';
 
 var DB_NAME = 'regnTrackerDB';
-  var STORE = 'handles';
-  var CACHE_KEY = 'semesterData';
-  var HANDLE_KEY = 'fileHandle';
-  var META_KEY = 'storageMeta';
+var STORE = 'handles';
+var CACHE_KEY = 'semesterData';
+var HANDLE_KEY = 'fileHandle';
+var META_KEY = 'storageMeta';
+var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
   function supportsFS() {
     return typeof window.showOpenFilePicker === 'function';
   }
@@ -125,6 +128,7 @@ var DB_NAME = 'regnTrackerDB';
         ? SimFacultyData.cloneFileRootWithoutRoles(fileRoot)
         : JSON.parse(JSON.stringify(fileRoot)));
     exportRoot.meta.lastModified = new Date().toISOString();
+    FileKind.stampFileKind(exportRoot, PROGRAM_KIND);
     if (state.data && state.data.meta) {
       state.data.meta.lastModified = exportRoot.meta.lastModified;
     }
@@ -225,11 +229,14 @@ var DB_NAME = 'regnTrackerDB';
     return typeof window.showDirectoryPicker === 'function';
   }
   function writeToHandle(handle, data) {
-    return handle.createWritable().then(function (writable) {
-      return writable.write(serialize(data)).then(function () {
-        return writable.close();
+    return guardedWrite(handle, PROGRAM_KIND, function () {
+      return handle.createWritable().then(function (writable) {
+        return writable.write(serialize(data)).then(function () { return writable.close(); });
       });
     });
+  }
+  function assertProgramRoot(fileRoot, fileName) {
+    return assertKindOrThrow(fileRoot, PROGRAM_KIND, { fileName: fileName });
   }
   function readFromHandle(handle) {
     return handle.getFile().then(function (file) {
@@ -245,13 +252,14 @@ var DB_NAME = 'regnTrackerDB';
       multiple: false
     }).then(function (handles) {
       var handle = handles[0];
-      state.fileHandle = handle;
-      state.fileName = handle.name;
-      return idbSet(HANDLE_KEY, handle).then(function () {
-        return readFromHandle(handle);
-      }).then(function (fileRoot) {
-        return setMeta({ lastImportedFileName: handle.name, hasLoadedData: true }).then(function () {
-          return applyLoadedFileRoot(fileRoot);
+      return readFromHandle(handle).then(function (fileRoot) {
+        assertProgramRoot(fileRoot, handle.name);
+        state.fileHandle = handle;
+        state.fileName = handle.name;
+        return idbSet(HANDLE_KEY, handle).then(function () {
+          return setMeta({ lastImportedFileName: handle.name, hasLoadedData: true }).then(function () {
+            return applyLoadedFileRoot(fileRoot);
+          });
         });
       });
     });
@@ -323,6 +331,7 @@ var DB_NAME = 'regnTrackerDB';
       reader.onload = function () {
         try {
           var data = DataModel.migrateFile(JSON.parse(reader.result));
+          assertProgramRoot(data, file && file.name);
           state.fileHandle = null;
           resolve(data);
         } catch (e) { reject(e); }
@@ -371,44 +380,32 @@ var DB_NAME = 'regnTrackerDB';
     if (!el) return;
     getMeta().then(function (meta) {
       var dirty = state.dirty;
-      var name = state.fileName;
+      var name = state.fileName || meta.lastImportedFileName;
       var savedLabel = formatSavedTime(meta.lastSavedAt);
-      var parts = [];
+      var label = name ? 'program semester · ' + name : 'program semester';
       if (supportsFS() && state.fileHandle) {
-        parts.push(dirty
-          ? 'Unsaved — ' + (name || 'semester file')
-          : 'Connected to OneDrive: ' + (name || 'semester file') +
-            (savedLabel ? ' · saved ' + savedLabel : ''));
+        el.textContent = dirty
+          ? 'Unsaved — ' + label
+          : 'Connected: ' + label + (savedLabel ? ' · saved ' + savedLabel : '');
         el.className = dirty ? 'file-status dirty' : 'file-status connected';
       } else if (dirty) {
-        parts.push('Unsaved on this device — export backup to OneDrive' +
-          (name ? ' (' + name + ')' : ''));
+        el.textContent = 'Unsaved on this device — export backup to OneDrive' +
+          (name ? ' (' + label + ')' : '');
         el.className = 'file-status dirty';
       } else if (meta.hasLoadedData) {
-        parts.push('Saved on this device' +
-          (name || meta.lastImportedFileName ? ': ' + (name || meta.lastImportedFileName) : '') +
-          (savedLabel ? ' · ' + savedLabel : ''));
+        el.textContent = 'Saved on this device' + (name ? ': ' + label : '') +
+          (savedLabel ? ' · ' + savedLabel : '');
         el.className = 'file-status connected';
       } else {
-        parts.push('Open a semester file from OneDrive to begin');
+        el.textContent = 'Open a semester file from OneDrive to begin';
         el.className = 'file-status';
       }
-      el.textContent = parts.join(' · ');
       var syncBtn = document.getElementById('syncOneDriveBtn');
-      if (syncBtn) {
-        if (dirty) {
-          syncBtn.classList.remove('hidden');
-          if (supportsFS() && state.fileHandle) {
-            syncBtn.textContent = 'Sync to OneDrive';
-          } else if (supportsFS()) {
-            syncBtn.textContent = 'Save to OneDrive…';
-          } else {
-            syncBtn.textContent = 'Export backup';
-          }
-        } else {
-          syncBtn.classList.add('hidden');
-        }
-      }
+      if (!syncBtn) return;
+      if (!dirty) { syncBtn.classList.add('hidden'); return; }
+      syncBtn.classList.remove('hidden');
+      syncBtn.textContent = supportsFS() && state.fileHandle ? 'Sync to OneDrive'
+        : supportsFS() ? 'Save to OneDrive…' : 'Export backup';
     });
   }
   function shouldShowOnedriveBanner() {

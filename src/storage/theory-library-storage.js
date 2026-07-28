@@ -3,10 +3,13 @@
  */
 
 import * as Storage from './semester-storage.js';
+import * as FileKind from '../core/file-kind.js';
+import { assertKindOrThrow, guardedWrite } from './guarded-write.js';
 import { state } from '../core/state.js';
 
 var CACHE_KEY = 'theoryLibraryData';
 var HANDLE_KEY = 'theoryLibraryFileHandle';
+var KIND = FileKind.FILE_KINDS.THEORY_CONTENT_LIBRARY;
 
 export var SKILL_KINDS = ['introduction', 'practice', 'testout'];
 
@@ -151,6 +154,7 @@ export function createEmptyLibrary(courseId) {
     meta: {
       version: 2,
       courseId: courseId || 'REGN15',
+      fileKind: KIND,
       lastModified: new Date().toISOString(),
       curriculumMeta: emptyCurriculumMeta()
     },
@@ -199,18 +203,24 @@ export function isReady() {
 
 function serialize(root) {
   root.meta.lastModified = new Date().toISOString();
+  FileKind.stampFileKind(root, KIND);
   return JSON.stringify(root, null, 2);
 }
 
 function writeToHandle(handle, root) {
-  return handle.createWritable().then(function (w) {
-    return w.write(serialize(root)).then(function () { return w.close(); });
+  return guardedWrite(handle, KIND, function () {
+    return handle.createWritable().then(function (w) {
+      return w.write(serialize(root)).then(function () { return w.close(); });
+    });
   });
 }
 
 function readFromHandle(handle) {
   return handle.getFile().then(function (f) { return f.text(); }).then(function (t) {
-    return migrateLibrary(JSON.parse(t));
+    return assertKindOrThrow(migrateLibrary(JSON.parse(t)), KIND, {
+      fileName: handle.name,
+      suggestedName: 'theory-content-library_REGN15.json'
+    });
   });
 }
 
@@ -228,12 +238,12 @@ export function openFilePicker() {
     types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
   }).then(function (handles) {
     var handle = handles[0];
-    state.theoryLibraryFileHandle = handle;
-    return idbSet(HANDLE_KEY, handle).then(function () {
-      return readFromHandle(handle);
-    }).then(function (root) {
+    return readFromHandle(handle).then(function (root) {
+      state.theoryLibraryFileHandle = handle;
       setRoot(root);
-      return idbSet(CACHE_KEY, root).then(function () { return root; });
+      return idbSet(HANDLE_KEY, handle).then(function () {
+        return idbSet(CACHE_KEY, root).then(function () { return root; });
+      });
     });
   });
 }
@@ -250,6 +260,10 @@ function importViaInput() {
       reader.onload = function () {
         try {
           var root = migrateLibrary(JSON.parse(reader.result));
+          assertKindOrThrow(root, KIND, {
+            fileName: file.name,
+            suggestedName: 'theory-content-library_REGN15.json'
+          });
           state.theoryLibraryFileHandle = null;
           setRoot(root);
           idbSet(CACHE_KEY, root).then(function () { resolve(root); }).catch(reject);

@@ -82,7 +82,12 @@ async function main() {
   console.log('  theory import:', imported.validation);
 
   var registry = {
-    meta: { version: 1, lastModified: new Date().toISOString(), revision: 1 },
+    meta: {
+      version: 1,
+      fileKind: 'users_registry',
+      lastModified: new Date().toISOString(),
+      revision: 1
+    },
     users: {}
   };
 
@@ -107,7 +112,8 @@ async function main() {
       userId: userId,
       name: r.name,
       email: r.email,
-      key: key
+      key: key,
+      fileKind: 'user_credential'
     });
   });
 
@@ -122,10 +128,18 @@ async function main() {
   };
 
   writeJson('clinical-sites-library.json', {
-    meta: { version: 1, lastModified: new Date().toISOString() },
+    meta: {
+      version: 1,
+      fileKind: 'clinical_sites_library',
+      lastModified: new Date().toISOString()
+    },
     sites: siteLibrary.sites.slice()
   });
 
+  if (imported.library) {
+    imported.library.meta = imported.library.meta || {};
+    imported.library.meta.fileKind = 'theory_content_library';
+  }
   writeJson('theory-content-library_REGN15.json', imported.library);
 
   var semId = uid('sem');
@@ -219,6 +233,7 @@ async function main() {
   var fileRoot = {
     meta: {
       fileVersion: 5,
+      fileKind: 'program_semester',
       activeSemesterId: semId,
       activeCourseCode: 'REGN15P',
       revision: 1,
@@ -234,6 +249,7 @@ async function main() {
   writeJson(path.join('playgrounds', 'user_F2026_REGN15P_playground.json'), {
     meta: {
       fileVersion: 2,
+      fileKind: 'playground',
       activeSemesterId: semId,
       playgroundSource: { courseId: 'REGN15P' },
       lastModified: new Date().toISOString()

@@ -34,6 +34,8 @@ Theory calendar data is imported from the Fall 2026 prototype docx files under `
 
 All names use placeholders only (`Student 1`, `Program Engineer`, etc.).
 
+Seeded JSON includes `meta.fileKind` (or root `fileKind` on `*.user.json`) so local testing matches production guards. Legacy files without `fileKind` still open via inference until the next save stamps the kind.
+
 ## Test workflows
 
 1. Open the app (local server or GitHub Pages build).
@@ -41,12 +43,13 @@ All names use placeholders only (`Student 1`, `Program Engineer`, etc.).
 3. **Registry:** Menu → **Connect users registry…** → pick `mock-onedrive/users/users-registry.json`.
 4. **Semester:** Menu → **Connect OneDrive file** → `mock-onedrive/semesters/F2026_REGN_program.json`.
 5. **Theory library (optional):** Connect `mock-onedrive/theory-content-library_REGN15.json` when the app supports it.
+6. **Playground:** Playground tab → Import `mock-onedrive/playgrounds/user_F2026_REGN15P_playground.json`. Saving over `F2026_REGN_program.json` should be blocked.
 
 ### Role files
 
 | File | Role | Use to test |
 |------|------|-------------|
-| `engineer.user.json` | Program Engineer | All tabs, user management |
+| `engineer.user.json` | Program Engineer | All tabs, user management, optional kind overwrite |
 | `admin.user.json` | Admin Staff | Batch semester, approve proposals, audit |
 | `lead-faculty.user.json` | Lead Course Faculty | Propose setup changes, playground |
 | `adjunct.user.json` | Adjunct Faculty | Dashboard read-only, sim roles |
