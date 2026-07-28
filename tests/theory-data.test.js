@@ -12,6 +12,78 @@ describe('theory-data.test.js', () => {
     expect(sem.theory.version).toBe(1);
     expect(sem.theory.courseCodes).toContain('REGN15');
     expect(sem.theory.settings.lectureWeekdays).toEqual(['Wed', 'Thu']);
+    expect(sem.theory.settings.defaultSkillsFacultyRequired).toBe(2);
+    expect(sem.theory.settings.theoryFaculty).toEqual([]);
+    expect(sem.theory.settings.skillsFaculty).toEqual([]);
+    expect(sem.theory.settings.showLecturers).toBe(true);
+    expect(sem.simInstructors).toEqual([]);
+  });
+
+  it('syncs setup holidays onto theory calendar days', () => {
+    var fileRoot = DataModel.createDefaultFile();
+    var sem = fileRoot.semesters[0];
+    sem.calendar.semesterStartDate = '2026-08-16'; // Sunday
+    CalendarEngine.rebuildWeeks(sem);
+    DataModel.migrateSemester(sem);
+    sem.holidays = [
+      { id: 'h1', type: 'holiday', date: '2026-09-07', label: 'Labor Day' },
+      { id: 'h2', type: 'break', weekIndex: 14, label: 'Thanksgiving Break' }
+    ];
+    TheoryData.syncHolidaysFromSemester(sem);
+    var labor = TheoryData.findDay(sem.theory, '2026-09-07');
+    expect(labor).toBeTruthy();
+    expect(labor.events.some(function (e) { return e.track === 'holiday' && e.title === 'Labor Day'; })).toBe(true);
+    var breakDays = (sem.theory.days || []).filter(function (d) {
+      return (d.events || []).some(function (e) {
+        return e.categories && e.categories.indexOf('synced_holiday') >= 0 && e.title === 'Thanksgiving Break';
+      });
+    });
+    expect(breakDays.length).toBe(7);
+  });
+
+  it('moves events between days and renumbers modules', () => {
+    var sem = DataModel.createDefaultFile().semesters[0];
+    DataModel.migrateSemester(sem);
+    sem.theory.days = [{
+      date: '2026-08-19', weekIndex: 0, weekday: 'Wed', weekLabel: 1,
+      events: [
+        { id: 'a', track: 'theory', title: 'Vitals', timeStart: '0800', timeEnd: '1050', categories: ['lecture'], faculty: [] }
+      ]
+    }, {
+      date: '2026-08-20', weekIndex: 0, weekday: 'Thu', weekLabel: 1,
+      events: []
+    }];
+    TheoryData.renumberWeekModules(sem.theory, 1);
+    expect(TheoryData.moveEventToDate(sem.theory, sem, 'a', '2026-08-20')).toBe(true);
+    expect(TheoryData.findDay(sem.theory, '2026-08-19').events.length).toBe(0);
+    expect(TheoryData.findDay(sem.theory, '2026-08-20').events[0].id).toBe('a');
+    expect(TheoryData.findDay(sem.theory, '2026-08-20').events[0].moduleCode).toBe('1A');
+  });
+
+  it('trackCssClass includes assignment content area', () => {
+    expect(TheoryData.trackCssClass({ track: 'assignment', contentArea: 'skills' }))
+      .toContain('theory-track-assignment-skills');
+  });
+
+  it('classifies practicum vs theory track bands', () => {
+    expect(TheoryData.isPracticumTrackEvent({ track: 'skills' })).toBe(true);
+    expect(TheoryData.isPracticumTrackEvent({ track: 'clinical' })).toBe(true);
+    expect(TheoryData.isPracticumTrackEvent({ track: 'simulation' })).toBe(true);
+    expect(TheoryData.isPracticumTrackEvent({ track: 'orientation' })).toBe(true);
+    expect(TheoryData.isPracticumTrackEvent({ track: 'assignment', contentArea: 'skills' })).toBe(true);
+    expect(TheoryData.isPracticumTrackEvent({ track: 'theory' })).toBe(false);
+    expect(TheoryData.isPracticumTrackEvent({ track: 'exam' })).toBe(false);
+    expect(TheoryData.isPracticumTrackEvent({ track: 'assignment', contentArea: 'theory' })).toBe(false);
+    expect(TheoryData.isPracticumTrackEvent({ track: 'holiday' })).toBe(false);
+  });
+
+  it('insertEventOnDay keeps theory events above practicum', () => {
+    var day = { date: '2026-08-19', events: [] };
+    TheoryData.insertEventOnDay(day, { id: 's1', track: 'skills' });
+    TheoryData.insertEventOnDay(day, { id: 't1', track: 'theory' });
+    TheoryData.insertEventOnDay(day, { id: 'c1', track: 'clinical' });
+    TheoryData.insertEventOnDay(day, { id: 'e1', track: 'exam' });
+    expect(day.events.map(function (e) { return e.id; })).toEqual(['t1', 'e1', 's1', 'c1']);
   });
 
   it('resolves moduleCode 1A to Wed of week 1', () => {
@@ -59,6 +131,39 @@ describe('theory-data.test.js', () => {
     expect(rows.length).toBe(1);
     expect(rows[0].topic).toContain('Syllabus');
     expect(rows[0].skillsLab).toContain('testout');
+  });
+
+  it('includes lecture rows on non-instructional weekdays when events exist', () => {
+    var sem = DataModel.createDefaultFile().semesters[0];
+    DataModel.migrateSemester(sem);
+    sem.theory.instructionalWeekdays = ['Wed', 'Thu', 'Fri'];
+    sem.theory.days = [{
+      date: '2026-08-18',
+      weekIndex: 0,
+      weekday: 'Tue',
+      weekLabel: 1,
+      events: [{
+        id: 'ev-tue',
+        track: 'theory',
+        moduleCode: '1A',
+        title: 'Module 1A — Being a good nurse',
+        timeStart: '0800',
+        timeEnd: '1050',
+        faculty: [{ name: 'Faculty Needed', needed: true, role: 'lecturer' }],
+        categories: ['lecture']
+      }]
+    }, {
+      date: '2026-08-25',
+      weekIndex: 1,
+      weekday: 'Tue',
+      weekLabel: 2,
+      events: []
+    }];
+    var rows = TheoryData.projectLectureAssignments(sem.theory);
+    expect(rows.length).toBe(1);
+    expect(rows[0].weekday).toBe('Tue');
+    expect(rows[0].week).toBe(1);
+    expect(rows[0].topic).toContain('Being a good nurse');
   });
 
   it('rolls one-group clinical/sim hours from Setup times', () => {

@@ -144,6 +144,7 @@ export function createDefaultSemester() {
     sections: sections,
     facilities: facilities,
     faculty: defaultFaculty(cfg.clinicalGroups),
+    simInstructors: [],
     students: students
   };
 }

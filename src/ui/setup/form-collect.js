@@ -66,6 +66,11 @@ export function collectFromFormInto(data, opts) {
     var f = data.faculty[parseInt(el.dataset.idx, 10)];
     if (f) f.name = el.value;
   });
+  if (!data.simInstructors) data.simInstructors = [];
+  setupQueryAll('setupSimInstructors', '[data-sim-instructor]').forEach(function (el) {
+    var f = data.simInstructors[parseInt(el.dataset.idx, 10)];
+    if (f) f.name = el.value.trim();
+  });
   if (!data.meta.leadFaculty) data.meta.leadFaculty = { name: '', email: '' };
   var leadSel = setupEl('leadFacultySelect');
   var leadNameEl = setupEl('leadFacultyName');

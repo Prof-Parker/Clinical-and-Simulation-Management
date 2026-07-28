@@ -1,9 +1,23 @@
 /**
  * Build TheoryTopic[] from lecture rows and events.
+ * Skills lab strings from source rows are returned separately — they belong in
+ * the skills bank, not on topics.
  */
+
+function emptyCurriculumMeta() {
+  return {
+    version: 1,
+    corRefs: [],
+    acenStandards: [],
+    programOutcomes: [],
+    courseOutcomes: [],
+    notes: ''
+  };
+}
 
 export function buildTopicLibrary(lectureRows, eventsByDate) {
   var topics = [];
+  var skillTitles = [];
   var seen = {};
   lectureRows.forEach(function (row) {
     var title = (row.topic || '').split(';')[0].trim();
@@ -14,14 +28,22 @@ export function buildTopicLibrary(lectureRows, eventsByDate) {
       id: id,
       title: title,
       shortLabel: title.length > 32 ? title.slice(0, 32) + '…' : title,
+      description: '',
       defaultLectureHours: 2.83,
       defaultTopics: title.split(/[;,]/).map(function (s) { return s.trim(); }).filter(Boolean),
-      defaultSkills: (row.skillsLab || '').split(/[;,]/).map(function (s) { return s.trim(); }).filter(Boolean),
       tags: ['MS'],
+      curriculumMeta: emptyCurriculumMeta(),
       courseId: 'REGN15'
     });
+    (row.skillsLab || '').split(/[;,]/).map(function (s) { return s.trim(); }).filter(Boolean)
+      .forEach(function (skillTitle) {
+        var key = 'skill:' + skillTitle.toLowerCase();
+        if (seen[key]) return;
+        seen[key] = true;
+        skillTitles.push(skillTitle);
+      });
   });
-  return topics;
+  return { topics: topics, skillTitles: skillTitles };
 }
 
 export function attachModuleRefs(theoryDays, topics) {

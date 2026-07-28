@@ -1,169 +1,517 @@
 /**
- * Theory event editor modal.
+ * Theory event editor — context-aware day / event modal.
  */
 
 import * as TheoryData from '../../core/theory-data.js';
 import * as TheoryLibrary from '../../storage/theory-library-storage.js';
 import * as ScheduleHours from '../../core/schedule-hours.js';
+import * as UserDirectory from '../../storage/user-directory.js';
 import { uid } from '../../core/data-model/students.js';
 import { notifyChange } from '../../core/state.js';
 import { showDialog } from '../dialogs.js';
 import { refresh } from '../chrome.js';
 import * as Permissions from '../../auth/permissions.js';
+import { requireLibraryUnlock, isLibraryUnlocked } from './content-library.js';
 
-export function openEventEditor(data, date) {
+var editingEventId = null;
+var guestExpanded = false;
+
+export function openEventEditor(data, date, eventId) {
   if (!Permissions.canAction('theory.edit') && !Permissions.canAction('*')) return;
   var theory = data.theory;
   var day = TheoryData.findDay(theory, date) || TheoryData.ensureDay(theory, data, date);
-  var settings = (theory && theory.settings) || {};
-  var topicOptions = TheoryLibrary.listTopics().map(function (t) {
-    return '<option value="' + t.id + '">' + esc(t.title) + '</option>';
-  }).join('');
+  editingEventId = eventId || null;
+  guestExpanded = false;
 
-  var body = '<p class="section-sub">' + date +
+  var body =
+    '<p class="section-sub">' + esc(date) +
     ' <span class="text-muted">Module codes auto-assign (week + order)</span></p>' +
     '<div id="theoryEventList"></div>' +
     '<button type="button" class="btn btn-sm" id="theoryAddEventBtn">Add event</button>' +
-    '<hr><div class="theory-ev-form">' +
-    '<label>Track <select id="theoryEvTrack" class="select-control">' +
-    TheoryData.THEORY_TRACKS.map(function (t) { return '<option value="' + t + '">' + t + '</option>'; }).join('') +
-    '</select></label> ' +
-    '<label>Title <input type="text" id="theoryEvTitle" class="select-control" ' +
-    'placeholder="Topic title" aria-label="Event title"></label> ' +
-    '<label>Topic <select id="theoryEvModuleRef" class="select-control"><option value="">—</option>' +
-    topicOptions + '</select></label> ' +
-    '<label>Start <input type="time" id="theoryEvStart" class="select-control" ' +
-    'value="' + escAttr(ScheduleHours.hhmmToTimeInput(settings.defaultLectureStart || '0800')) + '" ' +
-    'aria-label="Event start time"></label> ' +
-    '<label>End <input type="time" id="theoryEvEnd" class="select-control" ' +
-    'value="' + escAttr(ScheduleHours.hhmmToTimeInput(settings.defaultLectureEnd || '1050')) + '" ' +
-    'aria-label="Event end time"></label> ' +
-    '<span id="theoryEvHoursHint" class="theory-ev-hours-hint text-muted" aria-live="polite"></span>' +
-    '</div>';
+    '<hr><div id="theoryEvForm" class="theory-ev-form"></div>';
 
-  showDialog('Edit day — ' + date, body, function () {
+  showDialog(editingEventId ? 'Edit event — ' + date : 'Edit day — ' + date, body, function () {
+    saveFormToEvent(data, day);
     TheoryData.renumberWeekModules(theory, day.weekLabel);
+    TheoryData.refreshFacultyNeeded(theory);
     notifyChange();
     refresh();
   });
+  var dialogContent = document.querySelector('#dialogModal .modal-content');
+  if (dialogContent) dialogContent.style.maxWidth = '40rem';
 
   renderEventList(theory, day);
-  wireTimeDefaults(settings);
-  updateHoursHint();
-  wireTopicSelect();
+  renderForm(data, day);
+  wireListClicks(data, day);
   var addBtn = document.getElementById('theoryAddEventBtn');
   if (addBtn) {
     addBtn.onclick = function () {
-      var track = document.getElementById('theoryEvTrack').value;
-      var title = document.getElementById('theoryEvTitle').value.trim();
-      var moduleRef = document.getElementById('theoryEvModuleRef').value || null;
-      if (!title && moduleRef) {
-        var topic = TheoryLibrary.listTopics().find(function (t) { return t.id === moduleRef; });
-        if (topic) title = topic.title;
-      }
-      if (!title) title = track;
-      var timeStart = ScheduleHours.timeInputToHhmm(
-        document.getElementById('theoryEvStart').value,
-        settings.defaultLectureStart || '0800'
-      );
-      var timeEnd = ScheduleHours.timeInputToHhmm(
-        document.getElementById('theoryEvEnd').value,
-        settings.defaultLectureEnd || '1050'
-      );
-      day.events.push({
-        id: uid(),
-        track: track,
-        title: title,
-        description: '',
-        moduleCode: null,
-        moduleRef: moduleRef,
-        timeStart: timeStart,
-        timeEnd: timeEnd,
-        faculty: [],
-        categories: [track === 'skills' ? 'skills_lab' : 'lecture']
-      });
+      saveFormToEvent(data, day);
+      var settings = theory.settings || {};
+      var track = 'theory';
+      var trackEl = document.getElementById('theoryEvTrack');
+      if (trackEl) track = trackEl.value;
+      var ev = blankEvent(track, settings);
+      TheoryData.insertEventOnDay(day, ev);
+      editingEventId = ev.id;
       TheoryData.renumberWeekModules(theory, day.weekLabel);
-      document.getElementById('theoryEvTitle').value = '';
-      document.getElementById('theoryEvModuleRef').value = '';
       renderEventList(theory, day);
+      renderForm(data, day);
       notifyChange();
     };
   }
 }
 
-function wireTopicSelect() {
-  var refEl = document.getElementById('theoryEvModuleRef');
-  var titleEl = document.getElementById('theoryEvTitle');
-  if (!refEl || !titleEl) return;
-  refEl.addEventListener('change', function () {
-    if (!refEl.value || titleEl.value.trim()) return;
-    var topic = TheoryLibrary.listTopics().find(function (t) { return t.id === refEl.value; });
-    if (topic) titleEl.value = topic.title;
+function blankEvent(track, settings) {
+  var isSkills = track === 'skills';
+  var required = isSkills
+    ? (settings.defaultSkillsFacultyRequired != null ? settings.defaultSkillsFacultyRequired : 2)
+    : (track === 'theory' ? 1 : 0);
+  var faculty = [];
+  for (var i = 0; i < required; i++) {
+    faculty.push(TheoryData.makeFacultySlot({
+      needed: true,
+      role: isSkills ? 'skills' : 'lecturer'
+    }));
+  }
+  return {
+    id: uid(),
+    track: track,
+    title: '',
+    description: '',
+    moduleCode: null,
+    moduleRef: null,
+    moduleRefs: [],
+    skillRefs: [],
+    timeStart: isSkills ? (settings.defaultSkillsStart || '1200') : (settings.defaultLectureStart || '0800'),
+    timeEnd: isSkills ? (settings.defaultSkillsEnd || '1550') : (settings.defaultLectureEnd || '1050'),
+    faculty: faculty,
+    facultyRequired: isSkills ? required : null,
+    contentArea: track === 'assignment' ? 'theory' : null,
+    categories: categoriesForTrack(track),
+    allDay: track === 'holiday'
+  };
+}
+
+function categoriesForTrack(track) {
+  if (track === 'skills') return ['skills_lab'];
+  if (track === 'theory') return ['lecture'];
+  if (track === 'exam') return ['exam', 'lecture'];
+  if (track === 'assignment') return ['assignment_due'];
+  if (track === 'holiday') return [];
+  return [];
+}
+
+function currentEvent(day) {
+  if (!editingEventId) return null;
+  return (day.events || []).find(function (e) { return e.id === editingEventId; }) || null;
+}
+
+function renderEventList(theory, day) {
+  var list = document.getElementById('theoryEventList');
+  if (!list) return;
+  list.innerHTML = (day.events || []).map(function (ev) {
+    var hours = TheoryData.eventContactHours(ev);
+    var timeLabel = (ev.timeStart && ev.timeEnd)
+      ? ScheduleHours.formatTimeRange(ev.timeStart, ev.timeEnd)
+      : (ev.allDay ? 'all day' : '');
+    var hoursLabel = hours > 0 ? hours.toFixed(2) + ' h' : '';
+    var fac = (ev.faculty || []).map(TheoryData.facultyDisplayName).filter(Boolean).join(', ');
+    var meta = [ev.moduleCode || '', ev.track, timeLabel, hoursLabel, fac].filter(Boolean).join(' · ');
+    var active = ev.id === editingEventId ? ' theory-ev-row-active' : '';
+    return '<div class="theory-ev-row config-list-row' + active + '" data-edit-id="' + escAttr(ev.id) + '">' +
+      '<div class="theory-ev-row-main">' + esc(TheoryData.stripModuleTitlePrefix(ev.title) || ev.title || ev.track) +
+      (meta ? ' <span class="text-muted">(' + esc(meta) + ')</span>' : '') +
+      '</div>' +
+      '<button type="button" class="btn btn-icon-remove remove-theory-event" data-rm-id="' + escAttr(ev.id) + '" ' +
+      'aria-label="Remove event" title="Remove event">&times;</button></div>';
+  }).join('') || '<p class="text-muted">No events — click Add event.</p>';
+}
+
+function wireListClicks(data, day) {
+  var list = document.getElementById('theoryEventList');
+  if (!list || list.dataset.bound === '1') return;
+  list.dataset.bound = '1';
+  list.addEventListener('click', function (e) {
+    var rm = e.target.closest('[data-rm-id]');
+    if (rm) {
+      var rid = rm.getAttribute('data-rm-id');
+      day.events = (day.events || []).filter(function (ev) { return ev.id !== rid; });
+      if (editingEventId === rid) editingEventId = null;
+      TheoryData.renumberWeekModules(data.theory, day.weekLabel);
+      TheoryData.refreshFacultyNeeded(data.theory);
+      renderEventList(data.theory, day);
+      renderForm(data, day);
+      notifyChange();
+      return;
+    }
+    var row = e.target.closest('[data-edit-id]');
+    if (row) {
+      saveFormToEvent(data, day);
+      editingEventId = row.getAttribute('data-edit-id');
+      guestExpanded = false;
+      renderEventList(data.theory, day);
+      renderForm(data, day);
+    }
   });
 }
 
-function wireTimeDefaults(settings) {
-  var trackEl = document.getElementById('theoryEvTrack');
-  var startEl = document.getElementById('theoryEvStart');
-  var endEl = document.getElementById('theoryEvEnd');
-  if (!trackEl || !startEl || !endEl) return;
+function topicOptionsHtml(selectedId) {
+  return TheoryLibrary.listTopics().map(function (t) {
+    var sel = t.id === selectedId ? ' selected' : '';
+    return '<option value="' + escAttr(t.id) + '"' + sel + '>' + esc(t.title) + '</option>';
+  }).join('');
+}
 
-  function applyTrackDefaults() {
-    var track = trackEl.value;
-    if (track === 'skills') {
-      startEl.value = ScheduleHours.hhmmToTimeInput(settings.defaultSkillsStart || '1200');
-      endEl.value = ScheduleHours.hhmmToTimeInput(settings.defaultSkillsEnd || '1550');
-    } else if (track === 'theory') {
-      startEl.value = ScheduleHours.hhmmToTimeInput(settings.defaultLectureStart || '0800');
-      endEl.value = ScheduleHours.hhmmToTimeInput(settings.defaultLectureEnd || '1050');
-    }
-    updateHoursHint();
+function skillOptionsHtml(selectedId) {
+  return TheoryLibrary.listSkills().map(function (s) {
+    var kinds = (s.kinds || []).map(TheoryLibrary.skillKindLabel).filter(Boolean).join(', ');
+    var label = s.title + (kinds ? ' (' + kinds + ')' : '');
+    var sel = s.id === selectedId ? ' selected' : '';
+    return '<option value="' + escAttr(s.id) + '"' + sel + '>' + esc(label) + '</option>';
+  }).join('');
+}
+
+function rosterOptions(roster, selectedName, includeNeeded, includeAllFaculty) {
+  var html = '<option value="">—</option>';
+  if (includeNeeded) {
+    html += '<option value="__needed__"' +
+      (selectedName === TheoryData.FACULTY_NEEDED_NAME || !selectedName ? ' selected' : '') +
+      '>Faculty needed</option>';
+  }
+  var seen = {};
+  (roster || []).forEach(function (f) {
+    if (!f.name || seen[f.name]) return;
+    seen[f.name] = true;
+    html += '<option value="' + escAttr(f.name) + '"' +
+      (f.name === selectedName ? ' selected' : '') + '>' + esc(f.name) + '</option>';
+  });
+  if (includeAllFaculty) {
+    var all = [];
+    (UserDirectory.getLeadCourseFaculty() || []).forEach(function (u) { all.push(u.displayName); });
+    (UserDirectory.getAdjunctFaculty() || []).forEach(function (u) { all.push(u.displayName); });
+    all.forEach(function (name) {
+      if (!name || seen[name]) return;
+      seen[name] = true;
+      html += '<option value="' + escAttr(name) + '"' +
+        (name === selectedName ? ' selected' : '') + '>' + esc(name) + ' (guest)</option>';
+    });
+  }
+  return html;
+}
+
+function renderForm(data, day) {
+  var form = document.getElementById('theoryEvForm');
+  if (!form) return;
+  var settings = (data.theory && data.theory.settings) || {};
+  var ev = currentEvent(day);
+  if (!ev) {
+    form.innerHTML = '<p class="text-muted">Select an event to edit, or add a new one.</p>';
+    return;
   }
 
-  trackEl.addEventListener('change', applyTrackDefaults);
-  startEl.addEventListener('change', updateHoursHint);
-  endEl.addEventListener('change', updateHoursHint);
-  startEl.addEventListener('input', updateHoursHint);
-  endEl.addEventListener('input', updateHoursHint);
+  var trackOpts = TheoryData.THEORY_TRACKS.map(function (t) {
+    return '<option value="' + t + '"' + (t === ev.track ? ' selected' : '') + '>' + t + '</option>';
+  }).join('');
+
+  var html = '<label>Track <select id="theoryEvTrack" class="select-control">' + trackOpts + '</select></label>';
+
+  if (ev.track === 'assignment') {
+    html += '<label>Title <input type="text" id="theoryEvTitle" class="select-control" value="' +
+      escAttr(ev.title || '') + '" aria-label="Assignment title"></label>';
+    html += '<label>Content area <select id="theoryEvContentArea" class="select-control">' +
+      TheoryData.ASSIGNMENT_CONTENT_AREAS.map(function (a) {
+        return '<option value="' + a + '"' + ((ev.contentArea || 'theory') === a ? ' selected' : '') + '>' +
+          a + '</option>';
+      }).join('') + '</select></label>';
+  } else if (ev.track === 'exam') {
+    html += '<label>Title <input type="text" id="theoryEvTitle" class="select-control" value="' +
+      escAttr(ev.title || '') + '" aria-label="Exam title"></label>';
+    html += '<p class="section-sub">Exams are linked to theory (lecture category).</p>';
+  } else if (ev.track === 'holiday') {
+    html += '<label>Title <input type="text" id="theoryEvTitle" class="select-control" value="' +
+      escAttr(ev.title || '') + '" aria-label="Holiday title"></label>';
+    html += '<p class="section-sub">Setup holidays sync automatically; manual holiday titles can override display.</p>';
+  } else if (ev.track === 'theory') {
+    html += '<div class="theory-ev-title-row">' +
+      '<label>Title <input type="text" id="theoryEvTitle" class="select-control" value="' +
+      escAttr(TheoryData.stripModuleTitlePrefix(ev.title) || ev.title || '') +
+      '" aria-label="Topic title"></label>' +
+      '<label class="filter-check filter-check-compact theory-ev-add-library">' +
+      '<input type="checkbox" id="theoryEvAddToLibrary"> Add free-text title to topic library</label>' +
+      '</div>';
+    html += '<label>Topic library <select id="theoryEvModuleRef" class="select-control"><option value="">—</option>' +
+      topicOptionsHtml(ev.moduleRef) + '</select></label>';
+    html += timeFields(ev, settings, false);
+    html += lecturerFields(ev, settings);
+  } else if (ev.track === 'skills') {
+    html += '<label>Title <input type="text" id="theoryEvTitle" class="select-control" value="' +
+      escAttr(ev.title || '') + '" aria-label="Skills lab title"></label>';
+    html += '<div id="theoryEvSkillsTopics" class="theory-skills-topics"></div>';
+    html += '<button type="button" class="btn btn-sm" id="theoryEvAddTopicBtn">Add skill</button>';
+    html += timeFields(ev, settings, true);
+    html += skillsFacultyFields(ev, settings);
+  } else {
+    html += '<label>Title <input type="text" id="theoryEvTitle" class="select-control" value="' +
+      escAttr(ev.title || '') + '" aria-label="Event title"></label>';
+    html += timeFields(ev, settings, false);
+  }
+
+  html += '<span id="theoryEvHoursHint" class="theory-ev-hours-hint text-muted" aria-live="polite"></span>';
+  form.innerHTML = html;
+  updateHoursHint();
+  wireFormHandlers(data, day, ev);
+  if (ev.track === 'skills') renderSkillsTopics(ev);
+}
+
+function timeFields(ev, settings, skills) {
+  var defStart = skills ? (settings.defaultSkillsStart || '1200') : (settings.defaultLectureStart || '0800');
+  var defEnd = skills ? (settings.defaultSkillsEnd || '1550') : (settings.defaultLectureEnd || '1050');
+  return '<div class="theory-ev-time-row">' +
+    '<label>Start <input type="time" id="theoryEvStart" class="select-control" value="' +
+    escAttr(ScheduleHours.hhmmToTimeInput(ev.timeStart || defStart)) +
+    '" aria-label="Event start time"></label>' +
+    '<label>End <input type="time" id="theoryEvEnd" class="select-control" value="' +
+    escAttr(ScheduleHours.hhmmToTimeInput(ev.timeEnd || defEnd)) +
+    '" aria-label="Event end time"></label>' +
+    '</div>';
+}
+
+function lecturerFields(ev, settings) {
+  var slot = (ev.faculty && ev.faculty[0]) || TheoryData.makeFacultySlot({ needed: true, role: 'lecturer' });
+  var html = '<label>Lecturer <select id="theoryEvLecturer" class="select-control">' +
+    rosterOptions(settings.theoryFaculty, slot.needed ? '' : slot.name, true, guestExpanded) +
+    '</select></label> ';
+  html += '<button type="button" class="btn btn-sm" id="theoryEvGuestBtn">' +
+    (guestExpanded ? 'Course faculty only' : 'Guest lecturer') + '</button> ';
+  html += '<button type="button" class="btn btn-sm" id="theoryEvClearFacultyBtn">Remove faculty (needed)</button>';
+  return html;
+}
+
+function skillsFacultyFields(ev, settings) {
+  var required = ev.facultyRequired != null
+    ? ev.facultyRequired
+    : (settings.defaultSkillsFacultyRequired != null ? settings.defaultSkillsFacultyRequired : 2);
+  var html = '<label>Faculty required <select id="theoryEvFacultyRequired" class="select-control">';
+  for (var n = 0; n <= 10; n++) {
+    html += '<option value="' + n + '"' + (n === required ? ' selected' : '') + '>' + n + '</option>';
+  }
+  html += '</select></label><div id="theoryEvSkillsFacultySlots" class="theory-skills-faculty-slots">';
+  for (var i = 0; i < required; i++) {
+    var slot = (ev.faculty && ev.faculty[i]) || TheoryData.makeFacultySlot({ needed: true, role: 'skills' });
+    html += '<label>Faculty ' + (i + 1) + ' <select class="select-control theory-skills-fac-slot" data-slot="' + i + '">' +
+      rosterOptions(settings.skillsFaculty, slot.needed ? '' : slot.name, true, false) +
+      '</select></label> ';
+  }
+  html += '</div>';
+  html += '<button type="button" class="btn btn-sm" id="theoryEvClearSkillsFacultyBtn">Clear assigned → needed</button>';
+  return html;
+}
+
+function renderSkillsTopics(ev) {
+  var wrap = document.getElementById('theoryEvSkillsTopics');
+  if (!wrap) return;
+  var refs = (ev.skillRefs && ev.skillRefs.length)
+    ? ev.skillRefs.slice()
+    : [''];
+  if (!refs.length) refs = [''];
+  wrap.innerHTML = refs.map(function (ref, i) {
+    return '<label>Skill ' + (i + 1) + ' <select class="select-control theory-skills-topic" data-skill-idx="' + i + '">' +
+      '<option value="">—</option>' + skillOptionsHtml(ref) + '</select></label>';
+  }).join('');
+}
+
+function wireFormHandlers(data, day, ev) {
+  var trackEl = document.getElementById('theoryEvTrack');
+  if (trackEl) {
+    trackEl.addEventListener('change', function () {
+      saveFormToEvent(data, day);
+      ev.track = trackEl.value;
+      ev.categories = categoriesForTrack(ev.track);
+      if (ev.track === 'assignment' && !ev.contentArea) ev.contentArea = 'theory';
+      if (ev.track === 'skills' && ev.facultyRequired == null) {
+        ev.facultyRequired = (data.theory.settings && data.theory.settings.defaultSkillsFacultyRequired) || 2;
+      }
+      applyTrackTimeDefaults(ev, data.theory.settings || {});
+      renderForm(data, day);
+      renderEventList(data.theory, day);
+    });
+  }
+  var startEl = document.getElementById('theoryEvStart');
+  var endEl = document.getElementById('theoryEvEnd');
+  if (startEl) startEl.addEventListener('input', updateHoursHint);
+  if (endEl) endEl.addEventListener('input', updateHoursHint);
+  var refEl = document.getElementById('theoryEvModuleRef');
+  var titleEl = document.getElementById('theoryEvTitle');
+  if (refEl && titleEl) {
+    refEl.addEventListener('change', function () {
+      if (!refEl.value || titleEl.value.trim()) return;
+      var topic = TheoryLibrary.getTopicById(refEl.value);
+      if (topic) titleEl.value = topic.title;
+    });
+  }
+  var guestBtn = document.getElementById('theoryEvGuestBtn');
+  if (guestBtn) {
+    guestBtn.onclick = function () {
+      saveFormToEvent(data, day);
+      guestExpanded = !guestExpanded;
+      renderForm(data, day);
+    };
+  }
+  var clearBtn = document.getElementById('theoryEvClearFacultyBtn');
+  if (clearBtn) {
+    clearBtn.onclick = function () {
+      ev.faculty = [TheoryData.makeFacultySlot({ needed: true, role: 'lecturer' })];
+      renderForm(data, day);
+      renderEventList(data.theory, day);
+    };
+  }
+  var clearSkills = document.getElementById('theoryEvClearSkillsFacultyBtn');
+  if (clearSkills) {
+    clearSkills.onclick = function () {
+      saveFormToEvent(data, day);
+      (ev.faculty || []).forEach(TheoryData.clearFacultySlot);
+      renderForm(data, day);
+      renderEventList(data.theory, day);
+    };
+  }
+  var reqEl = document.getElementById('theoryEvFacultyRequired');
+  if (reqEl) {
+    reqEl.addEventListener('change', function () {
+      saveFormToEvent(data, day);
+      var n = parseInt(reqEl.value, 10) || 0;
+      ev.facultyRequired = n;
+      while (ev.faculty.length < n) {
+        ev.faculty.push(TheoryData.makeFacultySlot({ needed: true, role: 'skills' }));
+      }
+      ev.faculty = ev.faculty.slice(0, n);
+      renderForm(data, day);
+    });
+  }
+  var addTopicBtn = document.getElementById('theoryEvAddTopicBtn');
+  if (addTopicBtn) {
+    addTopicBtn.onclick = function () {
+      saveFormToEvent(data, day);
+      if (!ev.skillRefs) ev.skillRefs = [];
+      ev.skillRefs.push('');
+      renderSkillsTopics(ev);
+    };
+  }
+  var addLibCb = document.getElementById('theoryEvAddToLibrary');
+  if (addLibCb) {
+    addLibCb.addEventListener('change', function () {
+      if (!addLibCb.checked || isLibraryUnlocked()) return;
+      addLibCb.checked = false;
+      requireLibraryUnlock(function () {
+        var el = document.getElementById('theoryEvAddToLibrary');
+        if (el) el.checked = true;
+      });
+    });
+  }
+}
+
+function applyTrackTimeDefaults(ev, settings) {
+  if (ev.track === 'skills') {
+    ev.timeStart = settings.defaultSkillsStart || '1200';
+    ev.timeEnd = settings.defaultSkillsEnd || '1550';
+  } else if (ev.track === 'theory' || ev.track === 'exam') {
+    ev.timeStart = settings.defaultLectureStart || '0800';
+    ev.timeEnd = settings.defaultLectureEnd || '1050';
+  }
 }
 
 function updateHoursHint() {
   var hint = document.getElementById('theoryEvHoursHint');
   var startEl = document.getElementById('theoryEvStart');
   var endEl = document.getElementById('theoryEvEnd');
-  if (!hint || !startEl || !endEl) return;
+  if (!hint || !startEl || !endEl) {
+    if (hint && (!startEl || !endEl)) hint.textContent = '';
+    return;
+  }
   var start = ScheduleHours.timeInputToHhmm(startEl.value, '');
   var end = ScheduleHours.timeInputToHhmm(endEl.value, '');
   var hours = TheoryData.hoursFromTimes(start, end);
   hint.textContent = hours > 0 ? hours.toFixed(2) + ' h' : '';
 }
 
-function renderEventList(theory, day) {
-  var list = document.getElementById('theoryEventList');
-  if (!list) return;
-  list.innerHTML = (day.events || []).map(function (ev, idx) {
-    var hours = TheoryData.eventContactHours(ev);
-    var timeLabel = (ev.timeStart && ev.timeEnd)
-      ? ScheduleHours.formatTimeRange(ev.timeStart, ev.timeEnd)
-      : '';
-    var hoursLabel = hours > 0 ? hours.toFixed(2) + ' h' : '';
-    var moduleLabel = ev.moduleCode || '';
-    var meta = [moduleLabel, ev.track, timeLabel, hoursLabel].filter(Boolean).join(' · ');
-    return '<div class="theory-ev-row config-list-row">' +
-      '<div class="theory-ev-row-main">' + esc(TheoryData.stripModuleTitlePrefix(ev.title) || ev.title) +
-      (meta ? ' <span class="text-muted">(' + esc(meta) + ')</span>' : '') +
-      '</div>' +
-      '<button type="button" class="btn btn-icon-remove remove-theory-event" data-rm="' + idx + '" ' +
-      'aria-label="Remove event" title="Remove event">&times;</button></div>';
-  }).join('');
-  list.querySelectorAll('[data-rm]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      day.events.splice(parseInt(btn.dataset.rm, 10), 1);
-      TheoryData.renumberWeekModules(theory, day.weekLabel);
-      renderEventList(theory, day);
-      notifyChange();
+function saveFormToEvent(data, day) {
+  var ev = currentEvent(day);
+  if (!ev) return;
+  var trackEl = document.getElementById('theoryEvTrack');
+  if (trackEl) ev.track = trackEl.value;
+  var titleEl = document.getElementById('theoryEvTitle');
+  if (titleEl) ev.title = titleEl.value.trim() || ev.track;
+  var areaEl = document.getElementById('theoryEvContentArea');
+  if (areaEl) ev.contentArea = areaEl.value;
+  var startEl = document.getElementById('theoryEvStart');
+  var endEl = document.getElementById('theoryEvEnd');
+  var settings = (data.theory && data.theory.settings) || {};
+  if (startEl) {
+    ev.timeStart = ScheduleHours.timeInputToHhmm(
+      startEl.value,
+      ev.track === 'skills' ? (settings.defaultSkillsStart || '1200') : (settings.defaultLectureStart || '0800')
+    );
+  }
+  if (endEl) {
+    ev.timeEnd = ScheduleHours.timeInputToHhmm(
+      endEl.value,
+      ev.track === 'skills' ? (settings.defaultSkillsEnd || '1550') : (settings.defaultLectureEnd || '1050')
+    );
+  }
+  var refEl = document.getElementById('theoryEvModuleRef');
+  if (refEl) {
+    ev.moduleRef = refEl.value || null;
+    ev.moduleRefs = ev.moduleRef ? [ev.moduleRef] : [];
+  }
+  var topicSelects = document.querySelectorAll('.theory-skills-topic');
+  if (topicSelects.length) {
+    ev.skillRefs = Array.prototype.map.call(topicSelects, function (sel) {
+      return sel.value || '';
+    }).filter(Boolean);
+    ev.description = ev.skillRefs.map(function (id) {
+      var skill = TheoryLibrary.getSkillById(id);
+      return skill ? skill.title : '';
+    }).filter(Boolean).join('; ');
+  }
+  var lect = document.getElementById('theoryEvLecturer');
+  if (lect) {
+    var val = lect.value;
+    if (val === '__needed__' || !val) {
+      ev.faculty = [TheoryData.makeFacultySlot({ needed: true, role: 'lecturer' })];
+    } else {
+      ev.faculty = [TheoryData.makeFacultySlot({ name: val, role: 'lecturer' })];
+    }
+  }
+  var reqEl = document.getElementById('theoryEvFacultyRequired');
+  if (reqEl) {
+    ev.facultyRequired = parseInt(reqEl.value, 10) || 0;
+    var slots = [];
+    document.querySelectorAll('.theory-skills-fac-slot').forEach(function (sel) {
+      var v = sel.value;
+      if (v === '__needed__' || !v) slots.push(TheoryData.makeFacultySlot({ needed: true, role: 'skills' }));
+      else slots.push(TheoryData.makeFacultySlot({ name: v, role: 'skills' }));
     });
-  });
+    while (slots.length < ev.facultyRequired) {
+      slots.push(TheoryData.makeFacultySlot({ needed: true, role: 'skills' }));
+    }
+    ev.faculty = slots.slice(0, ev.facultyRequired);
+  }
+  ev.categories = categoriesForTrack(ev.track);
+  if (ev.track === 'holiday') ev.allDay = true;
+
+  var addLib = document.getElementById('theoryEvAddToLibrary');
+  if (addLib && addLib.checked && ev.title && TheoryLibrary.isReady()) {
+    var applyTopic = function () {
+      TheoryLibrary.addTopic(ev.title).then(function (topic) {
+        if (topic && topic.id) {
+          ev.moduleRef = topic.id;
+          ev.moduleRefs = [topic.id];
+        }
+      });
+    };
+    if (isLibraryUnlocked()) applyTopic();
+    else requireLibraryUnlock(applyTopic);
+  }
 }
 
 function esc(s) {

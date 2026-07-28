@@ -301,7 +301,7 @@
                         <option value="detailed">Detailed Weekly</option>
                     </select>
                     <label class="filter-check" for="showMarkupToggle"><input type="checkbox" id="showMarkupToggle"> Show missed / makeup markup</label>
-                    <button id="printStudentBtn" class="btn btn-primary" type="button">Print Calendar</button>
+                    <button id="printStudentBtn" class="btn btn-primary" type="button" disabled title="Select a student to print their calendar">Print Calendar</button>
                     <button id="batchExportStudentCalBtn" class="btn" type="button">Batch export…</button>
                 </div>
             </section>
@@ -454,6 +454,11 @@
                                 <p class="section-sub setup-sections-hint">Type a name to search adjunct faculty from the user registry (when connected).</p>
                                 <datalist id="setupAdjunctFacultyList"></datalist>
                                 <div id="setupFaculty"></div>
+                            </div>
+                            <div class="setup-program-block setup-sim-instructors-block">
+                                <h3 class="section-title" style="margin:0 0 0.35rem">Simulation Faculty</h3>
+                                <p class="section-sub setup-sections-hint">Instructors who teach simulation sessions (distinct from student sim roles). Used on the Theory Master Calendar faculty display.</p>
+                                <div id="setupSimInstructors"></div>
                             </div>
                             <div class="setup-program-block setup-course-staff-block">
                                 <h3 class="section-title" style="margin:0 0 0.35rem">Course Staff</h3>
@@ -634,18 +639,113 @@
 
         <!-- THEORY MASTER -->
         <div id="view-theory-master" class="view-panel">
+            <div class="setup-actions-sticky card no-print">
+                <div class="setup-actions">
+                    <button id="theorySaveSetupBtn" class="btn btn-primary" type="button">Save Setup</button>
+                    <button id="theoryAdvancedConfigBtn" class="btn" type="button" aria-expanded="false">Advanced Configuration</button>
+                </div>
+            </div>
             <section class="card" style="padding:1.25rem">
                 <h3 class="section-title">Master Calendar</h3>
-                <p class="section-sub">Sun–Sat week grid — all theory tracks for REGN15.</p>
+                <p class="section-sub">Sun–Sat week grid — theory tracks, skills labs, assignments, and holidays.</p>
+                <div id="theoryMasterSetup" class="theory-master-setup setup-advanced-panel hidden">
+                    <div class="theory-master-setup-body">
+                        <div class="theory-master-setup-grid">
+                            <fieldset class="theory-master-setup-fieldset">
+                                <legend>Lecture days &amp; times</legend>
+                                <div id="theoryLectureWeekdays" class="theory-weekday-checks" role="group" aria-label="Default lecture weekdays"></div>
+                                <label>Lecture start
+                                    <input type="time" id="theoryDefaultLectureStart" class="select-control" aria-label="Default lecture start">
+                                </label>
+                                <label>Lecture end
+                                    <input type="time" id="theoryDefaultLectureEnd" class="select-control" aria-label="Default lecture end">
+                                </label>
+                                <label>Skills lab start
+                                    <input type="time" id="theoryDefaultSkillsStart" class="select-control" aria-label="Default skills start">
+                                </label>
+                                <label>Skills lab end
+                                    <input type="time" id="theoryDefaultSkillsEnd" class="select-control" aria-label="Default skills end">
+                                </label>
+                            </fieldset>
+                            <fieldset class="theory-master-setup-fieldset">
+                                <legend>Theory faculty roster</legend>
+                                <div id="theoryFacultyRoster" class="config-list"></div>
+                            </fieldset>
+                            <fieldset class="theory-master-setup-fieldset">
+                                <legend>Skills lab faculty roster</legend>
+                                <label>Default skills faculty required
+                                    <input type="number" id="theoryDefaultSkillsFacultyRequired" class="select-control" min="0" max="10" step="1" aria-label="Default skills faculty required">
+                                </label>
+                                <div id="theorySkillsFacultyRoster" class="config-list"></div>
+                            </fieldset>
+                            <fieldset class="theory-master-setup-fieldset">
+                                <legend>Module topics</legend>
+                                <label class="filter-check filter-check-compact">
+                                    <input type="radio" name="theoryModuleSeedMode" id="theoryModuleSeedBlank" value="blank" checked>
+                                    Leave module information blank
+                                </label>
+                                <label class="filter-check filter-check-compact">
+                                    <input type="radio" name="theoryModuleSeedMode" id="theoryModuleSeedPull" value="pull">
+                                    Pull topics in order from another semester
+                                </label>
+                                <label class="theory-seed-semester-label">Source semester
+                                    <select id="theoryModuleSeedSemester" class="select-control" aria-label="Source semester for topics" disabled></select>
+                                </label>
+                                <button type="button" class="btn btn-sm" id="theoryModuleSeedApplyBtn">Apply topic seed</button>
+                            </fieldset>
+                        </div>
+                    </div>
+                </div>
+                <div class="theory-master-toolbar" id="theoryMasterToolbar">
+                    <label class="filter-check filter-check-compact">
+                        <input type="checkbox" id="theoryShowLecturers" checked>
+                        Show lecturers
+                    </label>
+                    <label class="filter-check filter-check-compact">
+                        <input type="checkbox" id="theoryShowPracticumFaculty" checked>
+                        Show skills / sim / clinical faculty
+                    </label>
+                    <label class="filter-check filter-check-compact">
+                        <input type="checkbox" id="theoryShowSkillsLabContent" checked>
+                        Show skills lab content
+                    </label>
+                </div>
                 <aside id="theoryTopicLibraryPanel" class="theory-topic-library">
-                    <h4 class="section-sub">Content library</h4>
-                    <p class="section-sub theory-library-hint">Topic bank for the event editor — separate from the semester program file.</p>
+                    <div class="theory-library-header">
+                        <div>
+                            <h4 class="section-sub">Content library</h4>
+                            <p class="section-sub theory-library-hint">Topic and skills banks for the event editor — separate from the semester program file.</p>
+                        </div>
+                        <div class="theory-library-lock-actions">
+                            <button id="theoryLibraryUnlockBtn" class="btn btn-sm hidden" type="button">Unlock editing</button>
+                            <button id="theoryLibraryLockBtn" class="btn btn-sm hidden" type="button">Lock editing</button>
+                        </div>
+                    </div>
                     <div id="theoryLibraryConnectPrompt" class="clinical-sites-connect-prompt">
                         <button id="theoryLibraryConnectBtn" class="btn btn-sm" type="button">Connect theory content library</button>
                         <button id="theoryLibraryCreateBtn" class="btn btn-sm" type="button">New theory content library</button>
                     </div>
                     <p id="theoryLibraryStatus" class="theory-library-status hidden" role="status"></p>
-                    <ul id="theoryTopicLibraryList" class="theory-topic-list"></ul>
+                    <p id="theoryLibraryUnlockedBanner" class="theory-library-unlocked-banner hidden" role="status">
+                        Editing unlocked — keep content aligned with the Course Outline of Record (COR).
+                    </p>
+                    <div id="theoryLibrarySections" class="theory-library-sections hidden">
+                        <details class="theory-library-section" open>
+                            <summary class="theory-library-section-summary">
+                                <span class="theory-library-section-title">Topics</span>
+                                <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
+                            </summary>
+                            <ul id="theoryTopicLibraryList" class="theory-topic-list"></ul>
+                        </details>
+                        <details class="theory-library-section" open>
+                            <summary class="theory-library-section-summary">
+                                <span class="theory-library-section-title">Skills lab</span>
+                                <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
+                            </summary>
+                            <p class="section-sub theory-library-hint">Tag skills as introduction, practice, and/or testout. Not every skill needs every tag.</p>
+                            <ul id="theorySkillsLibraryList" class="theory-topic-list theory-skills-list"></ul>
+                        </details>
+                    </div>
                 </aside>
                 <div id="theoryMasterGrid"></div>
             </section>

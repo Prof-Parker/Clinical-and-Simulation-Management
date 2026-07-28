@@ -731,7 +731,8 @@ label.filter-check {
   color: var(--text);
   cursor: pointer;
 }
-label.filter-check input[type="checkbox"] {
+label.filter-check input[type="checkbox"],
+label.filter-check input[type="radio"] {
   width: 1rem;
   height: 1rem;
   min-width: 1rem;
@@ -1064,7 +1065,8 @@ html.dark .btn-finalize:disabled {
   color: var(--text-muted);
 }
 
-#view-setup .setup-actions-sticky {
+#view-setup .setup-actions-sticky,
+#view-theory-master .setup-actions-sticky {
   position: sticky;
   top: var(--setup-sticky-top, 8.5rem);
   z-index: 55;
@@ -1074,7 +1076,8 @@ html.dark .btn-finalize:disabled {
   border: 1px solid var(--border);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
-html.dark #view-setup .setup-actions-sticky {
+html.dark #view-setup .setup-actions-sticky,
+html.dark #view-theory-master .setup-actions-sticky {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
@@ -2392,14 +2395,44 @@ button.course-status-line[aria-expanded="true"] .course-status-context-value {
   width: 3.75rem;
   white-space: nowrap;
 }
+.theory-master-table .theory-week-label {
+  vertical-align: middle;
+}
 .theory-day-cell {
   cursor: pointer;
-  min-height: 3rem;
+  min-height: 1.5rem;
   width: 12.5%;
   overflow-wrap: break-word;
   word-break: break-word;
+  vertical-align: top;
 }
 .theory-day-date { font-size: 0.7rem; color: var(--text-muted); }
+.theory-day-theory-band,
+.theory-day-practicum-band {
+  min-height: 0.5rem;
+}
+.theory-week-theory-row .theory-day-cell {
+  border-bottom: none;
+}
+.theory-week-divider-row td {
+  padding: 0;
+  border-right: none;
+  border-bottom: none;
+}
+.theory-week-divider-cell {
+  padding: 0.15rem 0 !important;
+  vertical-align: middle;
+}
+.theory-week-divider {
+  border: 0;
+  border-top: 1px dashed var(--border);
+  height: 0;
+  margin: 0;
+  width: 100%;
+}
+.theory-week-practicum-row .theory-day-cell {
+  border-top: none;
+}
 .theory-track {
   padding: 0.2rem;
   margin: 0.15rem 0;
@@ -2408,27 +2441,136 @@ button.course-status-line[aria-expanded="true"] .course-status-context-value {
   word-break: break-word;
   white-space: normal;
   max-width: 100%;
+  cursor: grab;
 }
-.theory-track-theory { background: #dbeafe; color: #1e3a8a; }
-.theory-track-skills { background: #ffedd5; color: #9a3412; }
-.theory-track-simulation { background: #ede9fe; color: #5b21b6; }
-.theory-track-holiday { background: #fee2e2; color: #991b1b; }
-.theory-track .theory-ev-time { color: inherit; opacity: 0.85; font-size: 0.75rem; }
+.theory-track-dragging { opacity: 0.55; }
+.theory-day-drop-target { outline: 2px dashed var(--border); background: var(--surface-alt); }
+.theory-track-theory,
+.theory-track-exam { background: #2563eb; color: #fff; }
+.theory-track-skills { background: #ea580c; color: #fff; }
+.theory-track-clinical,
+.theory-track-orientation { background: #16a34a; color: #fff; }
+.theory-track-simulation { background: #7c3aed; color: #fff; }
+.theory-track-holiday { background: #dc2626; color: #fff; }
+.theory-track-shared { background: #64748b; color: #fff; }
+.theory-track-other {
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 700;
+  border: 1px solid var(--border);
+}
+.theory-track-assignment {
+  background: transparent;
+  border: 1.5px solid;
+  font-weight: 600;
+}
+.theory-track-assignment-theory { border-color: #2563eb; color: #2563eb; }
+.theory-track-assignment-skills { border-color: #ea580c; color: #ea580c; }
+.theory-track-assignment-simulation { border-color: #7c3aed; color: #7c3aed; }
+.theory-track-assignment-clinical { border-color: #16a34a; color: #16a34a; }
+.theory-track .theory-ev-time,
+.theory-track .theory-ev-faculty { color: inherit; opacity: 0.9; font-size: 0.75rem; }
+.theory-ev-faculty-list {
+  margin: 0.15rem 0 0;
+  padding-left: 1.15rem;
+  list-style: decimal;
+}
+.theory-ev-faculty-list li {
+  margin: 0;
+  padding: 0;
+  line-height: 1.25;
+}
+.theory-ev-skills-content {
+  margin: 0.2rem 0 0.15rem;
+  padding-left: 1.1rem;
+  list-style: disc;
+  color: inherit;
+  opacity: 0.95;
+  font-size: 0.75rem;
+}
+.theory-ev-skills-content li {
+  margin: 0;
+  padding: 0;
+  line-height: 1.25;
+}
 .theory-ev-form { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; align-items: flex-end; }
 .theory-ev-form label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; }
 .theory-ev-form .select-control { width: auto; min-width: 6rem; }
+.theory-ev-title-row,
+.theory-ev-time-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: flex-end;
+  width: 100%;
+}
+.theory-ev-title-row > label:first-child {
+  flex: 1 1 14rem;
+  min-width: 12rem;
+}
+.theory-ev-title-row > label:first-child .select-control {
+  width: 100%;
+  min-width: 0;
+}
+.theory-ev-title-row .theory-ev-add-library {
+  flex-direction: row;
+  align-items: center;
+  flex: 0 1 auto;
+  max-width: 14rem;
+  padding-bottom: 0.45rem;
+}
+.theory-ev-time-row label { flex: 0 0 auto; }
 .theory-ev-hours-hint { font-size: 0.85rem; padding-bottom: 0.35rem; }
 .theory-ev-row.config-list-row {
   grid-template-columns: 1fr 2.25rem;
   margin: 0.35rem 0;
   align-items: start;
+  cursor: pointer;
 }
+.theory-ev-row-active { outline: 2px solid var(--border); background: var(--surface-alt); }
 .theory-ev-row-main { font-size: 0.9rem; line-height: 1.35; min-width: 0; }
 .theory-ev-row .btn-icon-remove { justify-self: end; }
-html.dark .theory-track-theory { background: #1e40af; color: #dbeafe; }
-html.dark .theory-track-skills { background: #c2410c; color: #ffedd5; }
-html.dark .theory-track-simulation { background: #6d28d9; color: #ede9fe; }
-html.dark .theory-track-holiday { background: #991b1b; color: #fecaca; }
+.theory-master-setup { margin: 0 0 1rem; }
+.theory-master-setup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+.theory-master-setup-fieldset {
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.theory-weekday-checks { display: flex; flex-wrap: wrap; gap: 0.35rem 0.75rem; }
+.theory-master-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin: 0 0 0.75rem;
+  align-items: center;
+}
+.theory-skills-topics,
+.theory-skills-faculty-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  width: 100%;
+}
+html.dark .theory-track-theory,
+html.dark .theory-track-exam { background: #1d4ed8; color: #eff6ff; }
+html.dark .theory-track-skills { background: #c2410c; color: #fff7ed; }
+html.dark .theory-track-clinical,
+html.dark .theory-track-orientation { background: #15803d; color: #f0fdf4; }
+html.dark .theory-track-simulation { background: #6d28d9; color: #f5f3ff; }
+html.dark .theory-track-holiday { background: #b91c1c; color: #fef2f2; }
+html.dark .theory-track-assignment-theory { border-color: #93c5fd; color: #93c5fd; }
+html.dark .theory-track-assignment-skills { border-color: #fdba74; color: #fdba74; }
+html.dark .theory-track-assignment-simulation { border-color: #c4b5fd; color: #c4b5fd; }
+html.dark .theory-track-assignment-clinical { border-color: #86efac; color: #86efac; }
 .theory-coordinator-header { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1rem; }
 .theory-coordinator-chip { font-size: 0.85rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; background: var(--surface-alt); }
 .theory-coordinator-wrap { overflow-x: auto; max-height: min(75vh, 52rem); overflow-y: auto; }
@@ -2488,6 +2630,31 @@ html.dark .theory-coord-semester-totals td { box-shadow: 0 -2px 8px rgba(0, 0, 0
 .theory-chip-under { color: #b45309; }
 .theory-chip-over { color: #b91c1c; }
 .theory-topic-library { margin-bottom: 1rem; padding: 0.75rem; background: var(--surface-alt); border-radius: 0.5rem; }
+.theory-library-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.theory-library-header .section-sub { margin: 0; }
+.theory-library-header .theory-library-hint { margin: 0.35rem 0 0; }
+.theory-library-lock-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+.theory-library-unlocked-banner {
+  margin: 0 0 0.65rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font-size: 0.8125rem;
+  color: var(--text);
+}
 .theory-library-hint { margin: 0 0 0.65rem; font-size: 0.8125rem; }
 .theory-library-status {
   margin: 0 0 0.5rem;
@@ -2495,8 +2662,131 @@ html.dark .theory-coord-semester-totals td { box-shadow: 0 -2px 8px rgba(0, 0, 0
   font-weight: 600;
   color: var(--text-muted);
 }
-.theory-topic-list { margin: 0.5rem 0 0; padding-left: 1.25rem; font-size: 0.85rem; max-height: 8rem; overflow-y: auto; }
-.theory-topic-ref { font-weight: 600; color: var(--text-muted); margin-right: 0.35rem; }
+.theory-library-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.theory-library-section {
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--bg-card);
+  overflow: hidden;
+}
+.theory-library-section-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+.theory-library-section-summary::-webkit-details-marker { display: none; }
+.theory-library-section-summary::marker { content: ''; }
+.theory-library-section[open] .dashboard-panel-chevron {
+  transform: rotate(180deg);
+}
+.theory-library-section .theory-topic-list,
+.theory-library-section .theory-library-hint {
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+.theory-topic-list { margin: 0.5rem 0 0; padding-left: 1.25rem; font-size: 0.85rem; max-height: 10rem; overflow-y: auto; }
+.theory-skills-list { list-style: none; padding-left: 0.75rem; }
+.theory-lib-topic-row,
+.theory-skill-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.theory-lib-topic-row:last-child,
+.theory-skill-row:last-child { border-bottom: none; }
+.theory-lib-row-main { min-width: 10rem; flex: 1 1 12rem; }
+.theory-lib-row-meta {
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+.theory-lib-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+.theory-skill-title { font-weight: 500; min-width: 8rem; flex: 1 1 8rem; }
+.theory-skill-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+}
+.theory-skill-kind-tag {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.theory-lib-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
+}
+.theory-lib-form > label,
+.theory-lib-form .theory-lib-meta-stub > label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+  font-size: 0.85rem;
+}
+.theory-lib-form .select-control,
+.theory-lib-form textarea.select-control {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.theory-lib-form-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.65rem;
+  width: 100%;
+}
+.theory-lib-form-row > label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  font-size: 0.85rem;
+}
+.theory-lib-kind-group { width: 100%; margin-top: 0.1rem; }
+.theory-lib-meta-stub {
+  width: 100%;
+  margin-top: 0.15rem;
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  padding: 0.35rem 0.6rem 0.6rem;
+  background: var(--surface-alt);
+  box-sizing: border-box;
+}
+.theory-lib-meta-stub summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.theory-lib-meta-stub .section-sub { margin: 0.35rem 0 0.5rem; }
+@media (max-width: 36rem) {
+  .theory-lib-form-row { grid-template-columns: 1fr; }
+}
+.theory-library-section .config-list-add-row {
+  padding: 0.5rem 0.75rem 0.75rem;
+}
 .batch-step label { display: block; margin-bottom: 0.75rem; }
 .batch-step .btn { margin-top: 0.5rem; }
 .batch-holidays-card { margin: 1rem 0; }

@@ -16,6 +16,32 @@
   .student-cal-meta { margin: 0.35rem 0 0; padding-left: 1.1rem; font-size: 9pt; }
   .student-cal-week h3 { margin: 0.5rem 0 0.25rem; font-size: 11pt; }
   .holiday-row td { background: #f3f4f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .student-cal-master-table { table-layout: fixed; width: 100%; font-size: 8pt; }
+  .student-cal-master-table th,
+  .student-cal-master-table td { vertical-align: top; padding: 3px 4px; }
+  .student-cal-week-label { width: 2.5rem; white-space: normal; font-weight: 700; vertical-align: middle !important; }
+  .student-cal-theory-row .student-cal-day-cell { border-bottom: none; }
+  .student-cal-divider-row td { padding: 2px 0; border-right: none; border-bottom: none; }
+  .student-cal-practicum-row .student-cal-day-cell { border-top: none; }
+  .student-cal-week-divider { border-top: 1px dashed #999; height: 0; width: 100%; }
+  .student-cal-chip {
+    padding: 2px 3px;
+    margin: 2px 0;
+    border-radius: 2px;
+    border: 1px solid #ccc;
+    background: #f9fafb;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .student-cal-chip-theory,
+  .student-cal-chip-exam { border-color: #2563eb; background: #eff6ff; }
+  .student-cal-chip-skills { border-color: #ea580c; background: #fff7ed; }
+  .student-cal-chip-simulation,
+  .student-cal-chip-practicum.student-cal-chip-simulation { border-color: #7c3aed; background: #f5f3ff; }
+  .student-cal-chip-clinical,
+  .student-cal-chip-orientation,
+  .student-cal-chip-practicum { border-color: #16a34a; background: #f0fdf4; }
+  .student-cal-chip-holiday { border-color: #dc2626; background: #fef2f2; }
 }
 
 .student-cal-intro { margin-bottom: 1rem; }
@@ -41,3 +67,107 @@
   border: 1px solid var(--border);
   border-radius: 0.75rem;
 }
+.student-cal-master-wrap { overflow-x: auto; }
+.student-cal-master-table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 48rem;
+  font-size: 0.75rem;
+}
+.student-cal-master-table th,
+.student-cal-master-table td {
+  vertical-align: top;
+  border-right: 1px solid var(--border);
+}
+.student-cal-week-label {
+  width: 3.25rem;
+  white-space: normal;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.student-cal-week-hol {
+  margin-top: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.student-cal-day-date {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-bottom: 0.15rem;
+}
+.student-cal-theory-row .student-cal-day-cell { border-bottom: none; }
+.student-cal-divider-row td {
+  padding: 0.15rem 0;
+  border-right: none;
+  border-bottom: none;
+}
+.student-cal-practicum-row .student-cal-day-cell { border-top: none; }
+.student-cal-week-divider {
+  border: 0;
+  border-top: 1px dashed var(--border);
+  height: 0;
+  width: 100%;
+}
+.student-cal-chip {
+  padding: 0.2rem 0.3rem;
+  margin: 0.15rem 0;
+  border-radius: 0.25rem;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.student-cal-chip-theory,
+.student-cal-chip-exam {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+.student-cal-chip-skills {
+  border-color: #ea580c;
+  background: #fff7ed;
+  color: #9a3412;
+}
+.student-cal-chip-simulation,
+.student-cal-chip-practicum.student-cal-chip-simulation {
+  border-color: #7c3aed;
+  background: #f5f3ff;
+  color: #5b21b6;
+}
+.student-cal-chip-clinical,
+.student-cal-chip-orientation,
+.student-cal-chip-practicum {
+  border-color: #16a34a;
+  background: #f0fdf4;
+  color: #14532d;
+}
+.student-cal-chip-holiday {
+  border-color: #dc2626;
+  background: #fef2f2;
+  color: #991b1b;
+}
+html.dark .student-cal-chip-theory,
+html.dark .student-cal-chip-exam { background: #1e3a8a; color: #dbeafe; border-color: #3b82f6; }
+html.dark .student-cal-chip-skills { background: #7c2d12; color: #ffedd5; border-color: #fb923c; }
+html.dark .student-cal-chip-simulation,
+html.dark .student-cal-chip-practicum.student-cal-chip-simulation {
+  background: #4c1d95; color: #ede9fe; border-color: #a78bfa;
+}
+html.dark .student-cal-chip-clinical,
+html.dark .student-cal-chip-orientation,
+html.dark .student-cal-chip-practicum {
+  background: #14532d; color: #dcfce7; border-color: #4ade80;
+}
+.student-cal-chip-time,
+.student-cal-chip-faculty {
+  font-size: 0.7rem;
+  opacity: 0.9;
+}
+.student-cal-chip-skill-list {
+  margin: 0.15rem 0 0;
+  padding-left: 1rem;
+  list-style: disc;
+  font-size: 0.7rem;
+}
+.student-cal-chip-skill-list li { margin: 0; line-height: 1.25; }

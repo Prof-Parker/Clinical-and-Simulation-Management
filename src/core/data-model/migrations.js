@@ -89,6 +89,7 @@ export function migrateSemester(semester) {
   migrateClinicalGroupFacilities(semester);
   if (!semester.faculty) semester.faculty = defaultFaculty(getClinicalGroups(semester.config));
   syncSemesterFaculty(semester);
+  if (!semester.simInstructors) semester.simInstructors = [];
   if (!semester.students) semester.students = [];
   if (!semester.sections || !semester.sections.length) {
     var seen = {};

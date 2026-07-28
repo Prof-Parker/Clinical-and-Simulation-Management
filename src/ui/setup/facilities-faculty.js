@@ -104,6 +104,47 @@ function renderFaculty(data) {
     });
   }
 
+function renderSimInstructors(data) {
+    updateAdjunctFacultyDatalist();
+    var container = setupEl('setupSimInstructors');
+    if (!container) return;
+    if (!data.simInstructors) data.simInstructors = [];
+    var listId = getSetupScope().prefix + 'setupAdjunctFacultyList';
+    container.innerHTML = '';
+    data.simInstructors.forEach(function (f, i) {
+      container.innerHTML +=
+        '<div class="config-list-row setup-faculty-row">' +
+        '<input type="text" data-sim-instructor="name" data-idx="' + i + '" list="' + listId + '" ' +
+        'value="' + escAttr(f.name || '') + '" placeholder="Simulation instructor name" autocomplete="off" ' +
+        'aria-label="Simulation instructor name">' +
+        '<button type="button" class="btn btn-icon-remove remove-sim-instructor" data-idx="' + i + '" ' +
+        'aria-label="Remove simulation instructor" title="Remove simulation instructor">&times;</button>' +
+        '</div>';
+    });
+    container.innerHTML += configListAddRow('add-sim-instructor', 'Add simulation instructor');
+  }
+
+function handleSimInstructorClick(e) {
+    var data = resolveSetupData();
+    if (!data || !guardSetupEdit()) return;
+    if (e.target.closest('.add-sim-instructor')) {
+      collectFromForm(data);
+      if (!data.simInstructors) data.simInstructors = [];
+      data.simInstructors.push({ id: DataModel.uid(), name: '' });
+      markSetupDraft(data);
+      setupAfterChange(data);
+      return;
+    }
+    var rm = e.target.closest('.remove-sim-instructor');
+    if (rm) {
+      collectFromForm(data);
+      var idx = parseInt(rm.dataset.idx, 10);
+      if (!isNaN(idx)) data.simInstructors.splice(idx, 1);
+      markSetupDraft(data);
+      setupAfterChange(data);
+    }
+  }
+
 function updateAdjunctFacultyDatalist() {
     var list = setupEl('setupAdjunctFacultyList');
     if (!list || !UserDirectory) return;
@@ -262,6 +303,8 @@ export {
   renderSections,
   renderFacilities,
   renderFaculty,
+  renderSimInstructors,
+  handleSimInstructorClick,
   renderLeadFaculty,
   applyGroupFacilitiesFromConfig,
   removeFacility,

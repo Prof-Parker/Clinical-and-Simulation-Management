@@ -7,6 +7,7 @@ import * as DataModel from '../core/data-model/index.js';
 import * as Orientation from '../core/orientation.js';
 import * as ScheduleHours from '../core/schedule-hours.js';
 import * as Validator from '../core/validator.js';
+import * as TheoryData from '../core/theory-data.js';
 
 var WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -144,12 +145,9 @@ function buildSummaryHtml(data, student, opts) {
 }
 
 function theoryEventsForDate(theory, date) {
-  if (!theory || !theory.days) return [];
+  if (!theory || !theory.days || !date) return [];
   var day = theory.days.find(function (d) { return d.date === date; });
-  if (!day) return [];
-  return (day.events || []).filter(function (ev) {
-    return ['theory', 'skills', 'assignment', 'shared', 'exam', 'other'].indexOf(ev.track) >= 0;
-  });
+  return day && day.events ? day.events.slice() : [];
 }
 
 function dateForWeekday(weekStartIso, weekday) {
@@ -163,85 +161,179 @@ function dateForWeekday(weekStartIso, weekday) {
   return CalendarEngine.toISO(CalendarEngine.addDays(start, delta));
 }
 
+/** Lecturers only — omit skills lab / sim / clinical faculty on student calendars. */
+function lecturerNames(ev) {
+  if (!ev || (ev.track !== 'theory' && ev.track !== 'exam')) return [];
+  return (ev.faculty || []).map(TheoryData.facultyDisplayName).filter(Boolean);
+}
+
+function skillsTopicTitles(ev) {
+  if (!ev || ev.track !== 'skills') return [];
+  var titles = [];
+  var seen = {};
+  function add(title) {
+    var t = String(title || '').trim();
+    if (!t || seen[t.toLowerCase()]) return;
+    seen[t.toLowerCase()] = true;
+    titles.push(t);
+  }
+  if (ev.description) {
+    String(ev.description).split(/[;|]/).forEach(function (part) { add(part); });
+  }
+  return titles;
+}
+
+function trackLabel(ev) {
+  if (!ev) return '';
+  if (ev.track === 'skills') return 'Skills lab';
+  if (ev.track === 'assignment') return 'Assignment';
+  if (ev.track === 'theory') return 'Lecture';
+  if (ev.track === 'exam') return 'Exam';
+  if (ev.track === 'simulation') return 'Simulation';
+  if (ev.track === 'clinical') return 'Clinical';
+  if (ev.track === 'orientation') return 'Orientation';
+  if (ev.track === 'holiday') return 'Holiday';
+  return ev.track || 'Event';
+}
+
+function renderStudentEventChip(ev) {
+  var html = '<div class="student-cal-chip student-cal-chip-' + esc(ev.track || 'other') + '">' +
+    '<strong>' + esc(ev.title || trackLabel(ev)) + '</strong>';
+  if (ev.timeStart && ev.timeEnd) {
+    html += '<div class="student-cal-chip-time">' +
+      esc(ScheduleHours.formatTimeRange(ev.timeStart, ev.timeEnd)) + '</div>';
+  } else if (ev.allDay) {
+    html += '<div class="student-cal-chip-time">All day</div>';
+  }
+  var topics = skillsTopicTitles(ev);
+  if (topics.length) {
+    html += '<ul class="student-cal-chip-skill-list">' +
+      topics.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') +
+      '</ul>';
+  }
+  var lecturers = lecturerNames(ev);
+  if (lecturers.length) {
+    html += '<div class="student-cal-chip-faculty">' + esc(lecturers.join(', ')) + '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderPracticumLine(text, extraClass) {
+  return '<div class="student-cal-chip student-cal-chip-practicum' +
+    (extraClass ? ' ' + extraClass : '') + '">' + esc(text) + '</div>';
+}
+
+function studentDayBands(data, student, weekIndex, weekday, dateIso, showMarkup) {
+  var theoryHtml = '';
+  var practicumHtml = '';
+  var cell = student.schedule[weekIndex];
+  var week = data.calendar.weeks[weekIndex];
+  var hol = holidayLabelForWeek(week);
+  var clinDay = DataModel.getClinicalDayForGroup(student.clinicalGroup, data.config);
+
+  theoryEventsForDate(data.theory, dateIso).forEach(function (ev) {
+    var chip = renderStudentEventChip(ev);
+    if (TheoryData.isPracticumTrackEvent(ev) || ev.track === 'clinical' ||
+        ev.track === 'simulation' || ev.track === 'orientation') {
+      practicumHtml += chip;
+    } else {
+      theoryHtml += chip;
+    }
+  });
+
+  var orient = Orientation.getOrientationForWeek(data, student, weekIndex);
+  if (orient && orient.date === dateIso) {
+    ScheduleHours.ensureOrientationTimes(orient);
+    practicumHtml += renderPracticumLine(
+      Orientation.getOrientationLabel(data, student, weekIndex) + ' ' +
+      ScheduleHours.formatTimeRange(orient.timeStart, orient.timeEnd),
+      'student-cal-chip-orientation'
+    );
+  }
+
+  if (cell && cell.inactive) {
+    practicumHtml += renderPracticumLine(hol || 'Holiday / Break', 'student-cal-chip-holiday');
+  } else if (cell) {
+    if ((cell.clinical || cell.clinicalMissed || cell.makeupClinical) && weekday === clinDay) {
+      var facId = cell.facilityId || student.facilityId;
+      var cTimes = ScheduleHours.clinicalTimesForFacility(data, facId);
+      var clinicalText =
+        (cell.makeupClinical ? 'Makeup Clinical' : 'Clinical') +
+        (facilityLabel(data, facId) ? ' @ ' + facilityLabel(data, facId) : '') +
+        ' ' + ScheduleHours.formatTimeRange(cTimes.start, cTimes.end) +
+        (cell.clinicalMissed ? ' [MISSED]' : '');
+      var clinicalCls = '';
+      if (showMarkup && cell.clinicalMissed) clinicalCls = 'markup-missed';
+      if (showMarkup && cell.makeupClinical) clinicalCls = 'markup-makeup';
+      practicumHtml += renderPracticumLine(clinicalText, clinicalCls);
+    }
+    if (cell.sim && (cell.simDay || 'Mon') === weekday) {
+      var sTimes = ScheduleHours.simTimesForNum(data, cell.sim);
+      practicumHtml += renderPracticumLine(
+        'Simulation ' + cell.sim +
+        (cell.simGuestGroup ? ' (guest ' + cell.simGuestGroup + ')' : '') +
+        ' ' + ScheduleHours.formatTimeRange(sTimes.start, sTimes.end),
+        'student-cal-chip-simulation'
+      );
+    }
+  }
+
+  return { theoryHtml: theoryHtml, practicumHtml: practicumHtml };
+}
+
 function buildDetailedHtml(data, student, opts) {
   opts = opts || {};
   var showMarkup = !!opts.showMarkup;
-  var theory = data.theory || {};
-  var instructional = theory.instructionalWeekdays || ['Wed', 'Thu', 'Fri'];
-  var clinDay = DataModel.getClinicalDayForGroup(student.clinicalGroup, data.config);
-  var daySet = {};
-  instructional.forEach(function (d) { daySet[d] = true; });
-  daySet[clinDay] = true;
-  DataModel.getSimDays(data.config).forEach(function (d) { daySet[d] = true; });
-  daySet.Sat = true;
-  daySet.Sun = true;
-  var orderedDays = WEEKDAYS.filter(function (d) { return daySet[d]; });
 
   var html = '<div class="print-student-calendar student-calendar-page print-student-calendar-detailed">' +
-    introHtml(data, student, { title: 'Detailed Weekly Calendar' });
+    introHtml(data, student, { title: 'Detailed Weekly Calendar' }) +
+    '<div class="student-cal-master-wrap">' +
+    '<table class="data-table student-cal-master-table"><thead><tr>' +
+    '<th>Week</th>' + WEEKDAYS.map(function (d) { return '<th>' + d + '</th>'; }).join('') +
+    '</tr></thead><tbody>';
 
   for (var wi = 0; wi < 18; wi++) {
     var week = data.calendar.weeks[wi];
-    var act = activityPartsForWeek(data, student, wi, showMarkup);
     var hol = holidayLabelForWeek(week);
-    html += '<section class="student-cal-week">' +
-      '<h3>Week ' + (wi + 1) +
-      (week ? ' · ' + esc(CalendarEngine.formatDisplayDate(week.startDate)) : '') +
-      (hol ? ' · ' + esc(hol) : '') + '</h3>' +
-      '<p class="section-sub student-cal-week-summary">' + esc(act.activity) + '</p>' +
-      '<table class="data-table student-cal-day-table"><thead><tr>' +
-      '<th>Day</th><th>Date</th><th>Schedule</th></tr></thead><tbody>';
-
-    orderedDays.forEach(function (wd) {
+    var dayMeta = WEEKDAYS.map(function (wd) {
       var dateIso = week ? dateForWeekday(week.startDate, wd) : '';
-      var items = [];
-      var cell = student.schedule[wi];
-      var orient = Orientation.getOrientationForWeek(data, student, wi);
-      if (orient && orient.date === dateIso) {
-        ScheduleHours.ensureOrientationTimes(orient);
-        items.push(
-          Orientation.getOrientationLabel(data, student, wi) + ' ' +
-          ScheduleHours.formatTimeRange(orient.timeStart, orient.timeEnd)
-        );
-      }
-      if (cell && !cell.inactive) {
-        if ((cell.clinical || cell.clinicalMissed || cell.makeupClinical) && wd === clinDay) {
-          var facId = cell.facilityId || student.facilityId;
-          var cTimes = ScheduleHours.clinicalTimesForFacility(data, facId);
-          items.push(
-            (cell.makeupClinical ? 'Makeup Clinical' : 'Clinical') +
-            (facilityLabel(data, facId) ? ' @ ' + facilityLabel(data, facId) : '') +
-            ' ' + ScheduleHours.formatTimeRange(cTimes.start, cTimes.end) +
-            (cell.clinicalMissed ? ' [MISSED]' : '')
-          );
-        }
-        if (cell.sim && (cell.simDay || 'Mon') === wd) {
-          var sTimes = ScheduleHours.simTimesForNum(data, cell.sim);
-          items.push(
-            'Simulation ' + cell.sim + ' ' +
-            ScheduleHours.formatTimeRange(sTimes.start, sTimes.end)
-          );
-        }
-      } else if (cell && cell.inactive && hol) {
-        items.push(hol);
-      }
-      theoryEventsForDate(theory, dateIso).forEach(function (ev) {
-        var track = ev.track === 'skills' ? 'Skills lab' :
-          (ev.track === 'assignment' ? 'Assignment' :
-            (ev.track === 'theory' ? 'Lecture' : ev.track));
-        var t = (ev.timeStart && ev.timeEnd)
-          ? ' ' + ScheduleHours.formatTimeRange(ev.timeStart, ev.timeEnd)
-          : '';
-        items.push(track + ': ' + (ev.title || '') + t);
-      });
-      if (!items.length) return;
-      html += '<tr><td>' + esc(wd) + '</td><td>' +
-        esc(dateIso ? CalendarEngine.formatDisplayDate(dateIso) : '') +
-        '</td><td>' + esc(items.join(' · ')) + '</td></tr>';
+      var bands = studentDayBands(data, student, wi, wd, dateIso, showMarkup);
+      return {
+        wd: wd,
+        dateIso: dateIso,
+        theoryHtml: bands.theoryHtml,
+        practicumHtml: bands.practicumHtml
+      };
     });
-    html += '</tbody></table></section>';
+
+    html += '<tr class="student-cal-theory-row">';
+    html += '<td class="student-cal-week-label" rowspan="3">Wk ' + (wi + 1) +
+      (hol ? '<div class="student-cal-week-hol">' + esc(hol) + '</div>' : '') +
+      '</td>';
+    dayMeta.forEach(function (meta) {
+      html += '<td class="student-cal-day-cell student-cal-theory-cell">';
+      if (meta.dateIso) {
+        html += '<div class="student-cal-day-date">' +
+          esc(CalendarEngine.formatDisplayDate(meta.dateIso)) + '</div>';
+      }
+      html += '<div class="student-cal-theory-band">' + meta.theoryHtml + '</div></td>';
+    });
+    html += '</tr>';
+
+    html += '<tr class="student-cal-divider-row" aria-hidden="true">' +
+      '<td colspan="' + WEEKDAYS.length + '" class="student-cal-divider-cell">' +
+      '<div class="student-cal-week-divider"></div></td></tr>';
+
+    html += '<tr class="student-cal-practicum-row">';
+    dayMeta.forEach(function (meta) {
+      html += '<td class="student-cal-day-cell student-cal-practicum-cell">' +
+        '<div class="student-cal-practicum-band">' + meta.practicumHtml + '</div></td>';
+    });
+    html += '</tr>';
   }
-  html += '</div>';
+
+  html += '</tbody></table></div></div>';
   return html;
 }
 

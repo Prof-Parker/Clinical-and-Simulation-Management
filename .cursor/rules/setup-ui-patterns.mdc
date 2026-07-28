@@ -83,19 +83,24 @@ Use the shared `.select-control` class for toolbar and filter dropdowns (header 
 - Dashboard filter selects inside `.filters` / `.dashboard-schedule-filters` already match this pattern; new header/toolbar selects should use `select-control` explicitly.
 - Always set `aria-label` (or an associated `<label>`).
 
-## Checkboxes
+## Checkboxes and radios
 
-Use `label.filter-check` for all checkbox labels (filters, toggles, tag pickers):
+Use `label.filter-check` for checkbox and radio labels (filters, toggles, tag pickers, option groups):
 
 ```html
 <label class="filter-check site-lib-tag">
   <input type="checkbox" data-site-lib-tag="MS" checked> MS
 </label>
+
+<label class="filter-check filter-check-compact">
+  <input type="radio" name="exampleMode" value="a" checked> Option A
+</label>
 ```
 
-- Do not style raw `<input type="checkbox">` without the `filter-check` wrapper.
-- Checkbox sizing and accent color come from `label.filter-check input[type="checkbox"]` in `css/app.css`.
-- Optional compact variant: `filter-check filter-check-compact` (dashboard filters).
+- Do not style raw `<input type="checkbox">` or `<input type="radio">` without the `filter-check` wrapper.
+- Control sizing and accent color come from `label.filter-check input[type="checkbox"]` / `input[type="radio"]` in `css/app.css` (**1rem**, not the global 44px form-control min-height).
+- Prefer `filter-check filter-check-compact` for toolbars, setup option lists, and other dense UI so radios/checkboxes match controls like `#theoryShowPracticumFaculty`.
+- Optional compact variant: `filter-check filter-check-compact` (dashboard filters, theory master toolbar / module seed radios).
 
 ## Dialogs — not native alert/confirm
 

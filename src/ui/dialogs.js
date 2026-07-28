@@ -26,6 +26,8 @@ export function closeDialog() {
   var saveBtn = document.getElementById('dialogSave');
   var cancelBtn = document.getElementById('dialogCancel');
   if (modal) modal.classList.remove('open');
+  var content = modal && modal.querySelector('.modal-content');
+  if (content) content.style.maxWidth = '28rem';
   if (saveBtn) {
     saveBtn.textContent = _dialogDefaults.saveLabel;
     saveBtn.className = 'btn btn-primary';

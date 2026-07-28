@@ -72,7 +72,9 @@ describe('student-calendar-batch.test.js', () => {
 
     var detailedHtml = buildDetailedHtml(sem, student, {});
     assert(detailedHtml.indexOf('Detailed Weekly') >= 0, 'detailed title');
-    assert(detailedHtml.indexOf('Week 1') >= 0, 'detailed has weeks');
+    assert(detailedHtml.indexOf('Wk 1') >= 0, 'detailed has weeks');
+    assert(detailedHtml.indexOf('student-cal-week-divider') >= 0, 'detailed has theory/practicum divider');
+    assert(detailedHtml.indexOf('student-cal-master-table') >= 0, 'detailed uses master-style grid');
 
     var fname = attachmentFilename(sem, student, 'summary');
     assert(fname.indexOf('_summary.pdf') > 0, 'attachment ends with _summary.pdf');

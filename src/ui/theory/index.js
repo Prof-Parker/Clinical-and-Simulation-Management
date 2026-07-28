@@ -11,6 +11,8 @@ import { render as renderMaster, renderTopicLibraryPanel } from './master-calend
 import { render as renderLecture } from './lecture-assignments.js';
 import { render as renderCoordinator } from './coordinator.js';
 import { init as initHourSettings } from './hour-settings.js';
+import { init as initMasterSetup } from './master-setup.js';
+import { init as initContentLibrary } from './content-library.js';
 
 function theoryLibraryCourseId() {
   var root = getFileRoot();
@@ -51,6 +53,8 @@ export function renderTheoryTab(tabId) {
 
 export function init() {
   initHourSettings();
+  initMasterSetup();
+  initContentLibrary();
   initTheoryLibraryButtons();
   onStateChange(function () {
     var data = getData();

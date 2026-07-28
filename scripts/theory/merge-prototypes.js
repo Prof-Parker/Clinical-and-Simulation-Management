@@ -122,7 +122,8 @@ export async function importTheoryFromPrototypes(options) {
     }
   }
 
-  var topics = buildTopicLibrary(lectureRows, eventsByDate);
+  var built = buildTopicLibrary(lectureRows, eventsByDate);
+  var topics = built.topics;
   attachModuleRefs(theory.days, topics);
 
   var validation = {
@@ -147,8 +148,23 @@ export async function importTheoryFromPrototypes(options) {
   return {
     theory: theory,
     library: {
-      meta: { version: 1, courseId: 'REGN15', lastModified: new Date().toISOString() },
-      topics: topics
+      meta: {
+        version: 2,
+        courseId: 'REGN15',
+        lastModified: new Date().toISOString(),
+        curriculumMeta: {
+          version: 1,
+          corRefs: [],
+          acenStandards: [],
+          programOutcomes: [],
+          courseOutcomes: [],
+          notes: ''
+        }
+      },
+      topics: topics,
+      skills: (built.skillTitles || []).map(function (title) {
+        return { title: title, description: '', kinds: [], courseId: 'REGN15' };
+      })
     },
     validation: validation,
     lectureRows: lectureRows

@@ -15,6 +15,7 @@ function selectedCalendarType() {
 function render(data) {
   var select = document.getElementById('studentViewSelect');
   var container = document.getElementById('studentCalendarPrint');
+  var printBtn = document.getElementById('printStudentBtn');
   if (!select || !container) return;
 
   var prev = select.value;
@@ -25,6 +26,10 @@ function render(data) {
   if (prev && data.students.some(function (s) { return s.id === prev; })) select.value = prev;
 
   var sid = select.value;
+  if (printBtn) {
+    printBtn.disabled = !sid;
+    printBtn.title = sid ? 'Print selected student calendar' : 'Select a student to print their calendar';
+  }
   if (!sid) {
     container.innerHTML = '<p class="section-sub">Select a student to view their calendar.</p>';
     return;
@@ -48,7 +53,15 @@ function init() {
   var typeEl = document.getElementById('studentCalendarType');
   if (typeEl) typeEl.addEventListener('change', function () { refresh(); });
   var printBtn = document.getElementById('printStudentBtn');
-  if (printBtn) printBtn.addEventListener('click', function () { window.print(); });
+  if (printBtn) {
+    printBtn.disabled = true;
+    printBtn.title = 'Select a student to print their calendar';
+    printBtn.addEventListener('click', function () {
+      var sel = document.getElementById('studentViewSelect');
+      if (!sel || !sel.value) return;
+      window.print();
+    });
+  }
   var batchBtn = document.getElementById('batchExportStudentCalBtn');
   if (batchBtn) {
     batchBtn.addEventListener('click', function () {

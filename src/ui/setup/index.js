@@ -21,7 +21,8 @@ import {
   renderSemesterFields, updateFinalizeButtonState, updateStartDateFromSeasonYear, renderScheduleWarnings
 } from './semester-fields.js';
 import {
-  renderSections, renderFacilities, renderFaculty, renderLeadFaculty, removeFacility, removeSection,
+  renderSections, renderFacilities, renderFaculty, renderSimInstructors, handleSimInstructorClick,
+  renderLeadFaculty, removeFacility, removeSection,
   syncLeadFacultyEmailFromSelect
 } from './facilities-faculty.js';
 import {
@@ -29,6 +30,7 @@ import {
   updateAllOrientationWeekHints, updateOrientationWeekHint, nextOrientationDefault,
   weekSelectHtml, semesterWeekHintForIndex, collectHolidaysFromDom
 } from './holidays-orientations.js';
+import * as TheoryData from '../../core/theory-data.js';
 import {
   renderRoster, initRosterDragDrop, needsRebalance, rebalanceStudents, rebalanceSimGroups, getCohortFacilityIdForGroup,
   cohortFacilitySelectHtml
@@ -166,6 +168,7 @@ function render(data) {
         renderSections(renderData);
         renderFacilities(renderData);
         renderFaculty(renderData);
+        renderSimInstructors(renderData);
         renderLeadFaculty(renderData);
         renderHolidays(renderData);
         renderOrientations(renderData);
@@ -369,11 +372,14 @@ function init() {
         onChange: function (data) {
           setSetupScope(scope);
           collectFromForm(data);
+          if (data.theory) TheoryData.syncHolidaysFromSemester(data);
           markSetupDraft(data);
           setupAfterChange(data, { rerender: true });
         }
       });
     });
+
+    bindScopedContainer('setupSimInstructors', 'click', handleSimInstructorClick);
 
     bindScopedContainer('setupOrientations', 'click', function (e) {
       if (e.target.closest('.add-orientation')) {
