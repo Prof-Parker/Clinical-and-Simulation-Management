@@ -18,8 +18,9 @@ var DEFAULT_SUBJECT = '{{semesterName}} — Your {{calendarType}} calendar';
 
 var DEFAULT_BODY =
   'Hello {{studentName}},\n\n' +
-  'Attached is your {{calendarType}} for {{semesterName}}.\n' +
-  'Please review clinical, simulation, orientation, and holiday dates.\n\n' +
+  'Attached is your {{calendarType}} for {{semesterName}} ' +
+  '(PDF and Outlook/iCal .ics calendar).\n' +
+  'Please review clinical, simulation, lecture, skills lab, and assignment dates.\n\n' +
   'Thank you,\n{{leadFacultyName}}';
 
 function buildEmailRows(students, opts) {
@@ -32,15 +33,18 @@ function buildEmailRows(students, opts) {
   var semesterName = opts.semesterName || '';
   var leadFacultyName = opts.leadFacultyName || '';
   var attachmentFor = opts.attachmentFor || function () { return ''; };
+  var icsFor = opts.icsFor || function () { return ''; };
 
   return (students || []).map(function (s) {
     var attachmentName = attachmentFor(s);
+    var icsName = icsFor(s);
     var fields = {
       studentName: s.name || '',
       email: s.email || '',
       semesterName: semesterName,
       calendarType: calendarTypeLabel,
       attachmentName: attachmentName,
+      icsFilename: icsName,
       clinicalGroup: s.clinicalGroup || '',
       simGroup: s.simGroup || '',
       section: s.section || '',
@@ -52,6 +56,7 @@ function buildEmailRows(students, opts) {
       Subject: applyTemplate(subjectTpl, fields),
       Body: applyTemplate(bodyTpl, fields),
       AttachmentFilename: attachmentName,
+      IcsFilename: icsName,
       ClinicalGroup: s.clinicalGroup || '',
       SimGroup: s.simGroup || '',
       Section: s.section || ''
@@ -61,7 +66,7 @@ function buildEmailRows(students, opts) {
 
 function rowsToCsv(rows) {
   var headers = [
-    'Email', 'StudentName', 'Subject', 'Body', 'AttachmentFilename',
+    'Email', 'StudentName', 'Subject', 'Body', 'AttachmentFilename', 'IcsFilename',
     'ClinicalGroup', 'SimGroup', 'Section'
   ];
   var lines = [headers.join(',')];

@@ -35,7 +35,7 @@ export var UI_TABS = [
     shell: 'clinical',
     anchors: [
       'studentViewSelect', 'studentCalendarType', 'showMarkupToggle',
-      'printStudentBtn', 'batchExportStudentCalBtn', 'studentCalendarPrint'
+      'printStudentBtn', 'exportStudentIcsBtn', 'batchExportStudentCalBtn', 'studentCalendarPrint'
     ]
   },
   {

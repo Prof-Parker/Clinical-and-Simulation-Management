@@ -1,5 +1,5 @@
 /**
- * Batch export student calendars as ZIP (PDFs + Power Automate CSV).
+ * Batch export student calendars as ZIP (PDFs + ICS + Power Automate CSV).
  */
 
 import JSZip from 'jszip';
@@ -13,6 +13,7 @@ import {
   DEFAULT_SUBJECT, DEFAULT_BODY, buildEmailRows, rowsToCsv
 } from './power-automate-csv.js';
 import { htmlToPdfBlob } from './student-calendar-pdf.js';
+import { buildStudentIcs, icsFilename } from './student-calendar-ics.js';
 
 function slugName(name) {
   return String(name || 'student')
@@ -66,11 +67,12 @@ function onedriveReadme(semester, calendarType) {
     'Contents:',
     '  power-automate-email.csv  — import rows into Power Automate',
     '  pdfs/                     — one PDF per student (' + calendarType + ')',
+    '  ics/                      — one Outlook/iCal .ics calendar per student',
     '',
     'Power Automate sketch:',
     '  1. Place this folder in OneDrive/SharePoint.',
     '  2. For each CSV row: send Outlook email To=Email, Subject, Body.',
-    '  3. Attach pdfs/{AttachmentFilename} from the same folder.',
+    '  3. Attach pdfs/{AttachmentFilename} and ics/{IcsFilename} from this folder.',
     '',
     'See docs/POWER_AUTOMATE_STUDENT_CALENDARS.md in the app repository.',
     ''
@@ -102,6 +104,7 @@ function buildZip(semester, students, calendarType, emailOpts, showMarkup) {
   var folderName = zipFilename(semester, calendarType).replace(/\.zip$/, '');
   var root = zip.folder(folderName);
   var pdfs = root.folder('pdfs');
+  var icsFolder = root.folder('ics');
   var rows = buildEmailRows(students, {
     calendarType: calendarType,
     semesterName: (semester.meta && semester.meta.semesterName) || '',
@@ -110,6 +113,9 @@ function buildZip(semester, students, calendarType, emailOpts, showMarkup) {
     bodyTemplate: emailOpts.bodyTemplate,
     attachmentFor: function (s) {
       return attachmentFilename(semester, s, calendarType);
+    },
+    icsFor: function (s) {
+      return icsFilename(semester, s);
     }
   });
   root.file('power-automate-email.csv', rowsToCsv(rows));
@@ -123,6 +129,7 @@ function buildZip(semester, students, calendarType, emailOpts, showMarkup) {
       }
       var html = buildCalendarHtml(semester, student, calendarType, { showMarkup: showMarkup });
       var name = attachmentFilename(semester, student, calendarType);
+      icsFolder.file(icsFilename(semester, student), buildStudentIcs(semester, student));
       return htmlToPdfBlob(html).then(function (blob) {
         pdfs.file(name, blob);
       });
@@ -167,7 +174,8 @@ function filterOptionsHtml(semester) {
     '<label>Email body' +
     '<textarea id="batchCalBody" rows="6">' + DEFAULT_BODY + '</textarea></label>' +
     '<p class="section-sub" id="batchCalPreview">Merge fields: {{studentName}}, {{email}}, {{semesterName}}, ' +
-    '{{calendarType}}, {{attachmentName}}, {{clinicalGroup}}, {{simGroup}}, {{section}}, {{leadFacultyName}}</p>';
+    '{{calendarType}}, {{attachmentName}}, {{icsFilename}}, {{clinicalGroup}}, {{simGroup}}, ' +
+    '{{section}}, {{leadFacultyName}}</p>';
 }
 
 function bindBatchDialogUi(semester) {
