@@ -16,6 +16,14 @@ var WEEK_COLS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 var dragEventId = null;
 var suppressClick = false;
 
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function clinicalFacultyName(data, group) {
   var f = (data.faculty || []).find(function (x) { return x.clinicalGroup === group; });
   return f && f.name ? f.name : '';
