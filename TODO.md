@@ -101,8 +101,11 @@ TODO.md
     - [ ] Search by semeser, day of the week, times, length (add support for half days), content area, facility
 
 ## Worklist after demo:
-- [ ] implement file_kind_guards **priority**
-- [ ] Add acredidation tracking support (large feature)
+- [X] implement file_kind_guards **priority**
+- [ ] Debug file kind guards
+    -[ ] Login issues
+    -[ ] No overwrite protection/guard on program file->user file
+- [ ] Add acredidation tracking support for content (large feature)
 - [ ] Work on Audra contact hour items
 
 
