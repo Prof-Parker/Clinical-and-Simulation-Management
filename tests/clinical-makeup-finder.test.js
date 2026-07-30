@@ -84,18 +84,21 @@ describe('clinical makeup finder', () => {
     if (existsSync(mockPath)) {
       expect(monJoin.some(function (s) { return s.week === 17; })).toBe(true);
       const weeks = joinSlots.map(function (s) { return s.week; });
-      expect(weeks).toContain(6);
-      expect(weeks).toContain(8);
-      expect(weeks).toContain(10);
-      expect(weeks).toContain(12);
-      expect(weeks).toContain(16);
-      expect(weeks).not.toContain(5);
-      expect(weeks).not.toContain(7);
-      expect(weeks).not.toContain(9);
-      expect(weeks).not.toContain(11);
-      // Week 14/15 is Thanksgiving break — no Monday join clinicals that week.
-      expect(weeks).not.toContain(14);
+      // Student 1 (SG1) has Monday sim on even weeks — those Mondays are blocked for join.
+      expect(weeks).toContain(5);
+      expect(weeks).toContain(7);
+      expect(weeks).toContain(9);
+      expect(weeks).toContain(11);
+      expect(weeks).not.toContain(6);
+      expect(weeks).not.toContain(8);
+      expect(weeks).not.toContain(10);
+      expect(weeks).not.toContain(12);
+      expect(weeks).not.toContain(16);
+      // Thanksgiving break is week 15 — Saturday clinicals skip that week; C2/C3 Mon still week 14.
+      expect(weeks).toContain(14);
       expect(weeks).not.toContain(15);
+      expect(s1.schedule[14].inactive).toBe(true);
+      expect(s1.schedule[14].clinical).toBe(false);
     }
   });
 

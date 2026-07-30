@@ -7,8 +7,9 @@ import * as DataModel from '../core/data-model/index.js';
 import * as TheoryData from '../core/theory-data.js';
 import * as Audit from '../audit/audit.js';
 import { showConfirm } from './dialogs.js';
-import { resolveNavShell, isPlaygroundShell, updatePlaygroundStatusLine } from './playground-shell.js';
 import { buildCourseStatusHtml, courseStatusAriaLabel } from './semester-label.js';
+import { updateSemesterPickerLabel } from './semester-picker.js';
+import { resolveNavShell, isPlaygroundShell, updatePlaygroundStatusLine } from './playground-shell.js';
 
 function chromeApi() {
   return import('./chrome.js');
@@ -30,10 +31,12 @@ export function getNavShell() {
 export function updateCourseStatusLabel() {
   if (isPlaygroundShell()) {
     updatePlaygroundStatusLine();
+    updateSemesterPickerLabel();
     return;
   }
   var trigger = document.getElementById('courseStatusLine');
   var data = getData();
+  updateSemesterPickerLabel();
   if (!trigger) return;
   if (!data || !data.meta) {
     trigger.textContent = 'No semester file connected';
@@ -107,6 +110,10 @@ export function initCourseSelector() {
 
   trigger.addEventListener('click', function (e) {
     e.stopPropagation();
+    var semesterMenu = document.getElementById('semesterPickerMenu');
+    var semesterBtn = document.getElementById('semesterPickerBtn');
+    if (semesterMenu) semesterMenu.classList.add('hidden');
+    if (semesterBtn) semesterBtn.setAttribute('aria-expanded', 'false');
     var open = menu.classList.toggle('hidden');
     trigger.setAttribute('aria-expanded', open ? 'false' : 'true');
     if (!open) renderCourseDropdown();

@@ -52,55 +52,77 @@
                         <span id="fileStatus" class="file-status">Loading...</span>
                         <button id="syncOneDriveBtn" class="btn btn-sm file-sync-btn hidden" type="button">Sync to OneDrive</button>
                     </div>
-                    <span id="userStatusLine" class="user-status-line"></span>
                 </div>
-                <div class="header-status-wrap course-status-wrap">
-                    <button id="courseStatusLine" type="button" class="course-status-line" aria-live="polite" aria-haspopup="listbox" aria-expanded="false" aria-controls="courseStatusDropdown">No semester file connected</button>
-                    <div id="courseStatusDropdown" class="course-status-dropdown hidden" role="listbox"></div>
-                </div>
-                <div class="menu-wrap">
-                    <button id="menuToggle" class="btn btn-icon" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="menuDropdown">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/>
-                        </svg>
-                    </button>
-                    <div id="menuDropdown" class="menu-dropdown hidden" role="menu">
-                        <button id="darkModeToggle" class="menu-item" type="button" role="menuitem">Dark / Light Mode</button>
-                        <div class="menu-group" role="group" aria-labelledby="menuUserLabel">
-                            <div id="menuUserLabel" class="menu-group-label">User</div>
-                            <button id="switchUserMenuBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Sign in as different user…</button>
-                            <button id="loadRegistryMenuBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Connect users registry…</button>
-                            <button id="logoutUserMenuBtn" class="menu-item menu-item-nested menu-item-danger hidden" type="button" role="menuitem">Log out</button>
+                <div class="header-right">
+                    <div class="header-right-controls">
+                        <div class="user-menu-wrap">
+                            <button id="userMenuToggle" class="user-avatar-btn hidden" type="button" aria-label="Open user menu" aria-haspopup="menu" aria-expanded="false" aria-controls="userMenuDropdown">
+                                <span id="userStatusLine" class="user-avatar-initials" aria-hidden="true"></span>
+                            </button>
+                            <div id="userMenuDropdown" class="menu-dropdown user-menu-dropdown hidden" role="menu">
+                                <div class="user-menu-identity">
+                                    <h2 id="userMenuName" class="user-menu-name"></h2>
+                                    <h3 id="userMenuRole" class="user-menu-role"></h3>
+                                </div>
+                                <hr class="menu-divider">
+                                <button id="darkModeToggle" class="menu-item" type="button" role="menuitem">Dark / Light Mode</button>
+                                <button id="changePasswordBtn" class="menu-item" type="button" role="menuitem">Change password…</button>
+                                <button id="switchUserMenuBtn" class="menu-item" type="button" role="menuitem">Sign in as different user…</button>
+                                <button id="loadRegistryMenuBtn" class="menu-item" type="button" role="menuitem">Connect users registry…</button>
+                                <button id="logoutUserMenuBtn" class="menu-item menu-item-danger hidden" type="button" role="menuitem">Log out</button>
+                            </div>
                         </div>
-                        <hr class="menu-divider">
-                        <button id="newSemesterBatchBtn" class="menu-item" type="button" role="menuitem">New semester…</button>
-                        <div class="menu-group" role="group" aria-labelledby="menuSemesterSwitchLabel">
-                            <div id="menuSemesterSwitchLabel" class="menu-group-label">Switch semester</div>
-                            <div id="semesterSwitchMenu"></div>
+                        <div class="menu-wrap">
+                            <button id="menuToggle" class="btn btn-icon" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="menuDropdown">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/>
+                                </svg>
+                            </button>
+                            <div id="menuDropdown" class="menu-dropdown hidden" role="menu">
+                                <button id="newSemesterBatchBtn" class="menu-item" type="button" role="menuitem">New semester…</button>
+                                <div class="menu-group" role="group" aria-labelledby="menuSemesterSwitchLabel">
+                                    <div id="menuSemesterSwitchLabel" class="menu-group-label">Switch semester</div>
+                                    <div id="semesterSwitchMenu"></div>
+                                </div>
+                                <div class="menu-group" role="group" aria-labelledby="menuFileManagementLabel">
+                                    <div id="menuFileManagementLabel" class="menu-group-label">File Management</div>
+                                    <button id="connectProgramDataBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Connect ProgramData folder…</button>
+                                    <button id="reconnectProgramDataBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Change / reconnect folder…</button>
+                                    <button id="saveAsBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Save as…</button>
+                                    <button id="exportBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Download backup</button>
+                                    <button id="importBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Open copy…</button>
+                                    <button id="openFileBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">Connect OneDrive file</button>
+                                    <button id="newFileBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">New OneDrive file</button>
+                                </div>
+                                <div class="menu-group" role="group" aria-labelledby="menuLibrariesLabel">
+                                    <div id="menuLibrariesLabel" class="menu-group-label">Program libraries</div>
+                                    <button id="menuUsersLibraryBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Users registry</button>
+                                    <button id="menuClinicalSitesBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Clinical sites library</button>
+                                </div>
+                                <div class="menu-group" role="group" aria-labelledby="menuPlaygroundLabel">
+                                    <div id="menuPlaygroundLabel" class="menu-group-label">Sandbox</div>
+                                    <button id="menuPlaygroundBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Course playground…</button>
+                                    <button id="menuExitPlaygroundBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">Return to semester file</button>
+                                </div>
+                                <hr class="menu-divider">
+                                <button id="clearStorageBtn" class="menu-item menu-item-danger" type="button" role="menuitem">Clear storage &amp; restore defaults</button>
+                                <button id="saveBtn" class="menu-item menu-item-primary" type="button" role="menuitem">Save</button>
+                            </div>
                         </div>
-                        <div class="menu-group" role="group" aria-labelledby="menuFileManagementLabel">
-                            <div id="menuFileManagementLabel" class="menu-group-label">File Management</div>
-                            <button id="connectProgramDataBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Connect ProgramData folder…</button>
-                            <button id="reconnectProgramDataBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Change / reconnect folder…</button>
-                            <button id="saveAsBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Save as…</button>
-                            <button id="exportBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Download backup</button>
-                            <button id="importBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Open copy…</button>
-                            <button id="openFileBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">Connect OneDrive file</button>
-                            <button id="newFileBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">New OneDrive file</button>
+                    </div>
+                    <div class="header-status-wrap course-status-wrap">
+                        <div class="course-status-display">
+                            <div class="semester-picker" id="semesterPickerWrap">
+                                <button id="semesterPickerBtn" type="button" class="semester-picker-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="semesterPickerMenu">
+                                    <span id="semesterPickerLabel" class="semester-picker-label course-status-semester"></span>
+                                    <svg class="semester-picker-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" d="M6 9l6 6 6-6"/></svg>
+                                </button>
+                                <ul id="semesterPickerMenu" class="semester-picker-menu hidden" role="listbox"></ul>
+                                <input type="file" id="semesterPickerFileInput" class="hidden" accept=".json,application/json">
+                            </div>
+                            <button id="courseStatusLine" type="button" class="course-status-line" aria-live="polite" aria-haspopup="listbox" aria-expanded="false" aria-controls="courseStatusDropdown">No semester file connected</button>
                         </div>
-                        <div class="menu-group" role="group" aria-labelledby="menuLibrariesLabel">
-                            <div id="menuLibrariesLabel" class="menu-group-label">Program libraries</div>
-                            <button id="menuUsersLibraryBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Users registry</button>
-                            <button id="menuClinicalSitesBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Clinical sites library</button>
-                        </div>
-                        <div class="menu-group" role="group" aria-labelledby="menuPlaygroundLabel">
-                            <div id="menuPlaygroundLabel" class="menu-group-label">Sandbox</div>
-                            <button id="menuPlaygroundBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Course playground…</button>
-                            <button id="menuExitPlaygroundBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">Return to semester file</button>
-                        </div>
-                        <hr class="menu-divider">
-                        <button id="clearStorageBtn" class="menu-item menu-item-danger" type="button" role="menuitem">Clear storage &amp; restore defaults</button>
-                        <button id="saveBtn" class="menu-item menu-item-primary" type="button" role="menuitem">Save</button>
+                        <div id="courseStatusDropdown" class="course-status-dropdown hidden" role="listbox"></div>
                     </div>
                 </div>
                 <input type="file" id="importFileInput" class="hidden">

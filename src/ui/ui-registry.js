@@ -117,12 +117,18 @@ export var UI_TABS = [
 ];
 
 export var UI_SHELL = [
-  'appMain', 'fileStatus', 'syncOneDriveBtn', 'userStatusLine', 'courseStatusLine', 'courseStatusDropdown',
+  'appMain', 'fileStatus', 'syncOneDriveBtn', 'courseStatusLine', 'courseStatusDropdown',
+  'semesterPickerWrap', 'semesterPickerBtn', 'semesterPickerLabel', 'semesterPickerMenu', 'semesterPickerFileInput',
   'menuToggle', 'menuDropdown', 'closeoutBanner', 'pwaInstallBanner', 'pwaIosInstallBanner', 'pwaOnedriveBanner'
 ];
 
+/** Header user menu: avatar toggle, identity labels, and account actions. */
+export var UI_USER_MENU = [
+  'userMenuToggle', 'userStatusLine', 'userMenuDropdown', 'userMenuName', 'userMenuRole',
+  'darkModeToggle', 'changePasswordBtn', 'switchUserMenuBtn', 'loadRegistryMenuBtn', 'logoutUserMenuBtn'
+];
+
 export var UI_MENU = [
-  'darkModeToggle', 'switchUserMenuBtn', 'loadRegistryMenuBtn', 'logoutUserMenuBtn',
   'newSemesterBatchBtn', 'semesterSwitchMenu', 'connectProgramDataBtn', 'reconnectProgramDataBtn',
   'saveAsBtn', 'openFileBtn', 'newFileBtn', 'importBtn',
   'exportBtn', 'menuUsersLibraryBtn', 'menuClinicalSitesBtn', 'menuPlaygroundBtn',
@@ -163,7 +169,7 @@ export function flattenModalIds() {
 }
 
 export function allRegisteredElementIds() {
-  var ids = UI_SHELL.concat(UI_MENU, UI_FILE_INPUTS, flattenModalIds());
+  var ids = UI_SHELL.concat(UI_USER_MENU, UI_MENU, UI_FILE_INPUTS, flattenModalIds());
   UI_TABS.forEach(function (tab) {
     ids.push(viewIdForTab(tab.id));
     ids = ids.concat(tab.anchors);

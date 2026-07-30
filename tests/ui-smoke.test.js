@@ -10,6 +10,7 @@ import {
   UI_TABS,
   UI_SHELL,
   UI_MENU,
+  UI_USER_MENU,
   UI_FILE_INPUTS,
   allRegisteredElementIds,
   flattenModalIds,
@@ -23,7 +24,7 @@ import * as CalendarEngine from '../src/core/calendar-engine.js';
 import * as SimFacultyStorage from '../src/storage/sim-faculty-storage.js';
 import * as Storage from '../src/storage/semester-storage.js';
 import { setFileRoot, state } from '../src/core/state.js';
-import { switchTab } from '../src/ui/chrome.js';
+import { switchTab, updateUserStatusLine } from '../src/ui/chrome.js';
 import { initUI } from '../src/main.js';
 import { loadIndexHtml, mockEngineerSession } from './ui-dom-harness.js';
 
@@ -110,7 +111,7 @@ describe('ui-smoke DOM contract', () => {
   });
 
   it('shell, menu, file inputs, and modals are present in the DOM', function () {
-    UI_SHELL.concat(UI_MENU, UI_FILE_INPUTS).forEach(function (id) {
+    UI_SHELL.concat(UI_USER_MENU, UI_MENU, UI_FILE_INPUTS).forEach(function (id) {
       expect(document.getElementById(id), 'missing #' + id).toBeTruthy();
     });
     flattenModalIds().forEach(function (id) {
@@ -173,5 +174,31 @@ describe('ui-smoke wiring and render', () => {
     expect(dropdown.classList.contains('hidden')).toBe(false);
     toggle.click();
     expect(dropdown.classList.contains('hidden')).toBe(true);
+  });
+
+  it('user avatar shows initials and opens the user menu with name and role', function () {
+    updateUserStatusLine();
+    expect(document.getElementById('userStatusLine').textContent).toBe('PE');
+    expect(document.getElementById('userMenuName').textContent).toBe('Program Engineer');
+    expect(document.getElementById('userMenuRole').textContent).toBe('Program Engineer');
+
+    var dropdown = document.getElementById('userMenuDropdown');
+    var toggle = document.getElementById('userMenuToggle');
+    expect(toggle.classList.contains('hidden')).toBe(false);
+    expect(dropdown.classList.contains('hidden')).toBe(true);
+    toggle.click();
+    expect(dropdown.classList.contains('hidden')).toBe(false);
+    toggle.click();
+    expect(dropdown.classList.contains('hidden')).toBe(true);
+  });
+
+  it('opening one header menu closes the other', function () {
+    var userDropdown = document.getElementById('userMenuDropdown');
+    var menuDropdown = document.getElementById('menuDropdown');
+    document.getElementById('userMenuToggle').click();
+    expect(userDropdown.classList.contains('hidden')).toBe(false);
+    document.getElementById('menuToggle').click();
+    expect(userDropdown.classList.contains('hidden')).toBe(true);
+    expect(menuDropdown.classList.contains('hidden')).toBe(false);
   });
 });

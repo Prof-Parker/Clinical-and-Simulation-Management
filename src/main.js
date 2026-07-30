@@ -52,14 +52,16 @@ import * as PlaygroundImport from './ui/playground-import.js';
 import * as Theory from './ui/theory/index.js';
 import { init as initLectureAssignments } from './ui/theory/lecture-assignments.js';
 import * as DateInputs from './ui/date-inputs.js';
-import { openLibraryTab, getNavShell } from './ui/course-selector.js';
+import { openLibraryTab, getNavShell, initCourseSelector } from './ui/course-selector.js';
+import { initSemesterPicker } from './ui/semester-picker.js';
 import {
   initSemesterMenu,
-  initCourseSelector,
   refresh,
   switchTab,
   closeMenu,
   toggleMenu,
+  closeUserMenu,
+  toggleUserMenu,
   toggleDarkMode,
   updateUserStatusLine
 } from './ui/chrome.js';
@@ -143,6 +145,7 @@ export function initUI() {
   Theory.init();
   initLectureAssignments();
   initCourseSelector();
+  initSemesterPicker();
   initSemesterMenu();
 
   var menuUsersBtn = document.getElementById('menuUsersLibraryBtn');
@@ -184,19 +187,40 @@ export function initUI() {
     toggleMenu();
   });
 
+  var userMenuToggle = document.getElementById('userMenuToggle');
+  if (userMenuToggle) {
+    userMenuToggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      toggleUserMenu();
+    });
+  }
+
   document.addEventListener('click', function (e) {
     if (!e.target.closest('.menu-wrap')) closeMenu();
+    if (!e.target.closest('.user-menu-wrap')) closeUserMenu();
   });
 
   document.getElementById('darkModeToggle').addEventListener('click', function () {
     toggleDarkMode();
-    closeMenu();
+    closeUserMenu();
   });
+
+  var changePasswordBtn = document.getElementById('changePasswordBtn');
+  if (changePasswordBtn) {
+    changePasswordBtn.addEventListener('click', function () {
+      closeUserMenu();
+      showAlert(
+        'Change password',
+        'Changing your password from inside the app is not available yet. ' +
+        'Ask your program engineer to reset it in the users registry.'
+      );
+    });
+  }
 
   var switchUserMenuBtn = document.getElementById('switchUserMenuBtn');
   if (switchUserMenuBtn) {
     switchUserMenuBtn.addEventListener('click', function () {
-      closeMenu();
+      closeUserMenu();
       UserSession.beginUserSwitch();
       UserSession.showGateModal('');
     });
@@ -210,14 +234,14 @@ export function initUI() {
         UserSession.showGateModal('');
         refresh();
       }).catch(function () {});
-      closeMenu();
+      closeUserMenu();
     });
   }
 
   var logoutUserMenuBtn = document.getElementById('logoutUserMenuBtn');
   if (logoutUserMenuBtn) {
     logoutUserMenuBtn.addEventListener('click', function () {
-      closeMenu();
+      closeUserMenu();
       UserSession.logout();
     });
   }

@@ -32,26 +32,22 @@ export function buildSemesterLabelHtml(parts) {
   return html;
 }
 
+/** Course-switcher row only — semester lives in #semesterPickerBtn. */
 export function buildCourseStatusHtml(parts, code, phase) {
   var value = esc(code || '—');
   var phaseText = String(phase || '').replace(/_/g, ' ').trim();
   if (phaseText) value += ' · ' + esc(phaseText);
-  return '<span class="course-status-display">' +
-    '<span class="course-status-semester">' + buildSemesterLabelHtml(parts) + '</span>' +
-    '<span class="course-status-context">' +
+  return '<span class="course-status-context">' +
     '<span class="course-status-context-label">Switch course</span>' +
     '<span class="course-status-context-row">' +
     '<span class="course-status-context-value">' + value + '</span>' +
     COURSE_STATUS_CHEVRON +
-    '</span></span></span>';
+    '</span></span>';
 }
 
 export function courseStatusAriaLabel(parts, code, phase) {
-  var seasonLabel = parts.season === 'fall' ? 'Fall' : (parts.season === 'spring' ? 'Spring' : '');
-  var semester = seasonLabel ? seasonLabel + ' ' + (parts.year || '') : (parts.name || 'Semester');
   var label = 'Switch course, ' + (code || '—');
   var phaseText = String(phase || '').replace(/_/g, ' ').trim();
   if (phaseText) label += ', ' + phaseText;
-  label += ', ' + semester.trim() + ' semester';
   return label;
 }

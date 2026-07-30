@@ -46,15 +46,37 @@ export function updateCourseStatusLine() {
   updateCourseStatusLabel();
 }
 
+function userInitials(name) {
+  var parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  var first = parts[0].charAt(0);
+  var last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
+  return (first + last).toUpperCase();
+}
+
 export function updateUserStatusLine() {
-  var el = document.getElementById('userStatusLine');
-  if (!el) return;
+  var initialsEl = document.getElementById('userStatusLine');
+  var toggle = document.getElementById('userMenuToggle');
+  var nameEl = document.getElementById('userMenuName');
+  var roleEl = document.getElementById('userMenuRole');
   var session = UserSession.getSession();
   if (!session) {
-    el.textContent = '';
+    if (initialsEl) initialsEl.textContent = '';
+    if (nameEl) nameEl.textContent = '';
+    if (roleEl) roleEl.textContent = '';
+    if (toggle) toggle.classList.add('hidden');
+    closeUserMenu();
     return;
   }
-  el.textContent = session.name + ' (' + UserTemplate.roleDisplayName(session.role) + ')';
+  var roleName = UserTemplate.roleDisplayName(session.role);
+  if (initialsEl) initialsEl.textContent = userInitials(session.name);
+  if (nameEl) nameEl.textContent = session.name;
+  if (roleEl) roleEl.textContent = roleName;
+  if (toggle) {
+    toggle.classList.remove('hidden');
+    toggle.setAttribute('aria-label', 'User menu — ' + session.name + ' (' + roleName + ')');
+    toggle.title = session.name + ' (' + roleName + ')';
+  }
 }
 
 export function updateSemesterDisplay() {
@@ -105,7 +127,27 @@ export function toggleMenu() {
   var open = dropdown.classList.toggle('hidden');
   toggle.setAttribute('aria-expanded', open ? 'false' : 'true');
   if (!open) {
+    closeUserMenu();
     refreshSemesterSwitchMenu();
+    if (Permissions.applyMenuGating) Permissions.applyMenuGating();
+  }
+}
+
+export function closeUserMenu() {
+  var dropdown = document.getElementById('userMenuDropdown');
+  var toggle = document.getElementById('userMenuToggle');
+  if (dropdown) dropdown.classList.add('hidden');
+  if (toggle) toggle.setAttribute('aria-expanded', 'false');
+}
+
+export function toggleUserMenu() {
+  var dropdown = document.getElementById('userMenuDropdown');
+  var toggle = document.getElementById('userMenuToggle');
+  if (!dropdown || !toggle) return;
+  var open = dropdown.classList.toggle('hidden');
+  toggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+  if (!open) {
+    closeMenu();
     if (Permissions.applyMenuGating) Permissions.applyMenuGating();
   }
 }

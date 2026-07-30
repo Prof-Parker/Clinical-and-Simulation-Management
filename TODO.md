@@ -31,7 +31,7 @@ TODO.md
 # Feature Implementation plan
 ## Phase 1 [ ]
 - [X] Support multiple courses
-- [ ] Clinical hour tracking
+- [X] Clinical hour tracking
 - [X] Clinical site library
 - [X]Clinical site tags/sub sites
 - [X] Permissions settings
@@ -39,17 +39,17 @@ TODO.md
 - [X] Human readable proposed change process
 - [X] Flag for unsaved changes vs unsynced changes, revamp sync behavior (pull from oneDrive, merge, push)
 - [X] Theory support
-- [ ] Hide connect vs open semester file desktop vs ipad
+- [X] Hide connect vs open semester file desktop vs ipad
 - [X] Print merged theory and clinical calendar for each student.
 - [X] Batch print and send student calendars
 
 ## Phase 2 [ ]
-- [ ] Improve theory scheduling
-    - [ ] Drag and drop topics
-    - [ ] Default lecture times per course
-    - [ ] Add assignment function
-    - [ ] Assign lecturers function
-- [ ] Course wide calendar support with export functions for Admin, Faculty and Students
+- [X] Improve theory scheduling
+    - [X] Drag and drop topics
+    - [X] Default lecture times per course
+    - [X] Add assignment function
+    - [X] Assign lecturers function
+- [X] Course wide calendar support with export functions for Admin, Faculty and Students
 - [ ] Clinical faculty assignments and self schedule function
 
 ## Phase 3 [ ]
@@ -100,13 +100,24 @@ TODO.md
     - [ ] Faculty request coverage or swap days
     - [ ] Search by semeser, day of the week, times, length (add support for half days), content area, facility
 
+
 ## Worklist after demo:
 - [X] implement file_kind_guards **priority**
-- [ ] Debug file kind guards
-    -[ ] Login issues
-    -[ ] No overwrite protection/guard on program file->user file
+- [X] Debug file kind guards
+    -[X] Login issues
+    -[X] No overwrite protection/guard on program file->user file
 - [ ] Add acredidation tracking support for content (large feature)
 - [ ] Work on Audra contact hour items
+- [ ] Add support to change user roles from user management system
+- [ ] Add file structure to seed and program data picker to support batch export and archieve folder, audit folder archieve, and password send folder
+- [ ] Add audit mailto feature
+
+#### UI improvements after implementing folder picker:
+- [ ] remove save setup buttons if keeping live sync with onedrive. Investigate dirty state of file and possible storage options for faculty user before proposal submit
+- [ ] Further investigate file managment menu items (may be able to remove/streamline some items)
+
+### Lower priority TODO:
+- [ ] Add in app bug and feature request function
 
 ## Bugs identified in v2.5.0 
 - [ ] Advanced config input fields in praciticum setup were not working (no updown buttons, static no free text) when opening on college computer (working on dev computer)

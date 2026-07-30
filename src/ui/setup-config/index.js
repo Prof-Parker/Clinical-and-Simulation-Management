@@ -380,8 +380,19 @@ function applyRoleMode() {
     if (importPgBtn) importPgBtn.classList.toggle('hidden', !canImportPg);
     if (templateBtn) templateBtn.classList.toggle('hidden', !isEngineer);
     var readOnly = !canEdit && !canDraft;
+    // Only toggle controls this gate disabled, so widget-owned states
+    // (lead faculty name/select) survive a later re-apply.
     document.querySelectorAll('#view-setup input, #view-setup select, #view-setup textarea').forEach(function (el) {
-      if (readOnly && !el.closest('.setup-actions-sticky')) el.disabled = readOnly;
+      if (el.closest('.setup-actions-sticky')) return;
+      if (readOnly) {
+        if (!el.disabled) {
+          el.disabled = true;
+          el.dataset.roleDisabled = '1';
+        }
+      } else if (el.dataset.roleDisabled === '1') {
+        el.disabled = false;
+        delete el.dataset.roleDisabled;
+      }
     });
   }
 

@@ -207,6 +207,14 @@ html.dark input[type="date"] {
   margin-bottom: 0.75rem;
 }
 .header-brand { flex: 1 1 200px; min-width: 0; }
+.header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+  margin-left: auto;
+  min-width: 0;
+}
 .header-title-row {
   display: flex;
   flex-wrap: wrap;
@@ -2183,26 +2191,66 @@ html.dark .schedule-master-table td.cell-orientation-conflict {
 html.dark .conflicts-panel { background: #450a0a; border-color: #7f1d1d; color: #fca5a5; }
 
 .course-status-line { font-size: 0.875rem; font-weight: 600; color: var(--text); text-align: right; }
-.course-status-display {
+.course-status-wrap .course-status-display {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 0.1rem;
   line-height: 1.15;
 }
-.course-status-semester {
+.course-status-wrap .semester-picker {
+  position: relative;
+}
+.course-status-wrap .semester-picker-btn {
+  padding: 0;
+  gap: 0.35rem;
+}
+.course-status-wrap .semester-picker-label,
+.course-status-wrap .course-status-semester {
   font-size: clamp(1.25rem, 3vw, 1.65rem);
   font-weight: 800;
   letter-spacing: -0.02em;
+  line-height: 1.1;
 }
+.course-status-wrap .semester-picker-label .semester-label-inner,
 .course-status-semester .semester-label-inner {
   display: inline-flex;
   align-items: baseline;
   gap: 0.3rem;
 }
+.course-status-wrap .semester-picker-label .season-year,
 .course-status-semester .season-year {
   color: var(--text);
   font-weight: 800;
+}
+.course-status-wrap .semester-picker-chevron {
+  margin-top: 0;
+  opacity: 0.65;
+  transition: transform 0.15s ease;
+}
+.course-status-wrap .semester-picker-btn[aria-expanded="true"] .semester-picker-chevron {
+  transform: rotate(180deg);
+}
+.semester-picker-option-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.semester-picker-current {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-left: 0.35rem;
+}
+.semester-picker-search,
+.semester-picker-classic {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--primary);
+  border-top: 1px solid var(--border);
+  margin-top: 0.25rem;
+  border-radius: 0 0 0.5rem 0.5rem;
 }
 .course-status-context {
   display: inline-flex;
@@ -2240,8 +2288,45 @@ html.dark .conflicts-panel { background: #450a0a; border-color: #7f1d1d; color: 
 button.course-status-line[aria-expanded="true"] .course-status-chevron {
   transform: rotate(180deg);
 }
-.user-status-line { display: block; font-size: 0.75rem; color: var(--text-muted, #64748b); margin-top: 0.25rem; }
 .header-status-wrap { display: flex; align-items: center; }
+.header-right-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.user-menu-wrap { position: relative; flex-shrink: 0; }
+.user-avatar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--primary-light);
+  color: var(--primary);
+  cursor: pointer;
+}
+.user-avatar-btn:hover { background: var(--bg); }
+.user-avatar-initials {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.user-menu-dropdown { min-width: 15rem; }
+.user-menu-identity { padding: 0.5rem 0.875rem 0.35rem; }
+.user-menu-name { margin: 0; font-size: 0.9375rem; font-weight: 700; line-height: 1.3; }
+.user-menu-role {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
 
 .user-gate-modal {
   z-index: 500;
