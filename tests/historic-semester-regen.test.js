@@ -1,7 +1,10 @@
 /**
  * Regen property tests using S2026 (4×4) and F2026 (5×4) advanced configs.
+ *
+ * Fixtures live in the gitignored mock-onedrive folder, so these suites skip
+ * anywhere the real semester data is unavailable (CI, fresh clones).
  */
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { describe, it, expect } from 'vitest';
@@ -14,6 +17,13 @@ import {
 
 var __dirname = dirname(fileURLToPath(import.meta.url));
 var root = join(__dirname, '..');
+
+var S2026_FIXTURE = 'mock-onedrive/semesters/S2026_REGN15P.json';
+var F2026_FIXTURE = 'mock-onedrive/semesters/F2026_REGN_program.json';
+
+function hasFixture(relPath) {
+  return existsSync(join(root, relPath));
+}
 
 function loadSemester(relPath) {
   var raw = JSON.parse(readFileSync(join(root, relPath), 'utf8'));
@@ -55,9 +65,9 @@ function simsOrdered(student) {
   return true;
 }
 
-describe('S2026 4×4 Spring Excel-aligned regen', () => {
+describe.skipIf(!hasFixture(S2026_FIXTURE))('S2026 4×4 Spring Excel-aligned regen', () => {
   it('rebuilds eligible-list blocks and places ordered sims without guests/misses', () => {
-    var sem = loadSemester('mock-onedrive/semesters/S2026_REGN15P.json');
+    var sem = loadSemester(S2026_FIXTURE);
     sem.calendar.semesterStartDate = '2026-01-19';
     sem.config.holidayBlocksFullWeek = true;
     sem.config.simStartWeek = 4;
@@ -126,9 +136,9 @@ describe('S2026 4×4 Spring Excel-aligned regen', () => {
   });
 });
 
-describe('F2026 5×4 program regen', () => {
+describe.skipIf(!hasFixture(F2026_FIXTURE))('F2026 5×4 program regen', () => {
   it('migrates mondayHoliday and recreates Sim5 W14/W16 with aligned days', () => {
-    var sem = loadSemester('mock-onedrive/semesters/F2026_REGN_program.json');
+    var sem = loadSemester(F2026_FIXTURE);
     sem.config.holidayBlocksFullWeek = true;
     (sem.holidays || []).forEach(function (h) {
       if (h.type === 'mondayHoliday') h.type = 'holiday';
