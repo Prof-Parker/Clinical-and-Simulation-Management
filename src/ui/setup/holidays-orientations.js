@@ -43,7 +43,12 @@ function semesterWeekHintForIndex(data, weekIndex) {
     var wi = parseInt(weekIndex, 10);
     if (isNaN(wi) || wi < 0 || wi > 17) return 'Select a week';
     var label = CalendarEngine.getWeekDisplay(data, wi, true);
-    if (CalendarEngine.isWeekInactive(data, wi)) label += ' — inactive';
+    if (CalendarEngine.isSchedulingBlockedWeek(data, wi)) label += ' — break / inactive';
+    else if (CalendarEngine.weekHasHoliday(data, wi)) {
+      label += CalendarEngine.holidayBlocksFullWeek(data)
+        ? ' — holiday (week blocked for algo)'
+        : ' — holiday (day-only for algo)';
+    }
     return label;
   }
 
@@ -82,6 +87,7 @@ function renderHolidays(data, containerId) {
     }
     holidays.forEach(function (h, i) {
       var type = h.type || 'holiday';
+      if (type === 'mondayHoliday') type = 'holiday';
       if (type === 'break') syncBreakHolidayDate(h, data);
       else if (!h.date && h.weekIndex != null && data.calendar.weeks[h.weekIndex]) {
         h.date = data.calendar.weeks[h.weekIndex].startDate;
@@ -107,8 +113,7 @@ function renderHolidays(data, containerId) {
         '<select data-hol="type" data-idx="' + i + '">' +
         [
           { v: 'holiday', l: 'Holiday' },
-          { v: 'break', l: 'Break (full week off)' },
-          { v: 'mondayHoliday', l: 'Monday holiday' }
+          { v: 'break', l: 'Break (full week off)' }
         ].map(function (opt) {
           return '<option value="' + opt.v + '"' + (type === opt.v ? ' selected' : '') + '>' + opt.l + '</option>';
         }).join('') +

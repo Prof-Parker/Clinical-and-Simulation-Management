@@ -7,7 +7,7 @@ TODO.md
 - [X] fixed headers, student name and clinical group sidebars for Master interactive schedule
 - [ ] Hover function for clinical group (clinical site name, scheduled day)
 - [X] Sim Faculty UI: Move menu items to simulation roles page
-- [ ] Add historic 2026 4/4
+- [X] Add historic 2026 4/4 (eligible-list + holiday week-block; Sun–Sat weeks; regen tests)
 - [X] Move current 5/4 default to FALL 2026
 - [X] Default to 4 sections
 - [X] UX for clicking buttons in setup (confirmation flags)
@@ -15,6 +15,7 @@ TODO.md
 - [X] Remove new semester file from menu (already have button)
 - [X] Add export excel export
 - [X] Double check tooltips and section headers match current logic and functions
+- [X] Holiday model: break|holiday + per-course `holidayBlocksFullWeek` (no mondayHoliday)
 
 # Expanded scope
 - [X] Add support for other semesters based on feedback from faculty and staff
@@ -121,4 +122,4 @@ TODO.md
 
 ## Bugs identified in v2.5.0 
 - [ ] Advanced config input fields in praciticum setup were not working (no updown buttons, static no free text) when opening on college computer (working on dev computer)
-- [ ] 4 clinical group and 4 sim group setup with rebalance both results in numerous guest sim placements when there should be 0
+- [X] 4 clinical group and 4 sim group setup with rebalance both results in numerous guest sim placements when there should be 0 (root cause: colliding sim block weeks on holiday bump; fixed via eligible-list allocator + week-block holiday model)

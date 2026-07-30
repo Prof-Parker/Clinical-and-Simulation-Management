@@ -449,6 +449,10 @@
                         <label>Max guest sims per student<input type="number" id="cfgMaxGuestSims" min="0" title="Soft cap: prefer moving sim groups during rebalance so each student guests at most this many times (default 1)"></label>
                         <label>Max sim session (makeup overload only)<input type="number" id="cfgMaxSimOverload"></label>
                         <label>Sim makeup headroom (seats reserved per session)<input type="number" id="cfgSimHeadroom" min="0" max="3" title="During initial schedule generation, reserve this many seats per sim session for absence makeups"></label>
+                        <label class="filter-check filter-check-compact" style="align-self:end;padding-bottom:0.55rem">
+                          <input type="checkbox" id="cfgHolidayBlocksWeek" title="When checked, a holiday date blocks the entire instructional week for algorithmic sim/clinical placement. When unchecked, only that weekday is blocked (Mon/Tue streams may diverge).">
+                          Holiday blocks full week for sim/clinical
+                        </label>
                         <label>Clinical start week<input type="number" id="cfgClinStart"></label>
                         <label>Simulation start week<input type="number" id="cfgSimStart"></label>
                         <label>Clinical makeup target week<input type="number" id="cfgClinMakeupPrimary" min="1" max="18" placeholder="Auto" title="Leave blank to use second-to-last active week"></label>

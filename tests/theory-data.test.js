@@ -89,7 +89,7 @@ describe('theory-data.test.js', () => {
   it('resolves moduleCode 1A to Wed of week 1', () => {
     var fileRoot = DataModel.createDefaultFile();
     var sem = fileRoot.semesters[0];
-    sem.calendar.semesterStartDate = '2026-08-01';
+    sem.calendar.semesterStartDate = '2026-08-16';
     CalendarEngine.rebuildWeeks(sem);
     DataModel.migrateSemester(sem);
     var date = TheoryData.dateForModuleCode(sem, '1A');

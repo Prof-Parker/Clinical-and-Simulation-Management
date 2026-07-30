@@ -26,9 +26,14 @@ import {
 } from './helpers.js';
 import { withProvenance } from './makeup.js';
 import { getWeek18SimFallback } from './makeup.js';
-import { resolveSimBlockWeeks } from './sim-block-weeks.js';
+import {
+  resolveSimBlockWeeks,
+  buildProgramSimBlocks,
+  weekIndexForPatternDay,
+  getNominalSimWeekStreams
+} from './sim-block-weeks.js';
 
-export { resolveSimBlockWeeks } from './sim-block-weeks.js';
+export { resolveSimBlockWeeks, weekIndexForPatternDay } from './sim-block-weeks.js';
 
 export var SIM_GROUP_SCHEDULE = {
   SG1: { weeks: [4, 6, 8, 10, 12, 14, 16], day: 'Mon' },
@@ -38,16 +43,7 @@ export var SIM_GROUP_SCHEDULE = {
 };
 
 export function getSimWeekPatterns(cfg) {
-  var start = (cfg.simStartWeek || 5) - 1;
-  var evenWeeks = [];
-  var oddWeeks = [];
-  for (var i = 0; i < 9; i++) {
-    var ew = start + i * 2;
-    var ow = start + 1 + i * 2;
-    if (ew < 18) evenWeeks.push(ew);
-    if (ow < 18) oddWeeks.push(ow);
-  }
-  return { evenWeeks: evenWeeks, oddWeeks: oddWeeks };
+  return getNominalSimWeekStreams(cfg);
 }
 
 export function getSimGroupSchedule(hostSimGroup, simGroups, cfg) {
@@ -57,7 +53,8 @@ export function getSimGroupSchedule(hostSimGroup, simGroups, cfg) {
   var pattern = getSimGroupPattern(hostSimGroup, cfg);
   return {
     weeks: (pattern === 'odd' ? patterns.oddWeeks : patterns.evenWeeks).slice(),
-    day: day
+    day: day,
+    pattern: pattern
   };
 }
 
@@ -75,35 +72,7 @@ export function alternateSimDay(day, cfg) {
 }
 
 export function buildProgramSimCalendar(data, cfg) {
-  var patterns = getSimWeekPatterns(cfg);
-  var evenWeeks = patterns.evenWeeks.slice();
-  var oddWeeks = patterns.oddWeeks.slice();
-  var needed = cfg.simDaysRequired || 5;
-  var blocks = [];
-  var weekToSim = {};
-
-  for (var i = 0; i < needed; i++) {
-    var resolved = resolveSimBlockWeeks(data, evenWeeks, oddWeeks, i);
-    var block = {
-      simNum: i + 1,
-      evenWeekIndex: resolved.evenWeekIndex,
-      oddWeekIndex: resolved.oddWeekIndex,
-      nominalEvenWeekIndex: resolved.nominalEvenWeekIndex,
-      nominalOddWeekIndex: resolved.nominalOddWeekIndex,
-      weeks: []
-    };
-    if (resolved.evenWeekIndex != null) {
-      block.weeks.push(resolved.evenWeekIndex);
-      weekToSim[resolved.evenWeekIndex] = i + 1;
-    }
-    if (resolved.oddWeekIndex != null && block.weeks.indexOf(resolved.oddWeekIndex) < 0) {
-      block.weeks.push(resolved.oddWeekIndex);
-      weekToSim[resolved.oddWeekIndex] = i + 1;
-    }
-    block.weeks.sort(function (a, b) { return a - b; });
-    blocks.push(block);
-  }
-  return { blocks: blocks, weekToSim: weekToSim };
+  return buildProgramSimBlocks(data, cfg || data.config);
 }
 
 export function getWeekSimNumber(calendar, weekIndex) {
@@ -118,8 +87,8 @@ export function resolveSimSessionHost(simNum, weekIndex, day, calendar, simGroup
     var sg = simGroups[i];
     var sch = getSimGroupSchedule(sg, simGroups, cfg);
     if (sch.day !== day) continue;
-    var odd = usesOddPatternWeek(sg, simGroups, cfg);
-    var wi = odd ? block.oddWeekIndex : block.evenWeekIndex;
+    var pattern = getSimGroupPattern(sg, cfg);
+    var wi = weekIndexForPatternDay(block, pattern, day);
     if (wi === weekIndex) return sg;
   }
   return null;
@@ -136,20 +105,28 @@ export function getStudentSimSlotCandidates(student, data, simNum, calendar, sim
   if (!block) return [];
   if (!cfg) cfg = defaultConfig();
   var sch = getSimGroupSchedule(student.simGroup, simGroups, cfg);
-  var odd = usesOddPatternWeek(student.simGroup, simGroups, cfg);
-  var primaryWi = odd ? block.oddWeekIndex : block.evenWeekIndex;
+  var pattern = getSimGroupPattern(student.simGroup, cfg);
+  var primaryWi = weekIndexForPatternDay(block, pattern, sch.day);
   var slots = [];
 
-  function pushWeekSlots(wi, tier) {
+  function pushWeekSlots(wi, tier, preferDay) {
     if (wi == null || wi >= 18) return;
-    if (CalendarEngine.isWeekInactive(data, wi)) return;
     var days = simDaysOrderForWeek(student, wi, sch, cfg);
+    if (preferDay) {
+      days = days.slice();
+      days.sort(function (a, b) {
+        if (a === preferDay) return -1;
+        if (b === preferDay) return 1;
+        return 0;
+      });
+    }
     var cell = student.schedule[wi];
     var clinDay = getStudentClinicalDay(student, cfg);
     if (wouldSimClinicalConflict(cell, student, cfg, clinDay)) {
       days = days.filter(function (d) { return d !== clinDay; });
     }
     days.forEach(function (day) {
+      if (CalendarEngine.isSchedulingBlockedDay(data, wi, day)) return;
       slots.push({
         weekIndex: wi,
         day: day,
@@ -160,9 +137,22 @@ export function getStudentSimSlotCandidates(student, data, simNum, calendar, sim
     });
   }
 
-  if (primaryWi != null) pushWeekSlots(primaryWi, 'primary');
+  if (primaryWi != null) pushWeekSlots(primaryWi, 'primary', sch.day);
+
+  // Alternate week(s) for this group's day stream, then other block weeks.
+  if (block.weeksByDay && block.weeksByDay[sch.day]) {
+    var dayEntry = block.weeksByDay[sch.day];
+    [dayEntry.evenWeekIndex, dayEntry.oddWeekIndex].forEach(function (wi) {
+      if (wi != null && wi !== primaryWi) pushWeekSlots(wi, 'primaryAlt', sch.day);
+    });
+  }
   block.weeks.forEach(function (wi) {
-    if (wi !== primaryWi) pushWeekSlots(wi, 'primaryAlt');
+    if (wi === primaryWi) return;
+    if (block.weeksByDay && block.weeksByDay[sch.day]) {
+      var de = block.weeksByDay[sch.day];
+      if (wi === de.evenWeekIndex || wi === de.oddWeekIndex) return;
+    }
+    pushWeekSlots(wi, 'primaryAlt', null);
   });
   return slots;
 }
@@ -172,8 +162,20 @@ export function buildGuestFallbackSlots(student, data, block, simNum, simGroups,
   simGroups.forEach(function (sg) {
     if (sg === student.simGroup) return;
     var sch = getSimGroupSchedule(sg, simGroups, cfg);
+    var pattern = getSimGroupPattern(sg, cfg);
+    var hostWi = weekIndexForPatternDay(block, pattern, sch.day);
+    var weekList = [];
+    if (hostWi != null) weekList.push(hostWi);
+    if (block.weeksByDay && block.weeksByDay[sch.day]) {
+      var de = block.weeksByDay[sch.day];
+      [de.evenWeekIndex, de.oddWeekIndex].forEach(function (wi) {
+        if (wi != null && weekList.indexOf(wi) < 0) weekList.push(wi);
+      });
+    }
     block.weeks.forEach(function (wi) {
-      if (CalendarEngine.isWeekInactive(data, wi)) return;
+      if (weekList.indexOf(wi) < 0) weekList.push(wi);
+    });
+    weekList.forEach(function (wi) {
       var days = simDaysOrderForWeek(student, wi, sch, cfg);
       var cell = student.schedule[wi];
       var clinDay = getStudentClinicalDay(student, cfg);
@@ -181,6 +183,7 @@ export function buildGuestFallbackSlots(student, data, block, simNum, simGroups,
         days = days.filter(function (d) { return d !== clinDay; });
       }
       days.forEach(function (day) {
+        if (CalendarEngine.isSchedulingBlockedDay(data, wi, day)) return;
         slots.push({ weekIndex: wi, day: day, simNum: simNum, hostSimGroup: sg, tier: 'guest' });
       });
     });
@@ -195,8 +198,9 @@ function buildOverloadJoinSlots(student, data, calendar, simNum, cfg) {
   var simDays = getSimDays(cfg);
   var slots = [];
   block.weeks.forEach(function (wi) {
-    if (CalendarEngine.isWeekInactive(data, wi)) return;
+    if (CalendarEngine.isSchedulingBlockedWeek(data, wi)) return;
     simDays.forEach(function (day) {
+      if (CalendarEngine.isSchedulingBlockedDay(data, wi, day)) return;
       var count = getDaySimAttendanceCount(data, wi, day);
       if (count < caps.normal || count >= caps.overload) return;
       if (getSessionCount(data, wi, simNum, day) <= 0) return;
@@ -234,8 +238,9 @@ function blockHasSoftHeadroom(data, calendar, simNum, cfg) {
   var simDays = getSimDays(cfg);
   for (var i = 0; i < block.weeks.length; i++) {
     var wi = block.weeks[i];
-    if (CalendarEngine.isWeekInactive(data, wi)) continue;
+    if (CalendarEngine.isSchedulingBlockedWeek(data, wi)) continue;
     for (var d = 0; d < simDays.length; d++) {
+      if (CalendarEngine.isSchedulingBlockedDay(data, wi, simDays[d])) continue;
       if (getDaySimAttendanceCount(data, wi, simDays[d]) < softCap) return true;
     }
   }
@@ -284,7 +289,7 @@ export function buildSimPlacementCandidates(student, data, calendar, simNum, sta
   if (state.simClinicalConflicts < 1 && block) {
     var clinDay = getStudentClinicalDay(student, cfg);
     block.weeks.forEach(function (wi) {
-      if (CalendarEngine.isWeekInactive(data, wi)) return;
+      if (CalendarEngine.isSchedulingBlockedDay(data, wi, clinDay)) return;
       var cell = student.schedule[wi];
       if (!wouldSimClinicalConflict(cell, student, cfg, clinDay)) return;
       conflictAllow.push({
@@ -339,6 +344,7 @@ export function buildStateFromStudentSchedule(student, cfg) {
 
 function canPlaceSimSlot(student, data, wi, simNum, day, hostSimGroup, state, options) {
   options = options || {};
+  if (CalendarEngine.isSchedulingBlockedDay(data, wi, day)) return false;
   var cfg = data.config;
   var caps = getSimCaps(cfg);
   var count = getDaySimAttendanceCount(data, wi, day);

@@ -83,6 +83,9 @@ export function migrateSemester(semester) {
   }
   if (!semester.calendar) semester.calendar = { semesterStartDate: new Date().toISOString().slice(0, 10), weeks: [] };
   if (!semester.holidays) semester.holidays = [];
+  (semester.holidays || []).forEach(function (h) {
+    if (h && h.type === 'mondayHoliday') h.type = 'holiday';
+  });
   if (!semester.orientations) semester.orientations = [];
   if (!semester.facilities) semester.facilities = defaultFacilities();
   normalizeFacilities(semester);

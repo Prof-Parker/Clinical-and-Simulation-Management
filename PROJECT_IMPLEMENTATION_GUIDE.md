@@ -26,7 +26,10 @@ index.html → src/main.js
 │   ├── core/state.js            Reactive state, getData/setData, notifyChange
 │   ├── core/data-model/         Schema, defaults, migration, student/semester shapes
 │   ├── core/scheduler/          Clinical + sim generation, makeup slots
-│   ├── core/calendar-engine.js  18-week calendar, holidays, inactive weeks
+│   ├── core/calendar-engine.js  Public calendar barrel (weeks, holidays, block helpers)
+│   ├── core/calendar-weeks.js   Sun–Sat week rebuild, date→week indexing
+│   ├── core/calendar-holidays.js  break/holiday apply + isSchedulingBlockedWeek/Day
+│   ├── core/scheduler/sim-block-weeks.js  Eligible-list per-day sim block allocation
 │   ├── core/course-defaults.js  Per-course default config templates
 │   ├── core/theory-data.js      Theory calendar schema, projections, contact-hour math
 │   ├── storage/theory-library-storage.js  Theory library persistence + CRUD
@@ -156,9 +159,13 @@ From `js/data-model.js` `defaultConfig()`:
 - Default SG1/SG2: even pattern; SG3/SG4: odd pattern (Mon/Tue respectively)
 - When clinical and sim group **counts match**, `regenerateAll()` forces C*n*→SG*n* alignment
 
-Program calendar pairs even+odd weeks into **sim blocks** (Sim 1 = weeks 5–6, Sim 2 = 7–8, …) via `buildProgramSimCalendar()`.
+Program calendar builds **sim blocks** via `buildProgramSimCalendar()` → `buildProgramSimBlocks()`: for each `simDay`, collect eligible weeks from `simStartWeek` (skipping breaks and holiday blocks per `holidayBlocksFullWeek`), then assign even/odd slots by list position. Blocks store shared `evenWeekIndex`/`oddWeekIndex` when days agree, plus `weeksByDay[day]` when Mon/Tue streams diverge.
 
-**Holiday week-push:** When a nominal block week is inactive (Monday holiday or break), `resolveSimBlockWeeks()` advances that pattern stream (even or odd) to the next active week in the same sequence. If the pushed even week collides with the odd week for the same block, the odd stream cascades forward (skipping any further inactive weeks). Example (F2026, Sim 5): Veterans Day inactivates week 13 → even-pattern groups move to week 14; odd-pattern groups cascade to week 16 (Thanksgiving inactivates week 15). Matches the prototype in `docs/Design Docs/protypes/Clinical Schedule.html`.
+**Holidays:** Types are `break` (full week `inactive`) and `holiday` (date on any weekday; week stays editable for orientations). `config.holidayBlocksFullWeek` (course default: REGN15P/35P/48P true, REGN25P false) controls whether a holiday blocks the whole week or only that weekday for algo placement. Helpers: `isSchedulingBlockedWeek`, `isSchedulingBlockedDay`. Legacy `mondayHoliday` migrates to `holiday`.
+
+**Week boundaries:** Week 1 = `semesterStartDate` through that Saturday; weeks 2–18 always Sunday–Saturday (`endDate` on each week).
+
+**Example (F2026, week-block ON):** Veterans holiday in week 13 and Thanksgiving break in week 15 → eligible list skips those weeks → Sim 5 even week 14 / odd week 16 (Mon and Tue aligned). Tests: `tests/sim-holiday-push.test.js`, `tests/historic-semester-regen.test.js`.
 
 ---
 
@@ -221,7 +228,7 @@ Single-student regen: `regenerateStudent()` clears that student’s sims and re-
 
 Clinical/sim weekday overlap is **informational** in `feasibility.js` (not a generation failure when schedules complete).
 
-Tests in `tests/scheduling-rules.test.js` assert program calendar, guest spread, week-18 defer, load balance, headroom, and overlap routing against `Scheduling_rules.md`. `tests/schedule-status.test.js` covers the setup tiers.
+Tests in `tests/scheduling-rules.test.js` assert program calendar, guest spread, week-18 defer, load balance, headroom, and overlap routing against `Scheduling_rules.md`. `tests/schedule-status.test.js` covers the setup tiers. `tests/sim-holiday-push.test.js` covers Sun–Sat weeks, Fall 2025 week-block ON/OFF, and F2026 Sim5 push. `tests/historic-semester-regen.test.js` regenerates from S2026 (4×4) and F2026 (5×4) advanced configs.
 
 ---
 

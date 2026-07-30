@@ -2,7 +2,7 @@
  * Module letter/title helpers and moduleCode ↔ date mapping.
  */
 
-import { parseDate, toISO, addDays } from './calendar-engine.js';
+import { parseDate, toISO, addDays, dateForWeekdayInWeekRange } from './calendar-engine.js';
 
 export var WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -96,9 +96,7 @@ export function weekdayToOffset(weekday) {
 
 export function dateForWeekdayInWeek(semester, weekIndex, weekday) {
   if (!semester || !semester.calendar || !semester.calendar.weeks[weekIndex]) return null;
-  var ws = parseDate(semester.calendar.weeks[weekIndex].startDate);
-  if (!ws) return null;
-  return toISO(addDays(ws, weekdayToOffset(weekday)));
+  return dateForWeekdayInWeekRange(semester.calendar.weeks[weekIndex], weekday);
 }
 
 export function dateForModuleCode(semester, moduleCode) {

@@ -159,20 +159,6 @@ export function syncHolidaysFromSemester(semester) {
       return;
     }
     if (!h.date) return;
-    if (h.type === 'mondayHoliday') {
-      var mwi = getWeekIndexForDate(semester, h.date);
-      if (mwi >= 0 && weeks[mwi]) {
-        var ws = parseDate(weeks[mwi].startDate);
-        if (ws) {
-          var mon = new Date(ws.getFullYear(), ws.getMonth(), ws.getDate() + 1);
-          var monIso = mon.getFullYear() + '-' +
-            String(mon.getMonth() + 1).padStart(2, '0') + '-' +
-            String(mon.getDate()).padStart(2, '0');
-          markDay(monIso, label, false);
-          return;
-        }
-      }
-    }
     markDay(h.date, label, false);
   });
 

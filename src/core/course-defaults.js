@@ -9,33 +9,28 @@ var COURSES = [
       courseId: 'REGN15P',
       displayName: 'REGN 15P',
       description: 'First-semester clinical & simulation',
-      // Current program defaults in data-model.js are the 15P template.
-      configOverrides: {},
+      configOverrides: { holidayBlocksFullWeek: true },
       contentAreas: ['MS']
     },
     {
       courseId: 'REGN25P',
       displayName: 'REGN 25P',
       description: 'Second-semester clinical & simulation',
-      // TODO(program engineer): tune 25P day counts, groups, and start weeks.
-      configOverrides: {},
+      configOverrides: { holidayBlocksFullWeek: false },
       contentAreas: ['MS', 'OB']
     },
     {
       courseId: 'REGN35P-36P',
       displayName: 'REGN 35P/36P',
       description: 'Two half-semester clinical courses sharing groups and scheduling (one file per term)',
-      // TODO(program engineer): tune combined 35P/36P half-semester defaults.
-      configOverrides: {},
+      configOverrides: { holidayBlocksFullWeek: true },
       contentAreas: ['MS', 'PEDS', 'MH']
     },
     {
       courseId: 'REGN48P',
       displayName: 'REGN 48P',
       description: 'Fourth-semester clinical & simulation (practicum placement logic planned for a later phase)',
-      // TODO(program engineer): tune 48P defaults; practicum student-assignment
-      // logic is out of scope for the audit-tracking milestone.
-      configOverrides: {},
+      configOverrides: { holidayBlocksFullWeek: true },
       contentAreas: ['MS']
     }
   ];

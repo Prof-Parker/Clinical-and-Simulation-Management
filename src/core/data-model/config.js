@@ -33,7 +33,9 @@ export function defaultConfig() {
     simDays: ['Mon', 'Tue'],
     simDefaultStart: '0900',
     simDefaultEnd: '1500',
-    simTimeOverrides: []
+    simTimeOverrides: [],
+    /** When true, a holiday date blocks the entire instructional week for algo sim/clinical. */
+    holidayBlocksFullWeek: true
   };
 }
 
@@ -129,6 +131,11 @@ export function normalizeConfig(cfg) {
   if (!cfg.simDefaultStart) cfg.simDefaultStart = '0900';
   if (!cfg.simDefaultEnd) cfg.simDefaultEnd = '1500';
   if (!Array.isArray(cfg.simTimeOverrides)) cfg.simTimeOverrides = [];
+  if (cfg.holidayBlocksFullWeek === undefined || cfg.holidayBlocksFullWeek === null) {
+    cfg.holidayBlocksFullWeek = true;
+  } else {
+    cfg.holidayBlocksFullWeek = !!cfg.holidayBlocksFullWeek;
+  }
   return cfg;
 }
 

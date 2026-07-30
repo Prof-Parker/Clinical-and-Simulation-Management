@@ -50,7 +50,7 @@ export function getWeek18SimFallback(data, cfg, targetSimNum, student) {
   var slots = [];
   var makeupWeeks = CalendarEngine.resolveMakeupWeeks(data);
   var wi = makeupWeeks.simLastResort;
-  if (CalendarEngine.isWeekInactive(data, wi)) return slots;
+  if (CalendarEngine.isSchedulingBlockedWeek(data, wi)) return slots;
   var cell = student.schedule[wi];
   if (!cell || cell.inactive) return slots;
 

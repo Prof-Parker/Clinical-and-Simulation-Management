@@ -60,7 +60,7 @@ export function getExistingSimSessions(data, simNum) {
   var map = {};
   for (var w = 0; w < makeupWeeks.simLastResort; w++) {
     if (getWeekSimNumber(calendar, w) !== simNum) continue;
-    if (CalendarEngine.isWeekInactive(data, w)) continue;
+    if (CalendarEngine.isSchedulingBlockedWeek(data, w)) continue;
     getSimDays(cfg).forEach(function (day) {
       var count = getDaySimAttendanceCount(data, w, day);
       if (count <= 0) return;
@@ -96,7 +96,7 @@ export function getExistingClinicalAtFacility(data, facilityId, excludeStudentId
     sessions[key].count++;
   }
   for (var w = 0; w < makeupWeeks.simLastResort; w++) {
-    if (CalendarEngine.isWeekInactive(data, w)) continue;
+    if (CalendarEngine.isSchedulingBlockedWeek(data, w)) continue;
     data.students.forEach(function (s) {
       if (s.id === excludeStudentId) return;
       var cell = s.schedule[w];
@@ -344,7 +344,7 @@ export function blockHasRegularCapacity(data, calendar, simNum, cfg) {
   var simDays = getSimDays(cfg);
   for (var i = 0; i < block.weeks.length; i++) {
     var wi = block.weeks[i];
-    if (CalendarEngine.isWeekInactive(data, wi)) continue;
+    if (CalendarEngine.isSchedulingBlockedWeek(data, wi)) continue;
     for (var d = 0; d < simDays.length; d++) {
       if (getDaySimAttendanceCount(data, wi, simDays[d]) < cap) return true;
     }

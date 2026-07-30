@@ -16,7 +16,7 @@ import { withProvenance } from './makeup.js';
 export function getWeek18ClinicalSlot(data, student) {
   var makeupWeeks = CalendarEngine.resolveMakeupWeeks(data);
   var wi = makeupWeeks.clinicalFallback;
-  if (CalendarEngine.isWeekInactive(data, wi)) return null;
+  if (CalendarEngine.isSchedulingBlockedWeek(data, wi)) return null;
   var cell = student.schedule[wi];
   if (!cell || cell.inactive) return null;
   if (cell.sim || cell.clinical || cell.makeupClinical) return null;
@@ -36,11 +36,13 @@ export function scheduleClinicalForStudent(student, data) {
   var cfg = data.config;
   var needed = cfg.clinicalDaysRequired || 10;
   var clinStart = (cfg.clinicalStartWeek || 5) - 1;
+  var clinDay = getStudentClinicalDay(student, cfg);
   var weeks = CalendarEngine.getClinicalEligibleWeeks(data, clinStart);
   var makeupWeeks = CalendarEngine.resolveMakeupWeeks(data);
 
   for (var i = 0; i < weeks.length && countedClinicals(student) < needed; i++) {
     var wi = weeks[i];
+    if (CalendarEngine.isSchedulingBlockedDay(data, wi, clinDay)) continue;
     var cell = student.schedule[wi];
     if (cell.inactive || cell.makeupClinical) continue;
     if (cell.clinical && !cell.clinicalMissed) continue;
@@ -50,7 +52,7 @@ export function scheduleClinicalForStudent(student, data) {
   }
 
   for (var j = makeupWeeks.clinicalFallback; j >= clinStart && countedClinicals(student) < needed; j--) {
-    if (CalendarEngine.isWeekInactive(data, j)) continue;
+    if (CalendarEngine.isSchedulingBlockedDay(data, j, clinDay)) continue;
     var c = student.schedule[j];
     if (c.inactive || c.sim || c.clinical || c.makeupClinical) continue;
     c.makeupClinical = true;
@@ -105,7 +107,7 @@ export function scheduleMissedMakeups(student, data) {
   var makeupWeeks = CalendarEngine.resolveMakeupWeeks(data);
   var shortfall = needed - countedClinicals(student);
   for (var j = makeupWeeks.clinicalFallback; j >= clinStart && shortfall > 0; j--) {
-    if (CalendarEngine.isWeekInactive(data, j)) continue;
+    if (CalendarEngine.isSchedulingBlockedWeek(data, j)) continue;
     var c = student.schedule[j];
     if (c.inactive || c.sim || c.clinical || c.makeupClinical) continue;
     c.makeupClinical = true;
