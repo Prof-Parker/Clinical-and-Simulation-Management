@@ -181,13 +181,13 @@ function init() {
         notifyChange();
         SetupConfig.maybeRegenerateAfterChange(data, configBefore);
         refresh();
-        showAlert('Saved', 'Setup saved.');
+        showAlert('Setup applied', 'Changes applied to this semester. Use Sync to OneDrive when ready.');
       } else if (SetupDraft) {
         SetupDraft.saveLocalDraft().then(function () {
-          showAlert('Draft saved', 'Changes kept locally. Use Propose changes when ready.');
+          showAlert('Draft saved', 'Changes kept locally. Use Propose changes when ready, then Sync to OneDrive.');
         });
       } else {
-        showAlert('Draft saved', 'Changes kept locally. Use Propose changes when ready.');
+        showAlert('Draft saved', 'Changes kept locally. Use Propose changes when ready, then Sync to OneDrive.');
       }
       scrollSetupToTop();
     });

@@ -41,6 +41,7 @@ vi.mock('../src/auth/user-session.js', () => ({
   requireSession: vi.fn(),
   attribution: vi.fn(function () { return 'Test User'; }),
   clearSession: vi.fn(),
+  beginUserSwitch: vi.fn(),
   logout: vi.fn(),
   showGateModal: vi.fn(),
   hideGateModal: vi.fn(),
@@ -115,6 +116,13 @@ describe('ui-smoke DOM contract', () => {
     flattenModalIds().forEach(function (id) {
       expect(document.getElementById(id), 'missing modal #' + id).toBeTruthy();
     });
+  });
+
+  it('includes forced password-change gate controls', function () {
+    expect(document.getElementById('userGateStepChangePassword')).toBeTruthy();
+    expect(document.getElementById('userGateNewPassword')).toBeTruthy();
+    expect(document.getElementById('userGateNewPasswordConfirm')).toBeTruthy();
+    expect(document.getElementById('userGateChangePasswordBtn')).toBeTruthy();
   });
 });
 

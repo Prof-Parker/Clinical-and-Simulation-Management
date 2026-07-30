@@ -9,6 +9,8 @@ import * as Permissions from '../auth/permissions.js';
 import * as Scheduler from '../core/scheduler/index.js';
 import * as Setup from './setup/index.js';
 import * as Storage from '../storage/semester-storage.js';
+import { hybridSave, resolveDirectoryHandle } from '../storage/hybrid-save.js';
+import { state } from '../core/state.js';
 import { showAlert } from './dialogs.js';
 
 var wizardState = null;
@@ -172,8 +174,16 @@ var wizardState = null;
       return;
     }
     if (Storage.supportsDirectoryPicker()) {
-      window.showDirectoryPicker().then(function (dir) {
-        return saveAllToDirectory(dir, selected);
+      resolveDirectoryHandle({
+        dirHandleKey: Storage._DIR_HANDLE_KEY,
+        idbGet: Storage._idbGet,
+        idbSet: Storage._idbSet,
+        getDirHandle: function () { return state.programSemesterDirHandle; }
+      }).then(function (dir) {
+        state.programSemesterDirHandle = dir;
+        return Storage._idbSet(Storage._DIR_HANDLE_KEY, dir).then(function () {
+          return saveAllToDirectory(dir, selected);
+        });
       }).then(function () {
         showAlert('Created', 'Created ' + selected.length + ' semester file(s).');
         closeWizard();
@@ -206,11 +216,19 @@ var wizardState = null;
     var courseId = courseIds[index];
     var token = Storage.semesterFileTokenFromMeta(wizardState.season, wizardState.year, courseId);
     var fileRoot = buildSemesterFileRoot(courseId);
-    window.showSaveFilePicker({
+    hybridSave({
+      kind: 'program_semester',
       suggestedName: token + '.json',
-      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
-    }).then(function (handle) {
-      return Storage.writeFileRootToHandle(handle, fileRoot);
+      fileHandleKey: null,
+      dirHandleKey: null,
+      allowDownload: false,
+      write: function (handle) {
+        return Storage.writeFileRootToHandle(handle, fileRoot);
+      }
+    }, {
+      forceChooser: true,
+      title: 'Save ' + token + '.json',
+      message: 'Create a new file or overwrite an existing one (validated before write).'
     }).then(function () {
       saveSequential(courseIds, index + 1);
     }).catch(function () {});

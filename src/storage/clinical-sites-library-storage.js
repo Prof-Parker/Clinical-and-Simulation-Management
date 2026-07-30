@@ -5,11 +5,14 @@
 import * as SiteLibrary from '../core/clinical-sites-library.js';
 import * as Storage from './semester-storage.js';
 import * as FileKind from '../core/file-kind.js';
-import { assertKindOrThrow, guardedWrite } from './guarded-write.js';
+import { assertKindOrThrow, guardedWrite, writeTextToHandle } from './guarded-write.js';
+import { hybridSave } from './hybrid-save.js';
+import * as ProgramData from './program-data.js';
 import { state } from '../core/state.js';
 
 var CACHE_KEY = 'clinicalSitesLibraryData';
   var HANDLE_KEY = 'clinicalSitesLibraryFileHandle';
+  var DIR_HANDLE_KEY = 'clinicalSitesDirHandle';
   var KIND = FileKind.FILE_KINDS.CLINICAL_SITES_LIBRARY;
 
   function idbGet(key) { return Storage._idbGet(key); }
@@ -56,9 +59,7 @@ var CACHE_KEY = 'clinicalSitesLibraryData';
 
   function writeToHandle(handle, root) {
     return guardedWrite(handle, KIND, function () {
-      return handle.createWritable().then(function (w) {
-        return w.write(serialize(root)).then(function () { return w.close(); });
-      });
+      return writeTextToHandle(handle, serialize(root));
     });
   }
 
@@ -73,10 +74,25 @@ var CACHE_KEY = 'clinicalSitesLibraryData';
 
   function saveCurrent() {
     var root = getRoot();
-    if (!root || !state.clinicalSitesLibraryFileHandle) return Promise.resolve();
-    return writeToHandle(state.clinicalSitesLibraryFileHandle, root).then(function () {
-      return idbSet(CACHE_KEY, root);
-    });
+    if (!root) return Promise.resolve();
+    if (state.clinicalSitesLibraryFileHandle) {
+      return writeToHandle(state.clinicalSitesLibraryFileHandle, root).then(function () {
+        return idbSet(CACHE_KEY, root);
+      });
+    }
+    if (ProgramData.isProgramDataConnected()) {
+      return ProgramData.writeRelative(
+        ProgramData.PATHS.CLINICAL_SITES,
+        KIND,
+        function () { return serialize(root); }
+      ).then(function (result) {
+        state.clinicalSitesLibraryFileHandle = result.handle;
+        return idbSet(HANDLE_KEY, result.handle).then(function () {
+          return idbSet(CACHE_KEY, root);
+        });
+      });
+    }
+    return Promise.resolve();
   }
 
   function openFilePicker() {
@@ -102,18 +118,50 @@ var CACHE_KEY = 'clinicalSitesLibraryData';
         return { id: s.id, name: s.name, shortName: s.shortName, contentTags: s.contentTags.slice() };
       });
     }
-    return window.showSaveFilePicker({
-      suggestedName: 'clinical-sites-library.json',
-      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
-    }).then(function (handle) {
-      state.clinicalSitesLibraryFileHandle = handle;
+    if (!supportsFS()) {
+      var blob = new Blob([serialize(root)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'clinical-sites-library.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
       setRoot(root);
-      return idbSet(HANDLE_KEY, handle).then(function () {
-        return writeToHandle(handle, root).then(function () {
-          return idbSet(CACHE_KEY, root).then(function () { return root; });
-        });
-      });
-    });
+      return Promise.resolve(root);
+    }
+    return hybridSave({
+      kind: KIND,
+      suggestedName: 'clinical-sites-library.json',
+      fileHandleKey: HANDLE_KEY,
+      dirHandleKey: DIR_HANDLE_KEY,
+      idbGet: idbGet,
+      idbSet: idbSet,
+      getFileHandle: function () { return state.clinicalSitesLibraryFileHandle; },
+      getDirHandle: function () { return state.clinicalSitesDirHandle; },
+      allowDownload: true,
+      write: function (handle) {
+        return writeToHandle(handle, root);
+      },
+      download: function () {
+        var b = new Blob([serialize(root)], { type: 'application/json' });
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(b);
+        link.download = 'clinical-sites-library.json';
+        link.click();
+        URL.revokeObjectURL(link.href);
+        setRoot(root);
+      },
+      onPersisted: function (handle, dirHandle) {
+        if (!handle) return Promise.resolve(root);
+        state.clinicalSitesLibraryFileHandle = handle;
+        if (dirHandle) state.clinicalSitesDirHandle = dirHandle;
+        setRoot(root);
+        return idbSet(CACHE_KEY, root).then(function () { return root; });
+      }
+    }, {
+      forceChooser: true,
+      title: 'Clinical sites library',
+      message: 'Create, overwrite (validated before write), save to a folder, or download.'
+    }).then(function () { return root; });
   }
 
   function migrateFromSemesterOverlay(fileRoot) {

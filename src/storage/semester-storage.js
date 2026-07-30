@@ -10,60 +10,27 @@ import * as Scheduler from '../core/scheduler/index.js';
 import * as SimFacultyData from '../auth/sim-faculty-data.js';
 import * as SimFacultyStorage from './sim-faculty-storage.js';
 import * as Theme from '../ui/theme.js';
-import { assertKindOrThrow, guardedWrite } from './guarded-write.js';
+import { assertKindOrThrow, guardedWrite, writeTextToHandle } from './guarded-write.js';
+import { hybridSave, ensureReadwritePermission, isCancelError } from './hybrid-save.js';
+import { readHandleText } from './fs-handle.js';
+import * as ProgramData from './program-data.js';
+import { idbGet, idbSet, supportsFS } from './storage-idb.js';
+import {
+  setMeta,
+  isIOSDevice,
+  configureImportInput,
+  updateStatusUI,
+  shouldShowOnedriveBanner,
+  initUnloadWarning
+} from './semester-status-ui.js';
 import { getData, getFileRoot, markClean, onStateChange, setFileRoot, state, syncSemesterToFile } from '../core/state.js';
 import { refresh } from '../ui/chrome.js';
 import { showAlert, showConfirm } from '../ui/dialogs.js';
 
-var DB_NAME = 'regnTrackerDB';
-var STORE = 'handles';
 var CACHE_KEY = 'semesterData';
 var HANDLE_KEY = 'fileHandle';
-var META_KEY = 'storageMeta';
+var DIR_HANDLE_KEY = 'programSemesterDirHandle';
 var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
-  function supportsFS() {
-    return typeof window.showOpenFilePicker === 'function';
-  }
-  function openIDB() {
-    return new Promise(function (resolve, reject) {
-      var req = indexedDB.open(DB_NAME, 1);
-      req.onupgradeneeded = function (e) {
-        e.target.result.createObjectStore(STORE);
-      };
-      req.onsuccess = function () { resolve(req.result); };
-      req.onerror = function () { reject(req.error); };
-    });
-  }
-  function idbGet(key) {
-    return openIDB().then(function (db) {
-      return new Promise(function (resolve, reject) {
-        var tx = db.transaction(STORE, 'readonly');
-        var req = tx.objectStore(STORE).get(key);
-        req.onsuccess = function () { resolve(req.result); };
-        req.onerror = function () { reject(req.error); };
-      });
-    });
-  }
-  function idbSet(key, val) {
-    return openIDB().then(function (db) {
-      return new Promise(function (resolve, reject) {
-        var tx = db.transaction(STORE, 'readwrite');
-        tx.objectStore(STORE).put(val, key);
-        tx.oncomplete = function () { resolve(); };
-        tx.onerror = function () { reject(tx.error); };
-      });
-    });
-  }
-  function idbClear() {
-    return openIDB().then(function (db) {
-      return new Promise(function (resolve, reject) {
-        var tx = db.transaction(STORE, 'readwrite');
-        tx.objectStore(STORE).clear();
-        tx.oncomplete = function () { resolve(); };
-        tx.onerror = function () { reject(tx.error); };
-      });
-    });
-  }
   var LEGACY_LOCAL_STORAGE_KEYS = [
     'nursingWeekDates',
     'nursingStudentNames',
@@ -78,6 +45,10 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
     return idbSet(CACHE_KEY, null).then(function () {
       return idbSet(HANDLE_KEY, null);
     }).then(function () {
+      return idbSet(DIR_HANDLE_KEY, null);
+    }).then(function () {
+      return ProgramData.clearProgramDataDir();
+    }).then(function () {
       return setMeta({ lastImportedFileName: '', lastSavedAt: '', hasLoadedData: false });
     }).then(function () {
       clearLegacyLocalStorage();
@@ -89,6 +60,8 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
       if (Scheduler) Scheduler.regenerateAll(sem);
       state.fileHandle = null;
       state.fileName = null;
+      state.programSemesterDirHandle = null;
+      state.programDataDirHandle = null;
       state.semesterFileConnected = false;
       if (Theme) Theme.apply();
       setFileRoot(fileRoot);
@@ -98,26 +71,6 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
         return fileRoot;
       });
     });
-  }
-  function getMeta() {
-    return idbGet(META_KEY).then(function (m) {
-      return m || { lastImportedFileName: '', lastSavedAt: '', hasLoadedData: false };
-    });
-  }
-  function setMeta(partial) {
-    return getMeta().then(function (meta) {
-      var next = Object.assign({}, meta, partial);
-      return idbSet(META_KEY, next).then(function () { return next; });
-    });
-  }
-  function formatSavedTime(iso) {
-    if (!iso) return '';
-    try {
-      var d = new Date(iso);
-      return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-    } catch (e) {
-      return '';
-    }
   }
   function serialize(fileRoot) {
     syncSemesterToFile();
@@ -159,61 +112,82 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
   }
   function saveCurrent(forceOverwrite) {
     var fileRoot = getFileRoot();
-    if (!fileRoot) return Promise.resolve();
+    if (!fileRoot) return Promise.resolve({ ok: true, localOnly: true });
     if (!state.fileHandle || !supportsFS()) {
       return cacheData(fileRoot).then(function () {
         updateStatusUI();
+        return { ok: true, localOnly: true };
       });
     }
-    return readFromHandle(state.fileHandle).then(function (remote) {
-      var remoteRev = (remote.meta && remote.meta.revision) || 1;
-      var localRev = (fileRoot.meta && fileRoot.meta.revision) || state.fileLoadedRevision || 1;
-      if (!forceOverwrite && state.fileLoadedRevision != null && remoteRev > state.fileLoadedRevision) {
-        return new Promise(function (resolve) {
-          showConfirm('File changed on disk',
-            'The semester file was modified elsewhere. Reload remote copy and lose local unsaved edits?',
-            function () {
-              setFileRoot(remote);
-              state.fileLoadedRevision = remoteRev;
-              markClean();
-              refresh();
-              resolve();
-            },
-            { confirmLabel: 'Reload', cancelLabel: 'Keep editing' }
-          );
-        });
-      }
-      if (remote && remote.semesters && fileRoot.semesters) {
-        remote.semesters.forEach(function (remoteSem) {
-          var localSem = fileRoot.semesters.find(function (s) { return s.id === remoteSem.id; });
-          if (localSem && localSem.proposals && Proposals) {
-            remoteSem.proposals = Proposals.mergeProposalLists(localSem.proposals, remoteSem.proposals);
-          }
-        });
-        fileRoot.semesters.forEach(function (localSem) {
-          var idx = remote.semesters.findIndex(function (s) { return s.id === localSem.id; });
-          if (idx >= 0) remote.semesters[idx] = localSem;
-          else remote.semesters.push(localSem);
-        });
-        fileRoot = remote;
-        fileRoot.meta = fileRoot.meta || {};
-        fileRoot.meta.activeSemesterId = state.fileRoot.meta.activeSemesterId;
-      }
-      fileRoot.meta.revision = Math.max(remoteRev, localRev) + 1;
-      state.fileLoadedRevision = fileRoot.meta.revision;
-      syncSemesterToFile();
-      return writeToHandle(state.fileHandle, fileRoot).then(function () {
-        state.fileRoot = fileRoot;
-        var activeId = fileRoot.meta.activeSemesterId;
-        var sem = fileRoot.semesters.find(function (s) { return s.id === activeId; });
-        if (sem) state.data = sem;
+    return ensureReadwritePermission(state.fileHandle).then(function (ok) {
+      if (!ok) {
         return cacheData(fileRoot).then(function () {
-          markClean();
           updateStatusUI();
+          return {
+            ok: false,
+            localOnly: true,
+            error: new Error('Write permission was not granted for the connected semester file.')
+          };
+        });
+      }
+      return readFromHandle(state.fileHandle).then(function (remote) {
+        var remoteRev = (remote.meta && remote.meta.revision) || 1;
+        var localRev = (fileRoot.meta && fileRoot.meta.revision) || state.fileLoadedRevision || 1;
+        if (!forceOverwrite && state.fileLoadedRevision != null && remoteRev > state.fileLoadedRevision) {
+          return new Promise(function (resolve) {
+            showConfirm('File changed on disk',
+              'The semester file was modified elsewhere. Reload remote copy and lose local unsaved edits?',
+              function () {
+                setFileRoot(remote);
+                state.fileLoadedRevision = remoteRev;
+                markClean();
+                refresh();
+                resolve({ ok: true, reloaded: true });
+              },
+              { confirmLabel: 'Reload', cancelLabel: 'Keep editing' }
+            );
+          });
+        }
+        if (remote && remote.semesters && fileRoot.semesters) {
+          remote.semesters.forEach(function (remoteSem) {
+            var localSem = fileRoot.semesters.find(function (s) { return s.id === remoteSem.id; });
+            if (localSem && localSem.proposals && Proposals) {
+              remoteSem.proposals = Proposals.mergeProposalLists(localSem.proposals, remoteSem.proposals);
+            }
+          });
+          fileRoot.semesters.forEach(function (localSem) {
+            var idx = remote.semesters.findIndex(function (s) { return s.id === localSem.id; });
+            if (idx >= 0) remote.semesters[idx] = localSem;
+            else remote.semesters.push(localSem);
+          });
+          fileRoot = remote;
+          fileRoot.meta = fileRoot.meta || {};
+          fileRoot.meta.activeSemesterId = state.fileRoot.meta.activeSemesterId;
+        }
+        fileRoot.meta.revision = Math.max(remoteRev, localRev) + 1;
+        state.fileLoadedRevision = fileRoot.meta.revision;
+        syncSemesterToFile();
+        return writeToHandle(state.fileHandle, fileRoot).then(function () {
+          state.fileRoot = fileRoot;
+          var activeId = fileRoot.meta.activeSemesterId;
+          var sem = fileRoot.semesters.find(function (s) { return s.id === activeId; });
+          if (sem) state.data = sem;
+          return cacheData(fileRoot).then(function () {
+            markClean();
+            updateStatusUI();
+            return { ok: true, synced: true };
+          });
         });
       });
-    }).catch(function () {
-      return cacheData(fileRoot).then(function () { updateStatusUI(); });
+    }).catch(function (err) {
+      return cacheData(fileRoot).then(function () {
+        updateStatusUI();
+        return {
+          ok: false,
+          localOnly: true,
+          error: err || new Error('Could not write to the connected OneDrive file.')
+        };
+      });
     });
   }
   function writeFileRootToHandle(handle, fileRoot) {
@@ -230,24 +204,21 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
   }
   function writeToHandle(handle, data) {
     return guardedWrite(handle, PROGRAM_KIND, function () {
-      return handle.createWritable().then(function (writable) {
-        return writable.write(serialize(data)).then(function () { return writable.close(); });
-      });
+      return writeTextToHandle(handle, serialize(data));
     });
   }
   function assertProgramRoot(fileRoot, fileName) {
     return assertKindOrThrow(fileRoot, PROGRAM_KIND, { fileName: fileName });
   }
   function readFromHandle(handle) {
-    return handle.getFile().then(function (file) {
-      return file.text();
-    }).then(function (text) {
+    return readHandleText(handle, 'readwrite').then(function (text) {
       return DataModel.migrateFile(JSON.parse(text));
     });
   }
   function openFilePicker() {
     if (!supportsFS()) return Promise.reject(new Error('FS API unavailable'));
     return window.showOpenFilePicker({
+      mode: 'readwrite',
       types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
       multiple: false
     }).then(function (handles) {
@@ -256,10 +227,31 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
         assertProgramRoot(fileRoot, handle.name);
         state.fileHandle = handle;
         state.fileName = handle.name;
+        state.semesterFileConnected = true;
         return idbSet(HANDLE_KEY, handle).then(function () {
           return setMeta({ lastImportedFileName: handle.name, hasLoadedData: true }).then(function () {
             return applyLoadedFileRoot(fileRoot);
           });
+        });
+      });
+    });
+  }
+
+  /** Load semester from ProgramData/semesters/{fileName} and attach sticky handle. */
+  function loadFromProgramData(fileName) {
+    var path = ProgramData.semesterPath(fileName);
+    return ProgramData.readRelative(path, PROGRAM_KIND).then(function (result) {
+      var fileRoot = DataModel.migrateFile(result.raw);
+      assertProgramRoot(fileRoot, result.name);
+      state.fileHandle = result.handle;
+      state.fileName = result.name;
+      state.semesterFileConnected = true;
+      if (ProgramData.getProgramDataDir()) {
+        state.programSemesterDirHandle = null;
+      }
+      return idbSet(HANDLE_KEY, result.handle).then(function () {
+        return setMeta({ lastImportedFileName: result.name, hasLoadedData: true }).then(function () {
+          return applyLoadedFileRoot(fileRoot);
         });
       });
     });
@@ -279,27 +271,77 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
     var token = semesterFileToken();
     return token ? token + '.json' : 'regn-tracker.json';
   }
-  function createFilePicker() {
-    if (!supportsFS()) return Promise.reject(new Error('FS API unavailable'));
-    return window.showSaveFilePicker({
-      suggestedName: suggestedSemesterFileName(),
-      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
-    }).then(function (handle) {
-      state.fileHandle = handle;
-      state.fileName = handle.name;
-      return idbSet(HANDLE_KEY, handle).then(function () {
-        var fileRoot = getFileRoot() || DataModel.createDefaultFile();
-        return writeToHandle(handle, fileRoot).then(function () {
-          return setMeta({ lastImportedFileName: handle.name, hasLoadedData: true }).then(function () {
-            return fileRoot;
+  function buildHybridSaveConfig(fileRoot) {
+    var root = fileRoot || getFileRoot() || DataModel.createDefaultFile();
+    return {
+      kind: PROGRAM_KIND,
+      suggestedName: suggestedSemesterFileName,
+      fileHandleKey: HANDLE_KEY,
+      dirHandleKey: DIR_HANDLE_KEY,
+      idbGet: idbGet,
+      idbSet: idbSet,
+      getFileHandle: function () { return state.fileHandle; },
+      getDirHandle: function () { return state.programSemesterDirHandle; },
+      allowDownload: true,
+      write: function (handle) {
+        return writeToHandle(handle, root);
+      },
+      download: function () {
+        doExportDownload();
+      },
+      onPersisted: function (handle, dirHandle) {
+        if (!handle) return Promise.resolve(root);
+        state.fileHandle = handle;
+        state.fileName = handle.name;
+        state.semesterFileConnected = true;
+        if (dirHandle) state.programSemesterDirHandle = dirHandle;
+        return setMeta({ lastImportedFileName: handle.name, hasLoadedData: true }).then(function () {
+          return cacheData(root).then(function () {
+            markClean();
+            updateStatusUI();
+            return root;
           });
         });
-      });
+      }
+    };
+  }
+
+  /** Hybrid chooser (advanced Save as…). */
+  function saveWithChooser(options) {
+    options = options || {};
+    var root = getFileRoot() || DataModel.createDefaultFile();
+    var suggested = suggestedSemesterFileName();
+    return hybridSave(buildHybridSaveConfig(root), {
+      forceChooser: !!options.forceChooser,
+      title: options.title || 'Save as…',
+      preferredDest: options.preferredDest,
+      message: (options.message ||
+        'Advanced save. Prefer Save to folder or Overwrite existing so the file type is checked before write.') +
+        (options.message ? '\n\n' : '\n\n') +
+        'Suggested filename: ' + suggested
+    }).then(function (result) {
+      if (result && result.dest === 'folder' && result.name) {
+        showAlert('Saved', 'Saved as ' + result.name + ' in the selected folder.');
+      }
+      return root;
+    });
+  }
+
+  function createFilePicker() {
+    return saveWithChooser({
+      forceChooser: true,
+      preferredDest: 'new',
+      title: 'Save as…',
+      message: 'Create a new program semester file (use a NEW filename — Replace can wipe first), ' +
+        'overwrite an existing one (checked before write), or save into a folder.'
     });
   }
   function reconnectHandle() {
     if (!supportsFS()) return Promise.resolve(null);
-    return idbGet(HANDLE_KEY).then(function (handle) {
+    return idbGet(DIR_HANDLE_KEY).then(function (dir) {
+      if (dir) state.programSemesterDirHandle = dir;
+      return idbGet(HANDLE_KEY);
+    }).then(function (handle) {
       if (!handle) return null;
       return handle.queryPermission({ mode: 'readwrite' }).then(function (perm) {
         if (perm === 'granted') {
@@ -307,23 +349,17 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
           state.fileName = handle.name;
           return readFromHandle(handle);
         }
+        if (perm === 'prompt' && typeof handle.requestPermission === 'function') {
+          return handle.requestPermission({ mode: 'readwrite' }).then(function (next) {
+            if (next !== 'granted') return null;
+            state.fileHandle = handle;
+            state.fileName = handle.name;
+            return readFromHandle(handle);
+          });
+        }
         return null;
       });
     }).catch(function () { return null; });
-  }
-  function isIOSDevice() {
-    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  }
-  function configureImportInput() {
-    var input = document.getElementById('importFileInput');
-    if (!input) return;
-    // iOS Files / OneDrive often mislabels .json MIME types; a strict accept filter hides them.
-    if (isIOSDevice()) {
-      input.removeAttribute('accept');
-    } else {
-      input.setAttribute('accept', '.json,application/json');
-    }
   }
   function importFromFile(file) {
     return new Promise(function (resolve, reject) {
@@ -348,7 +384,7 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
       }).then(function () { return data; });
     });
   }
-  function exportDownload() {
+  function doExportDownload() {
     var fileRoot = getFileRoot();
     if (!fileRoot) return;
     var blob = new Blob([serialize(fileRoot)], { type: 'application/json' });
@@ -364,6 +400,13 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
       showAlert('Export backup', 'Save the downloaded file to college OneDrive (Files app → OneDrive) to back up your semester data.');
     }
   }
+
+  /** Download-only backup (no hybrid chooser). */
+  function exportDownload() {
+    if (!getFileRoot()) return Promise.resolve();
+    doExportDownload();
+    return Promise.resolve();
+  }
   function applyLoadedFileRoot(fileRoot) {
     if (!fileRoot.meta) fileRoot.meta = {};
     if (!fileRoot.meta.revision) fileRoot.meta.revision = 1;
@@ -375,59 +418,15 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
     }
     return fileRoot;
   }
-  function updateStatusUI() {
-    var el = document.getElementById('fileStatus');
-    if (!el) return;
-    getMeta().then(function (meta) {
-      var dirty = state.dirty;
-      var name = state.fileName || meta.lastImportedFileName;
-      var savedLabel = formatSavedTime(meta.lastSavedAt);
-      var label = name ? 'program semester · ' + name : 'program semester';
-      if (supportsFS() && state.fileHandle) {
-        el.textContent = dirty
-          ? 'Unsaved — ' + label
-          : 'Connected: ' + label + (savedLabel ? ' · saved ' + savedLabel : '');
-        el.className = dirty ? 'file-status dirty' : 'file-status connected';
-      } else if (dirty) {
-        el.textContent = 'Unsaved on this device — export backup to OneDrive' +
-          (name ? ' (' + label + ')' : '');
-        el.className = 'file-status dirty';
-      } else if (meta.hasLoadedData) {
-        el.textContent = 'Saved on this device' + (name ? ': ' + label : '') +
-          (savedLabel ? ' · ' + savedLabel : '');
-        el.className = 'file-status connected';
-      } else {
-        el.textContent = 'Open a semester file from OneDrive to begin';
-        el.className = 'file-status';
-      }
-      var syncBtn = document.getElementById('syncOneDriveBtn');
-      if (!syncBtn) return;
-      if (!dirty) { syncBtn.classList.add('hidden'); return; }
-      syncBtn.classList.remove('hidden');
-      syncBtn.textContent = supportsFS() && state.fileHandle ? 'Sync to OneDrive'
-        : supportsFS() ? 'Save to OneDrive…' : 'Export backup';
-    });
-  }
-  function shouldShowOnedriveBanner() {
-    if (supportsFS()) return false;
-    return getMeta().then(function (meta) {
-      return !meta.hasLoadedData;
-    });
-  }
-  function initUnloadWarning() {
-    window.addEventListener('beforeunload', function (e) {
-      if (supportsFS() || !state.dirty) return;
-      e.preventDefault();
-      e.returnValue = '';
-    });
-  }
   function init() {
     onStateChange(function () {
       if (state.dirty) scheduleAutoSave();
     });
     initUnloadWarning();
     var loadedFromFile = false;
-    return reconnectHandle().then(function (fromHandle) {
+    return ProgramData.reconnectProgramData().then(function () {
+      return reconnectHandle();
+    }).then(function (fromHandle) {
       if (fromHandle) {
         loadedFromFile = true;
         return setMeta({
@@ -493,4 +492,4 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
       });
     });
   }
-export { supportsFS, init, saveCurrent, scheduleAutoSave, openFilePicker, createFilePicker, importFromFile, exportDownload, updateStatusUI, cacheData, shouldShowOnedriveBanner, configureImportInput, isIOSDevice, semesterFileToken, suggestedSemesterFileName, clearAndRestoreDefaults, applyLoadedFileRoot, writeFileRootToHandle, readFromHandle, writeToHandle, serialize, semesterFileTokenFromMeta, supportsDirectoryPicker, isSemesterFileConnected, activateFileRoot, idbGet as _idbGet, idbSet as _idbSet };
+export { supportsFS, init, saveCurrent, scheduleAutoSave, openFilePicker, createFilePicker, saveWithChooser, importFromFile, exportDownload, updateStatusUI, cacheData, shouldShowOnedriveBanner, configureImportInput, isIOSDevice, semesterFileToken, suggestedSemesterFileName, clearAndRestoreDefaults, applyLoadedFileRoot, writeFileRootToHandle, readFromHandle, writeToHandle, serialize, semesterFileTokenFromMeta, supportsDirectoryPicker, isSemesterFileConnected, activateFileRoot, loadFromProgramData, isCancelError, idbGet as _idbGet, idbSet as _idbSet, HANDLE_KEY as _HANDLE_KEY, DIR_HANDLE_KEY as _DIR_HANDLE_KEY };

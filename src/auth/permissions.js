@@ -65,7 +65,7 @@ function currentRole() {
     var map = {
       newSemesterBatchBtn: 'semester.batchCreate',
       menuSwitchSemesterBtn: 'semester.switch',
-      loadUserFileMenuBtn: true,
+      switchUserMenuBtn: true,
       loadRegistryMenuBtn: true
     };
     Object.keys(map).forEach(function (id) {

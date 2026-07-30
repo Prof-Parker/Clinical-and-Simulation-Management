@@ -67,7 +67,8 @@ export function inferFileKind(raw, fileName) {
   }
 
   var hasSemesters = Array.isArray(raw.semesters);
-  if (raw.userId && raw.key && !hasSemesters) return FILE_KINDS.USER_CREDENTIAL;
+  // Identity-only credentials: userId + no semester root (legacy files may still have `key`).
+  if (raw.userId && !hasSemesters && !raw.users) return FILE_KINDS.USER_CREDENTIAL;
   if (raw.users && typeof raw.users === 'object' && !hasSemesters) return FILE_KINDS.USERS_REGISTRY;
   if (raw.topics && Array.isArray(raw.topics)) return FILE_KINDS.THEORY_CONTENT_LIBRARY;
   if (raw.sites && Array.isArray(raw.sites) && !hasSemesters) {
@@ -273,6 +274,40 @@ export function assertFileKind(raw, expectedKind, options) {
 }
 
 /**
+ * When content kind matches expected but filename implies a different high-risk kind,
+ * hard-block (polluted-file defense). Otherwise soft-confirm unusual names.
+ */
+function filenameHighRiskHardBlock(fileName, expectedKind, options) {
+  var fromName = inferFromFilenameOnly(baseName(fileName));
+  if (!fromName || fromName === expectedKind || !isHighRiskMismatch(expectedKind, fromName)) {
+    return null;
+  }
+  var code = mismatchCode(expectedKind, fromName);
+  var check = {
+    code: code,
+    message: formatKindError(code, {
+      name: fileName || 'the selected file',
+      expected: expectedKind,
+      detected: fromName
+    }),
+    detected: fromName,
+    expected: expectedKind,
+    fileName: fileName
+  };
+  return {
+    proceed: false,
+    hardBlock: true,
+    needsConfirm: false,
+    code: code,
+    title: 'Wrong file type',
+    message: buildHardBlockBody(check, expectedKind, options || {}),
+    detected: fromName,
+    expected: expectedKind,
+    fileName: fileName
+  };
+}
+
+/**
  * Evaluate an existing on-disk payload before overwrite.
  * @returns {{ proceed: boolean, hardBlock?: boolean, needsConfirm?: boolean,
  *   code?: string, message?: string, detected?: string|null, expected?: string,
@@ -290,6 +325,8 @@ export function evaluateGuard(existing, fileName, expectedKind, options) {
   }
 
   if (check.ok && check.warnFilename) {
+    var highRiskName = filenameHighRiskHardBlock(fileName, expectedKind, options);
+    if (highRiskName) return highRiskName;
     return {
       proceed: false,
       needsConfirm: true,
@@ -330,7 +367,13 @@ export function evaluateGuard(existing, fileName, expectedKind, options) {
   };
 }
 
+var WIPE_RESTORE_HINT =
+  '\n\nConfirming Replace in the system save dialog may have already cleared this file. ' +
+  'Restore it from OneDrive version history, a known-good copy, or re-seed mock OneDrive ' +
+  '(npm run seed:mock-onedrive). Do not save this data under that name.';
+
 function buildHardBlockBody(check, expectedKind, options) {
+  options = options || {};
   var name = check.fileName || 'the selected file';
   var detected = kindLabel(check.detected);
   var body = check.message;
@@ -346,7 +389,71 @@ function buildHardBlockBody(check, expectedKind, options) {
       check.detected === FILE_KINDS.PLAYGROUND) {
     body = check.message + '\n\nOpen Playground tab instead to work with sandbox files.';
   }
+  if (options.emptyTarget) {
+    body += WIPE_RESTORE_HINT;
+  }
   return body;
+}
+
+/**
+ * Filename-only guard when target is empty or unreadable (no JSON content).
+ */
+function evaluateEmptyTarget(name, expectedKind, options) {
+  options = options || {};
+  var fromName = inferFromFilenameOnly(baseName(name));
+  var nameConflict = !!(name && filenameConflictsWithKind(name, expectedKind));
+  if (fromName && fromName !== expectedKind) {
+    var hardEmpty = isHighRiskMismatch(expectedKind, fromName);
+    var codeEmpty = mismatchCode(expectedKind, fromName);
+    var emptyCheck = {
+      code: codeEmpty,
+      message: formatKindError(codeEmpty, {
+        name: name || 'the selected file',
+        expected: expectedKind,
+        detected: fromName
+      }),
+      detected: fromName,
+      expected: expectedKind,
+      fileName: name
+    };
+    return {
+      proceed: false,
+      hardBlock: hardEmpty,
+      needsConfirm: !hardEmpty,
+      code: codeEmpty,
+      title: 'Wrong file type',
+      message: hardEmpty
+        ? buildHardBlockBody(emptyCheck, expectedKind, Object.assign({}, options, { emptyTarget: true }))
+        : emptyCheck.message + '\n\nDo you want to overwrite this file anyway?',
+      detected: fromName,
+      expected: expectedKind,
+      fileName: name,
+      empty: true
+    };
+  }
+  if (nameConflict) {
+    var highRiskName = filenameHighRiskHardBlock(name, expectedKind, Object.assign({}, options, {
+      emptyTarget: true
+    }));
+    if (highRiskName) {
+      highRiskName.empty = true;
+      return highRiskName;
+    }
+    return {
+      proceed: false,
+      needsConfirm: true,
+      hardBlock: false,
+      code: ERROR_CODES.KIND_MISMATCH,
+      title: 'Unusual filename',
+      message: 'The filename "' + name + '" does not match the usual pattern for ' +
+        kindLabel(expectedKind) + ' files.\n\nSaving here may make the file harder to find later.',
+      detected: expectedKind,
+      expected: expectedKind,
+      fileName: name,
+      empty: true
+    };
+  }
+  return { proceed: true, empty: true };
 }
 
 export function readAndParseHandle(handle) {
@@ -376,48 +483,13 @@ export function guardBeforeWrite(handle, expectedKind, options) {
   options = options || {};
   return readAndParseHandle(handle).then(function (existing) {
     var name = handle && handle.name;
-    var fromName = inferFromFilenameOnly(baseName(name));
-    var nameConflict = !!(name && filenameConflictsWithKind(name, expectedKind));
     if (!existing) {
-      if (fromName && fromName !== expectedKind) {
-        var hardEmpty = isHighRiskMismatch(expectedKind, fromName);
-        var codeEmpty = mismatchCode(expectedKind, fromName);
-        return {
-          proceed: false,
-          hardBlock: hardEmpty,
-          needsConfirm: !hardEmpty,
-          code: codeEmpty,
-          title: 'Wrong file type',
-          message: formatKindError(codeEmpty, {
-            name: name || 'the selected file',
-            expected: expectedKind,
-            detected: fromName
-          }) + (hardEmpty
-            ? ''
-            : '\n\nDo you want to overwrite this file anyway?'),
-          detected: fromName,
-          expected: expectedKind,
-          fileName: name,
-          empty: true
-        };
-      }
-      if (nameConflict) {
-        return {
-          proceed: false,
-          needsConfirm: true,
-          hardBlock: false,
-          code: ERROR_CODES.KIND_MISMATCH,
-          title: 'Unusual filename',
-          message: 'The filename "' + name + '" does not match the usual pattern for ' +
-            kindLabel(expectedKind) + ' files.\n\nSaving here may make the file harder to find later.',
-          detected: expectedKind,
-          expected: expectedKind,
-          fileName: name,
-          empty: true
-        };
-      }
-      return { proceed: true, empty: true };
+      return evaluateEmptyTarget(name, expectedKind, options);
     }
     return evaluateGuard(existing, name, expectedKind, options);
+  }).catch(function (err) {
+    // Unreadable target (e.g. NotAllowedError): still apply filename hard blocks.
+    if (err && err.code === ERROR_CODES.KIND_INVALID_JSON) throw err;
+    return evaluateEmptyTarget(handle && handle.name, expectedKind, options);
   });
 }

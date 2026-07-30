@@ -68,7 +68,7 @@
                         <button id="darkModeToggle" class="menu-item" type="button" role="menuitem">Dark / Light Mode</button>
                         <div class="menu-group" role="group" aria-labelledby="menuUserLabel">
                             <div id="menuUserLabel" class="menu-group-label">User</div>
-                            <button id="loadUserFileMenuBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Load user file…</button>
+                            <button id="switchUserMenuBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Sign in as different user…</button>
                             <button id="loadRegistryMenuBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Connect users registry…</button>
                             <button id="logoutUserMenuBtn" class="menu-item menu-item-nested menu-item-danger hidden" type="button" role="menuitem">Log out</button>
                         </div>
@@ -80,10 +80,13 @@
                         </div>
                         <div class="menu-group" role="group" aria-labelledby="menuFileManagementLabel">
                             <div id="menuFileManagementLabel" class="menu-group-label">File Management</div>
-                            <button id="openFileBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Connect OneDrive file</button>
-                            <button id="newFileBtn" class="menu-item menu-item-nested" type="button" role="menuitem">New OneDrive file</button>
-                            <button id="importBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Open semester file…</button>
-                            <button id="exportBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Export backup</button>
+                            <button id="connectProgramDataBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Connect ProgramData folder…</button>
+                            <button id="reconnectProgramDataBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Change / reconnect folder…</button>
+                            <button id="saveAsBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Save as…</button>
+                            <button id="exportBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Download backup</button>
+                            <button id="importBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Open copy…</button>
+                            <button id="openFileBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">Connect OneDrive file</button>
+                            <button id="newFileBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">New OneDrive file</button>
                         </div>
                         <div class="menu-group" role="group" aria-labelledby="menuLibrariesLabel">
                             <div id="menuLibrariesLabel" class="menu-group-label">Program libraries</div>
@@ -782,38 +785,58 @@
         <div class="user-gate-shell">
             <div class="user-gate-panel modal-content">
                 <div class="user-gate-steps" aria-label="Sign-in progress">
-                    <span class="user-gate-step-indicator active" data-step="1">1. Registry</span>
-                    <span class="user-gate-step-indicator" data-step="2">2. User file</span>
+                    <span class="user-gate-step-indicator active" data-step="1">1. ProgramData</span>
+                    <span class="user-gate-step-indicator" data-step="2">2. User</span>
                     <span class="user-gate-step-indicator" data-step="3">3. Semester</span>
                 </div>
                 <div class="modal-header user-gate-header">
-                    <h2 id="userGateTitle" style="margin:0">Connect users registry</h2>
+                    <h2 id="userGateTitle" style="margin:0">Connect ProgramData</h2>
                 </div>
                 <div class="modal-body user-gate-body">
                     <p id="userGateError" class="user-gate-error hidden" role="alert"></p>
                     <div id="userGateStep1" class="user-gate-step-panel">
-                        <p class="section-sub user-gate-lead">Connect the program users registry before loading your personal user file.</p>
+                        <p id="userGateStep1Lead" class="section-sub user-gate-lead hidden">Folder connect failed. Connect <code>users-registry.json</code> directly to sign in.</p>
                         <div class="user-gate-actions">
-                            <button id="userGateLoadRegistryBtn" class="btn btn-primary" type="button">Connect users registry…</button>
+                            <button id="userGateConnectProgramDataBtn" class="btn btn-primary" type="button">Connect ProgramData folder…</button>
+                            <button id="userGateLoadRegistryBtn" class="btn btn-primary hidden" type="button">Connect users registry…</button>
                         </div>
                     </div>
                     <div id="userGateStep2" class="user-gate-step-panel hidden">
-                        <p class="section-sub user-gate-lead">Registry connected. Load your user file to continue.</p>
-                        <p id="userGateRegistryName" class="user-gate-connected-file"></p>
-                        <div class="user-gate-actions">
-                            <button id="userGateLoadUserBtn" class="btn btn-primary" type="button">Load user file…</button>
-                            <button id="userGateRetryBtn" class="btn btn-sm hidden" type="button">Retry validation</button>
-                            <button id="userGateChangeRegistryBtn" class="btn btn-sm" type="button">Use different registry…</button>
+                        <p id="userGateStep2Lead" class="section-sub user-gate-lead hidden">Registry connected. Sign in with your email address and password.</p>
+                        <p id="userGateRegistryName" class="user-gate-connected-file hidden"></p>
+                        <p id="userGateProgramDataHint" class="section-sub hidden"></p>
+                        <div class="user-gate-programdata-user" style="margin:0.75rem 0">
+                            <label class="section-sub" for="userGateEmail">Email address</label>
+                            <input id="userGateEmail" type="email" autocomplete="username" aria-label="Email address" required style="width:100%;margin:0.25rem 0 0.75rem">
+                            <label class="section-sub" for="userGatePassword">Password</label>
+                            <input id="userGatePassword" type="password" autocomplete="current-password" aria-label="Password" required style="width:100%;margin:0.25rem 0 0.75rem">
+                            <button id="userGateConfirmUserBtn" class="btn btn-primary" type="button">Sign in</button>
+                            <button id="userGateForgotPasswordBtn" class="btn btn-sm" type="button" style="margin-top:0.5rem">Forgot password</button>
+                        </div>
+                    </div>
+                    <div id="userGateStepChangePassword" class="user-gate-step-panel hidden">
+                        <p id="userGateChangePasswordLead" class="section-sub user-gate-lead">Choose a new password before continuing.</p>
+                        <div style="margin:0.75rem 0">
+                            <label class="section-sub" for="userGateNewPassword">New password</label>
+                            <input id="userGateNewPassword" type="password" autocomplete="new-password" aria-label="New password" required style="width:100%;margin:0.25rem 0 0.75rem">
+                            <label class="section-sub" for="userGateNewPasswordConfirm">Confirm new password</label>
+                            <input id="userGateNewPasswordConfirm" type="password" autocomplete="new-password" aria-label="Confirm new password" required style="width:100%;margin:0.25rem 0 0.75rem">
+                            <button id="userGateChangePasswordBtn" class="btn btn-primary" type="button">Save new password</button>
                         </div>
                     </div>
                     <div id="userGateStep3" class="user-gate-step-panel hidden">
-                        <p class="section-sub user-gate-lead">Signed in. Connect a program semester file from OneDrive (for example <code>F2026_REGN_program.json</code>).</p>
                         <p id="userGateUserName" class="user-gate-connected-file"></p>
-                        <div class="user-gate-actions">
-                            <button id="userGateLoadSemesterBtn" class="btn btn-primary" type="button">Load semester file…</button>
-                            <button id="userGateChangeUserBtn" class="btn btn-sm" type="button">Use different user file…</button>
+                        <p id="userGateStep3Lead" class="section-sub user-gate-lead hidden">Signed in. Load a semester JSON file to continue.</p>
+                        <div id="userGateProgramDataSemester" class="user-gate-programdata-semester" style="margin:0.75rem 0">
+                            <p class="section-sub user-gate-lead">Signed in. Open a program semester file from <code>semesters/</code>.</p>
+                            <label class="section-sub" for="userGateSemesterSelect">Semester file</label>
+                            <select id="userGateSemesterSelect" class="select-control" aria-label="Semester file" style="width:100%;margin:0.25rem 0 0.75rem"></select>
+                            <button id="userGateConfirmSemesterBtn" class="btn btn-primary" type="button">Open semester</button>
                         </div>
-                        <input type="file" id="userGateSemesterFileInput" class="hidden" accept=".json,application/json">
+                        <div class="user-gate-actions">
+                            <button id="userGateLoadSemesterBtn" class="btn btn-primary hidden" type="button">Load semester file…</button>
+                            <input type="file" id="userGateSemesterFileInput" class="hidden" accept=".json,application/json">
+                        </div>
                     </div>
                 </div>
             </div>

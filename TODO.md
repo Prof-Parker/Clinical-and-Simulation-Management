@@ -108,4 +108,6 @@ TODO.md
 - [ ] Add acredidation tracking support for content (large feature)
 - [ ] Work on Audra contact hour items
 
-
+## Bugs identified in v2.5.0 
+- [ ] Advanced config input fields in praciticum setup were not working (no updown buttons, static no free text) when opening on college computer (working on dev computer)
+- [ ] 4 clinical group and 4 sim group setup with rebalance both results in numerous guest sim placements when there should be 0

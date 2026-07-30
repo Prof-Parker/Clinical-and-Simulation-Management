@@ -29,17 +29,27 @@ index.html → src/main.js
 │   ├── core/calendar-engine.js  18-week calendar, holidays, inactive weeks
 │   ├── core/course-defaults.js  Per-course default config templates
 │   ├── core/theory-data.js      Theory calendar schema, projections, contact-hour math
-│   ├── storage/theory-library-storage.js  REGN15 topic bank (separate JSON)
-│   ├── storage/semester-storage.js     Semester JSON: IDB + File System Access
+│   ├── storage/theory-library-storage.js  Theory library persistence + CRUD
+│   ├── storage/theory-library-model.js    Pure theory shapes + migration
+│   ├── storage/semester-storage.js        Semester persistence orchestration
+│   ├── storage/semester-status-ui.js      Semester connection/status UI
+│   ├── storage/storage-idb.js             Shared IndexedDB primitives
 │   ├── auth/permissions.js      Tab/menu/action gating
 │   ├── ui/chrome.js             Tab router, menus, semester switch
 │   ├── ui/dialogs.js            Modal alert/confirm/custom dialogs
+│   ├── ui/users-admin.js         Registry user administration
+│   ├── ui/users-temp-credentials.js  Temp-password copy/text export UI
 │   └── ui/                      Dashboard, setup, roles, makeup, audit, etc.
 ├── public/                      Icons + PWA manifest (copied to dist/)
 └── tests/                       Vitest (imports from src/)
 ```
 
 Each `src/**/*.js` module is capped at **500 lines** and starts with a brief header comment describing its purpose.
+
+Storage modules keep their existing public entry points after splitting:
+`semester-storage.js` re-exports shared IDB and status helpers, while
+`theory-library-storage.js` re-exports the pure theory model API. This keeps
+existing imports stable while isolating persistence, presentation, and model logic.
 
 **Runtime model:** `state.fileRoot` holds all semesters; `getData()` returns the active semester. Simulation roles live in `meta.simRoles` (base64 obfuscated on disk) and are edited in memory via `state.simFacultyRoot`. UI modules call `notifyChange()` to persist the semester file.
 

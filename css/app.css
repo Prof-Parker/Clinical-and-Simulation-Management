@@ -2299,7 +2299,8 @@ html.dark .user-gate-step-indicator.done {
   background: #064e3b;
   color: #6ee7b7;
 }
-.user-gate-header { border-bottom: none; padding-top: 0.75rem; }
+.user-gate-header { border-bottom: none; padding-top: 0.75rem; justify-content: center; }
+.user-gate-header h2 { text-align: center; }
 .user-gate-body { padding-top: 0.5rem; }
 .user-gate-lead { margin: 0 0 0.75rem; }
 .user-gate-connected-file {
@@ -2310,6 +2311,8 @@ html.dark .user-gate-step-indicator.done {
   word-break: break-word;
 }
 .user-gate-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem; }
+/* Match the full-width step 1 folder button. */
+.user-gate-programdata-user .btn { width: 100%; }
 .user-gate-error { color: #b45309; font-size: 0.875rem; margin: 0 0 0.75rem; }
 
 .setup-proposals-panel { padding: 1rem; margin-bottom: 1rem; border-left: 4px solid #eab308; }

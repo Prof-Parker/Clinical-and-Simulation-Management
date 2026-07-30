@@ -5,12 +5,14 @@
 import * as Storage from './semester-storage.js';
 import * as UserData from '../auth/user-data.js';
 import * as FileKind from '../core/file-kind.js';
-import { assertKindOrThrow } from './guarded-write.js';
+import { assertKindOrThrow, guardedWrite, writeTextToHandle } from './guarded-write.js';
 import { readHandleText } from './fs-handle.js';
+import { hybridSave } from './hybrid-save.js';
 import { state } from '../core/state.js';
 
 var CACHE_KEY = 'userProfileData';
   var HANDLE_KEY = 'userProfileFileHandle';
+  var DIR_HANDLE_KEY = 'userCredentialsDirHandle';
   var META_KEY = 'userProfileMeta';
   var KIND = FileKind.FILE_KINDS.USER_CREDENTIAL;
 
@@ -51,6 +53,24 @@ var CACHE_KEY = 'userProfileData';
         suggestedName: 'lastname.user.json'
       });
     });
+  }
+
+  function importFromRaw(userFile, fileName, fileHandle) {
+    var migrated = UserData.migrateUserFile(userFile);
+    if (!migrated) return Promise.reject(new Error('Invalid user file'));
+    assertKindOrThrow(migrated, KIND, {
+      fileName: fileName || 'user.user.json',
+      suggestedName: 'lastname.user.json'
+    });
+    state.userFileHandle = fileHandle || null;
+    state.userFileName = fileName || 'user.user.json';
+    setUserFile(migrated);
+    var chain = fileHandle ? idbSet(HANDLE_KEY, fileHandle) : Promise.resolve();
+    return chain.then(function () {
+      return idbSet(CACHE_KEY, migrated);
+    }).then(function () {
+      return setMeta({ lastImportedFileName: state.userFileName, hasLoadedData: true });
+    }).then(function () { return migrated; });
   }
 
   function openFilePicker() {
@@ -147,20 +167,70 @@ var CACHE_KEY = 'userProfileData';
     state.userFile = null;
     state.userFileHandle = null;
     state.userFileName = null;
+    state.userCredentialsDirHandle = null;
     return idbSet(CACHE_KEY, null).then(function () {
       return idbSet(HANDLE_KEY, null);
+    }).then(function () {
+      return idbSet(DIR_HANDLE_KEY, null);
     }).then(function () {
       return setMeta({ lastImportedFileName: '', hasLoadedData: false });
     });
   }
 
+  function writeToHandle(handle, userFile) {
+    FileKind.stampFileKind(userFile, KIND);
+    var text = UserData.serializeUserFile(userFile);
+    return guardedWrite(handle, KIND, function () {
+      return writeTextToHandle(handle, text);
+    }, { suggestedName: (userFile && userFile.userId ? userFile.userId : 'user') + '.user.json' });
+  }
+
   function exportUserFileDownload(userFile, filename) {
-    var blob = new Blob([UserData.serializeUserFile(userFile)], { type: 'application/json' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename || (userFile.userId + '.user.json');
-    a.click();
-    URL.revokeObjectURL(a.href);
+    var name = filename || (userFile.userId + '.user.json');
+    if (!supportsFS()) {
+      var blob = new Blob([UserData.serializeUserFile(userFile)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      return Promise.resolve(name);
+    }
+    return hybridSave({
+      kind: KIND,
+      suggestedName: name,
+      fileHandleKey: HANDLE_KEY,
+      dirHandleKey: DIR_HANDLE_KEY,
+      idbGet: idbGet,
+      idbSet: idbSet,
+      getFileHandle: function () { return state.userFileHandle; },
+      getDirHandle: function () { return state.userCredentialsDirHandle; },
+      allowDownload: true,
+      write: function (handle) {
+        return writeToHandle(handle, userFile);
+      },
+      download: function () {
+        var b = new Blob([UserData.serializeUserFile(userFile)], { type: 'application/json' });
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(b);
+        link.download = name;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      },
+      onPersisted: function (handle, dirHandle) {
+        if (!handle) return Promise.resolve(name);
+        state.userFileHandle = handle;
+        state.userFileName = handle.name;
+        if (dirHandle) state.userCredentialsDirHandle = dirHandle;
+        return Promise.resolve(handle.name);
+      }
+    }, {
+      forceChooser: true,
+      title: 'Export user credential',
+      message: 'Create, overwrite (validated before write), save to the users folder, or download.'
+    }).then(function (result) {
+      return (result && result.name) || name;
+    });
   }
 
 export {
@@ -171,6 +241,7 @@ export {
   openFilePicker,
   importViaInput,
   importFromFile,
+  importFromRaw,
   exportUserFileDownload,
   reconnectHandle,
   clearProfile

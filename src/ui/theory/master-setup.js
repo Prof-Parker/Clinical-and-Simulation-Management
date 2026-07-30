@@ -232,7 +232,7 @@ function saveSetup() {
   collectInto(data);
   notifyChange();
   refresh();
-  showAlert('Saved', 'Theory setup saved.');
+  showAlert('Theory setup applied', 'Changes applied to this semester. Use Sync to OneDrive when ready.');
 }
 
 function applyTopicSeed() {

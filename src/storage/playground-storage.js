@@ -1,5 +1,5 @@
 /**
- * Playground sandbox file I/O with file-kind guards and sticky handle.
+ * Playground sandbox file I/O with file-kind guards and sticky handles.
  */
 
 import * as CalendarEngine from '../core/calendar-engine.js';
@@ -8,10 +8,15 @@ import * as DataModel from '../core/data-model/index.js';
 import * as FileKind from '../core/file-kind.js';
 import * as Scheduler from '../core/scheduler/index.js';
 import * as Storage from './semester-storage.js';
+import { hybridSave } from './hybrid-save.js';
+import * as ProgramData from './program-data.js';
+import { guardedWrite, writeTextToHandle } from './guarded-write.js';
 import { getFileRoot, state } from '../core/state.js';
-import { runWriteGuard, alertKindError, promptGuardDecision } from '../ui/file-kind-guard.js';
+import { alertKindError, promptGuardDecision } from '../ui/file-kind-guard.js';
 
 var HANDLE_KEY = 'playgroundFileHandle';
+var DIR_HANDLE_KEY = 'playgroundDirHandle';
+var PLAYGROUND_KIND = FileKind.FILE_KINDS.PLAYGROUND;
 
 function suggestedFileName(courseId, season, year) {
   var token = season && year && courseId
@@ -28,7 +33,7 @@ function createFromSemester(semester) {
     semesterName: semester.meta.semesterName,
     copiedAt: new Date().toISOString()
   };
-  FileKind.stampFileKind(copy, FileKind.FILE_KINDS.PLAYGROUND);
+  FileKind.stampFileKind(copy, PLAYGROUND_KIND);
   if (copy.semesters && copy.semesters.length) {
     copy.semesters = [JSON.parse(JSON.stringify(semester))];
     copy.meta.activeSemesterId = copy.semesters[0].id;
@@ -45,86 +50,106 @@ function createFromCourseDefaults(courseId) {
   CalendarEngine.rebuildWeeks(sem);
   Scheduler.regenerateAll(sem);
   fileRoot.meta.playgroundSource = { courseId: courseId, copiedAt: new Date().toISOString() };
-  FileKind.stampFileKind(fileRoot, FileKind.FILE_KINDS.PLAYGROUND);
+  FileKind.stampFileKind(fileRoot, PLAYGROUND_KIND);
   return fileRoot;
 }
 
 function serialize(fileRoot) {
   fileRoot.meta = fileRoot.meta || {};
   fileRoot.meta.lastModified = new Date().toISOString();
-  FileKind.stampFileKind(fileRoot, FileKind.FILE_KINDS.PLAYGROUND);
+  FileKind.stampFileKind(fileRoot, PLAYGROUND_KIND);
   return JSON.stringify(fileRoot, null, 2);
 }
 
-function persistHandle(handle) {
+function persistHandles(handle, dirHandle) {
   state.playgroundFileHandle = handle;
   state.playgroundFileName = handle ? handle.name : null;
-  if (!handle) return Storage._idbSet(HANDLE_KEY, null);
-  return Storage._idbSet(HANDLE_KEY, handle);
+  if (dirHandle) state.playgroundDirHandle = dirHandle;
+  var chain = Storage._idbSet(HANDLE_KEY, handle || null);
+  if (dirHandle) {
+    chain = chain.then(function () {
+      return Storage._idbSet(DIR_HANDLE_KEY, dirHandle);
+    });
+  }
+  return chain;
 }
 
 function writeHandle(handle, fileRoot) {
-  return handle.createWritable().then(function (writable) {
-    return writable.write(serialize(fileRoot)).then(function () {
-      return writable.close();
-    });
+  return guardedWrite(handle, PLAYGROUND_KIND, function () {
+    return writeTextToHandle(handle, serialize(fileRoot));
+  }, {
+    suggestedName: handle && handle.name
   }).then(function () {
-    return persistHandle(handle).then(function () { return handle.name; });
+    return handle.name;
   });
 }
 
-function pickSaveHandle(suggestedName) {
-  return window.showSaveFilePicker({
+function buildHybridConfig(fileRoot, suggestedName) {
+  return {
+    kind: PLAYGROUND_KIND,
     suggestedName: suggestedName || 'user_playground.json',
-    types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
-  });
+    fileHandleKey: HANDLE_KEY,
+    dirHandleKey: DIR_HANDLE_KEY,
+    idbGet: Storage._idbGet,
+    idbSet: Storage._idbSet,
+    getFileHandle: function () { return state.playgroundFileHandle; },
+    getDirHandle: function () { return state.playgroundDirHandle; },
+    allowDownload: true,
+    write: function (handle) {
+      return writeHandle(handle, fileRoot);
+    },
+    download: function () {
+      return exportDownload(fileRoot, suggestedName);
+    },
+    onPersisted: function (handle, dirHandle) {
+      if (!handle) return Promise.resolve(null);
+      return persistHandles(handle, dirHandle).then(function () {
+        return handle.name;
+      });
+    }
+  };
 }
 
-function guardAndWrite(handle, fileRoot, suggestedName) {
-  return runWriteGuard(handle, FileKind.FILE_KINDS.PLAYGROUND, {
-    suggestedName: suggestedName,
-    onRepick: function () {
-      return pickSaveHandle(suggestedName);
-    }
-  }).then(function (decision) {
-    if (!decision.proceed) {
-      return Promise.reject(new Error('cancelled'));
-    }
-    return writeHandle(decision.handle, fileRoot);
-  });
-}
-
-/** Always open the save picker (Save as…). */
+/** Always show destination chooser (Save as…). */
 function saveToPicker(fileRoot, suggestedName) {
   if (!Storage.supportsFS()) {
     return exportDownload(fileRoot, suggestedName);
   }
-  return pickSaveHandle(suggestedName).then(function (handle) {
-    return guardAndWrite(handle, fileRoot, suggestedName);
+  return hybridSave(buildHybridConfig(fileRoot, suggestedName), {
+    forceChooser: true,
+    title: 'Save playground',
+    message: 'Create a new playground file, overwrite an existing one (validated before write), ' +
+      'save into the playgrounds folder, or download a backup.'
+  }).then(function (result) {
+    return (result && result.name) || suggestedName;
   });
 }
 
 /**
  * Sticky save: reuse playgroundFileHandle when permission is granted;
- * otherwise fall back to save picker.
+ * else ProgramData/playgrounds/; otherwise hybrid chooser.
  */
 function saveCurrent(fileRoot, suggestedName) {
   if (!Storage.supportsFS()) {
     return exportDownload(fileRoot, suggestedName);
   }
-  var existing = state.playgroundFileHandle;
-  if (!existing) return saveToPicker(fileRoot, suggestedName);
-
-  return existing.queryPermission({ mode: 'readwrite' }).then(function (perm) {
-    if (perm !== 'granted') {
-      return existing.requestPermission({ mode: 'readwrite' });
-    }
-    return perm;
-  }).then(function (perm) {
-    if (perm !== 'granted') return saveToPicker(fileRoot, suggestedName);
-    return guardAndWrite(existing, fileRoot, suggestedName);
-  }).catch(function () {
-    return saveToPicker(fileRoot, suggestedName);
+  if (!state.playgroundFileHandle && ProgramData.isProgramDataConnected()) {
+    var name = suggestedName || 'user_playground.json';
+    return ProgramData.writeRelative(
+      ProgramData.playgroundPath(name),
+      PLAYGROUND_KIND,
+      function () { return serialize(fileRoot); }
+    ).then(function (result) {
+      return persistHandles(result.handle, null).then(function () {
+        return result.name;
+      });
+    });
+  }
+  return hybridSave(buildHybridConfig(fileRoot, suggestedName), {
+    forceChooser: false,
+    title: 'Save playground'
+  }).then(function (result) {
+    return (result && result.name) || suggestedName;
   });
 }
 
@@ -148,7 +173,7 @@ function stampImportedPlayground(root) {
       importedFromProgram: true
     };
   }
-  FileKind.stampFileKind(root, FileKind.FILE_KINDS.PLAYGROUND);
+  FileKind.stampFileKind(root, PLAYGROUND_KIND);
   return root;
 }
 
@@ -163,15 +188,14 @@ function importFromFile(file) {
     reader.onerror = reject;
     reader.readAsText(file);
   }).then(function (root) {
-    var check = FileKind.assertFileKind(root, FileKind.FILE_KINDS.PLAYGROUND, {
+    var check = FileKind.assertFileKind(root, PLAYGROUND_KIND, {
       fileName: file && file.name,
       suggestedName: 'user_{term}_{courseId}_playground.json'
     });
     if (check.ok) {
-      FileKind.stampFileKind(root, FileKind.FILE_KINDS.PLAYGROUND);
+      FileKind.stampFileKind(root, PLAYGROUND_KIND);
       return root;
     }
-    // Program semester → offer sandbox copy (does not touch live file).
     if (check.detected === FileKind.FILE_KINDS.PROGRAM_SEMESTER) {
       return promptGuardDecision({
         proceed: false,
@@ -182,7 +206,7 @@ function importFromFile(file) {
           'Importing it into Playground creates a sandbox copy only — ' +
           'it will not replace the live file.',
         detected: check.detected,
-        expected: FileKind.FILE_KINDS.PLAYGROUND,
+        expected: PLAYGROUND_KIND,
         fileName: check.fileName
       }, {
         confirmLabel: 'Import as playground',
@@ -220,7 +244,10 @@ function openImportPicker() {
 
 function reconnectHandle() {
   if (!Storage.supportsFS()) return Promise.resolve(null);
-  return Storage._idbGet(HANDLE_KEY).then(function (handle) {
+  return Storage._idbGet(DIR_HANDLE_KEY).then(function (dir) {
+    if (dir) state.playgroundDirHandle = dir;
+    return Storage._idbGet(HANDLE_KEY);
+  }).then(function (handle) {
     if (!handle) return null;
     return handle.queryPermission({ mode: 'readwrite' }).then(function (perm) {
       if (perm !== 'granted') return null;
@@ -249,6 +276,5 @@ export {
   importFromFile,
   openImportPicker,
   reconnectHandle,
-  connectionLabel,
-  persistHandle
+  connectionLabel
 };

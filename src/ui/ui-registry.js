@@ -122,8 +122,9 @@ export var UI_SHELL = [
 ];
 
 export var UI_MENU = [
-  'darkModeToggle', 'loadUserFileMenuBtn', 'loadRegistryMenuBtn', 'logoutUserMenuBtn',
-  'newSemesterBatchBtn', 'semesterSwitchMenu', 'openFileBtn', 'newFileBtn', 'importBtn',
+  'darkModeToggle', 'switchUserMenuBtn', 'loadRegistryMenuBtn', 'logoutUserMenuBtn',
+  'newSemesterBatchBtn', 'semesterSwitchMenu', 'connectProgramDataBtn', 'reconnectProgramDataBtn',
+  'saveAsBtn', 'openFileBtn', 'newFileBtn', 'importBtn',
   'exportBtn', 'menuUsersLibraryBtn', 'menuClinicalSitesBtn', 'menuPlaygroundBtn',
   'menuExitPlaygroundBtn', 'clearStorageBtn', 'saveBtn'
 ];
@@ -135,9 +136,15 @@ export var UI_FILE_INPUTS = [
 
 export var UI_MODALS = {
   userGate: [
-    'userGateModal', 'userGateTitle', 'userGateLoadRegistryBtn', 'userGateLoadUserBtn',
-    'userGateLoadSemesterBtn', 'userGateChangeUserBtn', 'userGateStep1', 'userGateStep2',
-    'userGateStep3', 'userGateSemesterFileInput'
+    'userGateModal', 'userGateTitle', 'userGateConnectProgramDataBtn',
+    'userGateLoadRegistryBtn', 'userGateConfirmUserBtn', 'userGateEmail',
+    'userGatePassword', 'userGateForgotPasswordBtn', 'userGateStep1Lead', 'userGateStep2Lead', 'userGateStep3Lead',
+    'userGateRegistryName', 'userGateProgramDataHint', 'userGateProgramDataSemester',
+    'userGateConfirmSemesterBtn', 'userGateSemesterSelect',
+    'userGateLoadSemesterBtn', 'userGateStep1', 'userGateStep2', 'userGateStepChangePassword',
+    'userGateChangePasswordLead', 'userGateNewPassword', 'userGateNewPasswordConfirm',
+    'userGateChangePasswordBtn',
+    'userGateStep3', 'userGateSemesterFileInput', 'userGateUserName'
   ],
   config: ['configModal', 'configModalClose', 'configModalCancel', 'configModalSave', 'configModalBody'],
   dialog: ['dialogModal', 'dialogTitle', 'dialogBody', 'dialogCancel', 'dialogExtra', 'dialogSave']

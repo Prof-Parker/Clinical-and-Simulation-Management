@@ -5,12 +5,15 @@
 import * as Storage from './semester-storage.js';
 import * as UserData from '../auth/user-data.js';
 import * as FileKind from '../core/file-kind.js';
-import { assertKindOrThrow, guardedWrite } from './guarded-write.js';
+import * as ProgramData from './program-data.js';
+import { assertKindOrThrow, guardedWrite, writeTextToHandle } from './guarded-write.js';
 import { readHandleText } from './fs-handle.js';
+import { hybridSave } from './hybrid-save.js';
 import { state } from '../core/state.js';
 
 var CACHE_KEY = 'usersRegistryData';
   var HANDLE_KEY = 'usersRegistryFileHandle';
+  var DIR_HANDLE_KEY = 'usersRegistryDirHandle';
   var META_KEY = 'usersRegistryMeta';
   var KIND = FileKind.FILE_KINDS.USERS_REGISTRY;
 
@@ -49,11 +52,7 @@ var CACHE_KEY = 'usersRegistryData';
 
   function writeToHandle(handle, registry) {
     return guardedWrite(handle, KIND, function () {
-      return handle.createWritable().then(function (writable) {
-        return writable.write(serialize(registry)).then(function () {
-          return writable.close();
-        });
-      });
+      return writeTextToHandle(handle, serialize(registry));
     });
   }
 
@@ -66,14 +65,35 @@ var CACHE_KEY = 'usersRegistryData';
     });
   }
 
+  function persistRegistry(registry) {
+    function afterWrite() {
+      state.usersRegistryLoadedRevision = registry.meta.revision;
+      return idbSet(CACHE_KEY, registry).then(function () {
+        return { conflict: false, registry: registry };
+      });
+    }
+    if (state.usersRegistryFileHandle) {
+      return writeToHandle(state.usersRegistryFileHandle, registry).then(afterWrite);
+    }
+    if (ProgramData.isProgramDataConnected()) {
+      return ProgramData.writeRelative(
+        ProgramData.PATHS.REGISTRY,
+        KIND,
+        function () { return serialize(registry); }
+      ).then(function (result) {
+        state.usersRegistryFileHandle = result.handle;
+        return idbSet(HANDLE_KEY, result.handle).then(afterWrite);
+      });
+    }
+    return Promise.reject(new Error(
+      'Cannot save users-registry.json: reconnect ProgramData or open the registry with write access.'
+    ));
+  }
+
   function saveCurrent() {
     var registry = getRegistry();
-    if (!registry || !state.usersRegistryFileHandle || !supportsFS()) {
-      return Promise.resolve();
-    }
-    return writeToHandle(state.usersRegistryFileHandle, registry).then(function () {
-      return idbSet(CACHE_KEY, registry);
-    });
+    if (!registry) return Promise.resolve();
+    return persistRegistry(registry).then(function () { return registry; });
   }
 
   function reloadFromHandle() {
@@ -98,14 +118,30 @@ var CACHE_KEY = 'usersRegistryData';
         remote.users[uid] = localRegistry.users[uid];
       });
       remote.meta.revision = localRegistry.meta.revision;
+      if (localRegistry.meta && localRegistry.meta.helpDeskEngineerUserId != null) {
+        remote.meta.helpDeskEngineerUserId = String(localRegistry.meta.helpDeskEngineerUserId);
+      }
       setRegistry(remote);
-      return writeToHandle(state.usersRegistryFileHandle, remote).then(function () {
-        state.usersRegistryLoadedRevision = remote.meta.revision;
-        return idbSet(CACHE_KEY, remote).then(function () {
-          return { conflict: false, registry: remote };
-        });
-      });
+      return persistRegistry(remote);
     });
+  }
+
+  function importFromRaw(registry, fileName, fileHandle) {
+    assertKindOrThrow(registry, KIND, {
+      fileName: fileName || 'users-registry.json',
+      suggestedName: 'users-registry.json'
+    });
+    var migrated = UserData.migrateRegistry(registry);
+    state.usersRegistryFileHandle = fileHandle || null;
+    state.usersRegistryFileName = fileName || 'users-registry.json';
+    setRegistry(migrated);
+    state.usersRegistryLoadedRevision = migrated.meta.revision;
+    var chain = fileHandle ? idbSet(HANDLE_KEY, fileHandle) : Promise.resolve();
+    return chain.then(function () {
+      return idbSet(CACHE_KEY, migrated);
+    }).then(function () {
+      return setMeta({ lastImportedFileName: state.usersRegistryFileName, hasLoadedData: true });
+    }).then(function () { return migrated; });
   }
 
   function openFilePicker() {
@@ -149,22 +185,45 @@ var CACHE_KEY = 'usersRegistryData';
   function createFilePicker() {
     if (!supportsFS()) return Promise.reject(new Error('FS API unavailable'));
     var registry = UserData.createEmptyRegistry();
-    return window.showSaveFilePicker({
+    return hybridSave({
+      kind: KIND,
       suggestedName: 'users-registry.json',
-      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
-    }).then(function (handle) {
-      state.usersRegistryFileHandle = handle;
-      state.usersRegistryFileName = handle.name;
-      setRegistry(registry);
-      return idbSet(HANDLE_KEY, handle).then(function () {
-        return writeToHandle(handle, registry).then(function () {
-          state.usersRegistryLoadedRevision = 1;
-          return setMeta({ lastImportedFileName: handle.name, hasLoadedData: true }).then(function () {
-            return registry;
-          });
+      fileHandleKey: HANDLE_KEY,
+      dirHandleKey: DIR_HANDLE_KEY,
+      idbGet: idbGet,
+      idbSet: idbSet,
+      getFileHandle: function () { return state.usersRegistryFileHandle; },
+      getDirHandle: function () { return state.usersRegistryDirHandle; },
+      allowDownload: true,
+      write: function (handle) {
+        setRegistry(registry);
+        return writeToHandle(handle, registry);
+      },
+      download: function () {
+        var blob = new Blob([serialize(registry)], { type: 'application/json' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'users-registry.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        setRegistry(registry);
+      },
+      onPersisted: function (handle, dirHandle) {
+        if (!handle) return Promise.resolve(registry);
+        state.usersRegistryFileHandle = handle;
+        state.usersRegistryFileName = handle.name;
+        if (dirHandle) state.usersRegistryDirHandle = dirHandle;
+        setRegistry(registry);
+        state.usersRegistryLoadedRevision = 1;
+        return setMeta({ lastImportedFileName: handle.name, hasLoadedData: true }).then(function () {
+          return registry;
         });
-      });
-    });
+      }
+    }, {
+      forceChooser: true,
+      title: 'Users registry',
+      message: 'Create, overwrite (validated before write), save to a folder, or download.'
+    }).then(function () { return registry; });
   }
 
   function reconnectHandle() {
@@ -197,6 +256,22 @@ var CACHE_KEY = 'usersRegistryData';
     });
   }
 
+  /** Full reset (fresh-device simulation): cached registry, handles, and state. */
+  function clearRegistry() {
+    state.usersRegistry = null;
+    state.usersRegistryFileHandle = null;
+    state.usersRegistryFileName = null;
+    state.usersRegistryDirHandle = null;
+    state.usersRegistryLoadedRevision = null;
+    return idbSet(CACHE_KEY, null).then(function () {
+      return idbSet(HANDLE_KEY, null);
+    }).then(function () {
+      return idbSet(DIR_HANDLE_KEY, null);
+    }).then(function () {
+      return setMeta({ lastImportedFileName: '', hasLoadedData: false });
+    });
+  }
+
   function addOrUpdateUser(userId, entry) {
     var registry = getRegistry();
     if (!registry) return;
@@ -217,6 +292,8 @@ export {
   openFilePicker,
   createFilePicker,
   importViaInput,
+  importFromRaw,
+  clearRegistry,
   saveCurrent,
   mergeSave,
   reloadFromHandle,

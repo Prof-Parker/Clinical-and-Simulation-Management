@@ -4,190 +4,32 @@
 
 import * as Storage from './semester-storage.js';
 import * as FileKind from '../core/file-kind.js';
-import { assertKindOrThrow, guardedWrite } from './guarded-write.js';
+import { assertKindOrThrow, guardedWrite, writeTextToHandle } from './guarded-write.js';
+import { hybridSave } from './hybrid-save.js';
+import * as ProgramData from './program-data.js';
 import { state } from '../core/state.js';
+import {
+  SKILL_KINDS,
+  emptyCurriculumMeta,
+  normalizeCurriculumMeta,
+  inferSkillKinds,
+  normalizeSkillKinds,
+  isUsableSkillTitle,
+  normalizeSkill,
+  normalizeTopic,
+  createEmptyLibrary,
+  migrateLibrary,
+  skillKindLabel
+} from './theory-library-model.js';
 
 var CACHE_KEY = 'theoryLibraryData';
 var HANDLE_KEY = 'theoryLibraryFileHandle';
+var DIR_HANDLE_KEY = 'theoryLibraryDirHandle';
 var KIND = FileKind.FILE_KINDS.THEORY_CONTENT_LIBRARY;
-
-export var SKILL_KINDS = ['introduction', 'practice', 'testout'];
-
-/** Stub shape for future COR / ACEN / curriculum-mapping features. */
-export function emptyCurriculumMeta() {
-  return {
-    version: 1,
-    corRefs: [],
-    acenStandards: [],
-    programOutcomes: [],
-    courseOutcomes: [],
-    notes: ''
-  };
-}
-
-function normalizeCurriculumMeta(raw) {
-  var base = emptyCurriculumMeta();
-  if (!raw || typeof raw !== 'object') return base;
-  return {
-    version: raw.version != null ? raw.version : 1,
-    corRefs: Array.isArray(raw.corRefs) ? raw.corRefs.slice() : [],
-    acenStandards: Array.isArray(raw.acenStandards) ? raw.acenStandards.slice() : [],
-    programOutcomes: Array.isArray(raw.programOutcomes) ? raw.programOutcomes.slice() : [],
-    courseOutcomes: Array.isArray(raw.courseOutcomes) ? raw.courseOutcomes.slice() : [],
-    notes: raw.notes != null ? String(raw.notes) : ''
-  };
-}
 
 function idbGet(key) { return Storage._idbGet(key); }
 function idbSet(key, val) { return Storage._idbSet(key, val); }
 function supportsFS() { return Storage && Storage.supportsFS(); }
-
-function skillIdFromTitle(title) {
-  var slug = String(title || '').toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_|_$/g, '')
-    .slice(0, 48);
-  return 'skill_' + (slug || Date.now().toString(36));
-}
-
-/** Infer introduction / practice / testout tags from a free-text skill title. */
-export function inferSkillKinds(title) {
-  var t = String(title || '');
-  var kinds = [];
-  if (/\bintro(?:duction)?\b/i.test(t)) kinds.push('introduction');
-  if (/\bpractice\b|\bpracti[sc]e\b/i.test(t)) kinds.push('practice');
-  if (/\btest[\s-]*outs?\b|\btestouts?\b/i.test(t)) kinds.push('testout');
-  return kinds;
-}
-
-function normalizeSkillKinds(kinds) {
-  var seen = {};
-  var out = [];
-  (kinds || []).forEach(function (k) {
-    var key = String(k || '').toLowerCase();
-    if (SKILL_KINDS.indexOf(key) < 0 || seen[key]) return;
-    seen[key] = true;
-    out.push(key);
-  });
-  return out;
-}
-
-function isUsableSkillTitle(title) {
-  var t = String(title || '').trim();
-  if (t.length < 2) return false;
-  if (/^[\/\\|.,;:_-]+$/.test(t)) return false;
-  if (/^(r|\/)$/i.test(t)) return false;
-  // Holidays/breaks come from semester Setup, not the skills bank.
-  if (/\bbreak\b/i.test(t) || /\bholiday\b/i.test(t) || /^no class$/i.test(t)) return false;
-  return true;
-}
-
-function normalizeSkill(raw) {
-  if (!raw) return null;
-  if (typeof raw === 'string') {
-    var title = raw.trim();
-    if (!isUsableSkillTitle(title)) return null;
-    return {
-      id: skillIdFromTitle(title),
-      title: title,
-      description: '',
-      kinds: inferSkillKinds(title),
-      curriculumMeta: emptyCurriculumMeta(),
-      courseId: null
-    };
-  }
-  var skillTitle = String(raw.title || '').trim();
-  if (!isUsableSkillTitle(skillTitle)) return null;
-  return {
-    id: raw.id || skillIdFromTitle(skillTitle),
-    title: skillTitle,
-    description: raw.description != null ? String(raw.description) : '',
-    kinds: Array.isArray(raw.kinds)
-      ? normalizeSkillKinds(raw.kinds)
-      : inferSkillKinds(skillTitle),
-    curriculumMeta: normalizeCurriculumMeta(raw.curriculumMeta),
-    courseId: raw.courseId || null
-  };
-}
-
-function normalizeTopic(raw, courseId) {
-  if (!raw) return null;
-  var title = String(raw.title || '').trim();
-  if (!title) return null;
-  return {
-    id: raw.id || ('topic_' + Date.now().toString(36)),
-    title: title,
-    shortLabel: raw.shortLabel != null ? String(raw.shortLabel) : '',
-    moduleRef: raw.moduleRef != null ? String(raw.moduleRef) : '',
-    description: raw.description != null ? String(raw.description) : '',
-    defaultLectureHours: raw.defaultLectureHours != null ? raw.defaultLectureHours : null,
-    defaultTopics: Array.isArray(raw.defaultTopics) ? raw.defaultTopics.slice() : [],
-    tags: Array.isArray(raw.tags) ? raw.tags.slice() : [],
-    curriculumMeta: normalizeCurriculumMeta(raw.curriculumMeta),
-    courseId: raw.courseId || courseId || null
-  };
-}
-
-function buildSkillsFromTopics(topics, courseId) {
-  var byKey = {};
-  (topics || []).forEach(function (topic) {
-    (topic.defaultSkills || []).forEach(function (entry) {
-      var skill = normalizeSkill(typeof entry === 'string' ? entry : entry);
-      if (!skill) return;
-      var key = skill.title.toLowerCase();
-      if (!byKey[key]) {
-        skill.courseId = courseId || skill.courseId;
-        byKey[key] = skill;
-        return;
-      }
-      var existing = byKey[key];
-      skill.kinds.forEach(function (k) {
-        if (existing.kinds.indexOf(k) < 0) existing.kinds.push(k);
-      });
-    });
-  });
-  return Object.keys(byKey).sort().map(function (k) { return byKey[k]; });
-}
-
-export function createEmptyLibrary(courseId) {
-  return {
-    meta: {
-      version: 2,
-      courseId: courseId || 'REGN15',
-      fileKind: KIND,
-      lastModified: new Date().toISOString(),
-      curriculumMeta: emptyCurriculumMeta()
-    },
-    topics: [],
-    skills: []
-  };
-}
-
-export function migrateLibrary(raw) {
-  if (!raw || !raw.topics) return createEmptyLibrary();
-  if (!raw.meta) raw.meta = { version: 2 };
-  if (!raw.meta.courseId) raw.meta.courseId = 'REGN15';
-  if (raw.meta.version == null || raw.meta.version < 2) raw.meta.version = 2;
-  raw.meta.curriculumMeta = normalizeCurriculumMeta(raw.meta.curriculumMeta);
-
-  // One-time extract: legacy topic.defaultSkills → skills bank, then detach from topics.
-  var extracted = buildSkillsFromTopics(raw.topics, raw.meta.courseId);
-  if (!Array.isArray(raw.skills) || !raw.skills.length) {
-    raw.skills = extracted;
-  } else {
-    raw.skills = raw.skills.map(normalizeSkill).filter(Boolean);
-    var have = {};
-    raw.skills.forEach(function (s) { have[s.title.toLowerCase()] = true; });
-    extracted.forEach(function (s) {
-      if (!have[s.title.toLowerCase()]) raw.skills.push(s);
-    });
-  }
-  raw.skills = raw.skills.map(normalizeSkill).filter(Boolean);
-  raw.topics = raw.topics.map(function (t) {
-    return normalizeTopic(t, raw.meta.courseId);
-  }).filter(Boolean);
-  return raw;
-}
 
 export function getLibrary() {
   return state.theoryLibraryRoot;
@@ -209,9 +51,7 @@ function serialize(root) {
 
 function writeToHandle(handle, root) {
   return guardedWrite(handle, KIND, function () {
-    return handle.createWritable().then(function (w) {
-      return w.write(serialize(root)).then(function () { return w.close(); });
-    });
+    return writeTextToHandle(handle, serialize(root));
   });
 }
 
@@ -226,10 +66,26 @@ function readFromHandle(handle) {
 
 export function saveCurrent() {
   var root = getLibrary();
-  if (!root || !state.theoryLibraryFileHandle) return Promise.resolve();
-  return writeToHandle(state.theoryLibraryFileHandle, root).then(function () {
-    return idbSet(CACHE_KEY, root);
-  });
+  if (!root) return Promise.resolve();
+  if (state.theoryLibraryFileHandle) {
+    return writeToHandle(state.theoryLibraryFileHandle, root).then(function () {
+      return idbSet(CACHE_KEY, root);
+    });
+  }
+  if (ProgramData.isProgramDataConnected()) {
+    var courseId = (root.meta && root.meta.courseId) || 'REGN15';
+    return ProgramData.writeRelative(
+      ProgramData.theoryLibraryPath(courseId),
+      KIND,
+      function () { return serialize(root); }
+    ).then(function (result) {
+      state.theoryLibraryFileHandle = result.handle;
+      return idbSet(HANDLE_KEY, result.handle).then(function () {
+        return idbSet(CACHE_KEY, root);
+      });
+    });
+  }
+  return Promise.resolve();
 }
 
 export function openFilePicker() {
@@ -278,19 +134,51 @@ function importViaInput() {
 
 export function createFilePicker(courseId) {
   var root = createEmptyLibrary(courseId);
-  if (!supportsFS()) return Promise.reject(new Error('FS unavailable'));
-  return window.showSaveFilePicker({
-    suggestedName: 'theory-content-library_' + (courseId || 'REGN15') + '.json',
-    types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
-  }).then(function (handle) {
-    state.theoryLibraryFileHandle = handle;
+  var suggested = 'theory-content-library_' + (courseId || 'REGN15') + '.json';
+  if (!supportsFS()) {
+    var blob = new Blob([serialize(root)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = suggested;
+    a.click();
+    URL.revokeObjectURL(a.href);
     setRoot(root);
-    return idbSet(HANDLE_KEY, handle).then(function () {
-      return writeToHandle(handle, root).then(function () {
-        return idbSet(CACHE_KEY, root).then(function () { return root; });
-      });
-    });
-  });
+    return Promise.resolve(root);
+  }
+  return hybridSave({
+    kind: KIND,
+    suggestedName: suggested,
+    fileHandleKey: HANDLE_KEY,
+    dirHandleKey: DIR_HANDLE_KEY,
+    idbGet: idbGet,
+    idbSet: idbSet,
+    getFileHandle: function () { return state.theoryLibraryFileHandle; },
+    getDirHandle: function () { return state.theoryLibraryDirHandle; },
+    allowDownload: true,
+    write: function (handle) {
+      return writeToHandle(handle, root);
+    },
+    download: function () {
+      var b = new Blob([serialize(root)], { type: 'application/json' });
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(b);
+      link.download = suggested;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      setRoot(root);
+    },
+    onPersisted: function (handle, dirHandle) {
+      if (!handle) return Promise.resolve(root);
+      state.theoryLibraryFileHandle = handle;
+      if (dirHandle) state.theoryLibraryDirHandle = dirHandle;
+      setRoot(root);
+      return idbSet(CACHE_KEY, root).then(function () { return root; });
+    }
+  }, {
+    forceChooser: true,
+    title: 'Theory content library',
+    message: 'Create, overwrite (validated before write), save to a folder, or download.'
+  }).then(function () { return root; });
 }
 
 export function getTopicById(topicId) {
@@ -465,13 +353,6 @@ export function getConnectionLabel() {
   return 'Theory content library (on this device)';
 }
 
-export function skillKindLabel(kind) {
-  if (kind === 'introduction') return 'Intro';
-  if (kind === 'practice') return 'Practice';
-  if (kind === 'testout') return 'Testout';
-  return kind || '';
-}
-
 export function init() {
   return idbGet(HANDLE_KEY).then(function (handle) {
     if (!handle || !supportsFS()) return idbGet(CACHE_KEY);
@@ -485,3 +366,12 @@ export function init() {
     return raw;
   }).catch(function () { return null; });
 }
+
+export {
+  SKILL_KINDS,
+  emptyCurriculumMeta,
+  inferSkillKinds,
+  createEmptyLibrary,
+  migrateLibrary,
+  skillKindLabel
+};

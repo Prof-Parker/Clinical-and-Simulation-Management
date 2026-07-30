@@ -24,13 +24,10 @@ import {
 } from '../src/core/data-model/index.js';
 import * as RosterBalance from '../src/core/roster-balance.js';
 import * as Scheduler from '../src/core/scheduler/index.js';
+import { hashPassword } from '../src/auth/password.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..', 'mock-onedrive');
-
-function hashKey(key) {
-  return 'sha256:' + crypto.createHash('sha256').update(String(key)).digest('hex');
-}
 
 function uid(prefix) {
   return prefix + '_' + crypto.randomBytes(4).toString('hex');
@@ -92,32 +89,38 @@ async function main() {
   };
 
   var roles = [
-    { file: 'engineer.user.json', role: 'program_engineer', name: 'Program Engineer', email: 'engineer@example.edu' },
-    { file: 'admin.user.json', role: 'admin_staff', name: 'Admin Staff', email: 'admin@example.edu' },
-    { file: 'lead-faculty.user.json', role: 'lead_course_faculty', name: 'Lead Faculty', email: 'lead@example.edu' },
-    { file: 'adjunct.user.json', role: 'adjunct_faculty', name: 'Adjunct Faculty', email: 'adjunct@example.edu' }
+    { role: 'program_engineer', firstName: 'Program', lastName: 'Engineer', email: 'engineer@example.edu', password: 'engineer-pass' },
+    { role: 'admin_staff', firstName: 'Admin', lastName: 'Staff', email: 'admin@example.edu', password: 'admin-pass' },
+    { role: 'lead_course_faculty', firstName: 'Lead', lastName: 'Faculty', email: 'lead@example.edu', password: 'lead-pass' },
+    { role: 'adjunct_faculty', firstName: 'Adjunct', lastName: 'Faculty', email: 'adjunct@example.edu', password: 'adjunct-pass' }
   ];
 
-  roles.forEach(function (r) {
+  var helpDeskEngineerUserId = '';
+  for (var i = 0; i < roles.length; i++) {
+    var r = roles[i];
     var userId = uid('usr');
-    var key = 'k_' + crypto.randomBytes(12).toString('hex');
+    var passwordHash = await hashPassword(r.password);
     registry.users[userId] = {
       role: r.role,
-      keyHash: hashKey(key),
+      passwordHash: passwordHash,
       status: 'active',
       issuedAt: new Date().toISOString(),
-      issuedBy: 'seed script'
-    };
-    writeJson(path.join('users', r.file), {
-      userId: userId,
-      name: r.name,
+      issuedBy: 'seed script',
+      firstName: r.firstName,
+      lastName: r.lastName,
       email: r.email,
-      key: key,
-      fileKind: 'user_credential'
-    });
-  });
+      mustChangePassword: false,
+      temporaryPasswordExpiresAt: ''
+    };
+    if (r.role === 'program_engineer' && !helpDeskEngineerUserId) {
+      helpDeskEngineerUserId = userId;
+    }
+  }
+  registry.meta.helpDeskEngineerUserId = helpDeskEngineerUserId;
 
   writeJson(path.join('users', 'users-registry.json'), registry);
+
+  console.log('  demo passwords (permanent, not temporary): engineer-pass, admin-pass, lead-pass, adjunct-pass');
 
   var siteLibrary = {
     meta: { version: 1 },

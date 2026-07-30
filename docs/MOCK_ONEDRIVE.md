@@ -17,11 +17,7 @@ This creates:
 ```
 mock-onedrive/
 ├── users/
-│   ├── users-registry.json
-│   ├── engineer.user.json
-│   ├── admin.user.json
-│   ├── lead-faculty.user.json
-│   └── adjunct.user.json
+│   └── users-registry.json
 ├── semesters/
 │   └── F2026_REGN_program.json   ← consolidated term file (theory + REGN15P)
 ├── theory-content-library_REGN15.json
@@ -30,36 +26,36 @@ mock-onedrive/
 └── clinical-sites-library.json
 ```
 
+Sign-in is **email + password** against `users-registry.json`. Identity `*.user.json` files are no longer seeded.
+
 Theory calendar data is imported from the Fall 2026 prototype docx files under `docs/Design Docs/protypes/`.
 
 All names use placeholders only (`Student 1`, `Program Engineer`, etc.).
 
-Seeded JSON includes `meta.fileKind` (or root `fileKind` on `*.user.json`) so local testing matches production guards. Legacy files without `fileKind` still open via inference until the next save stamps the kind.
+Seeded JSON includes `meta.fileKind` so local testing matches production guards. Legacy files without `fileKind` still open via inference until the next save stamps the kind.
 
 ## Test workflows
 
 1. Open the app (local server or GitHub Pages build).
-2. **Sign in:** Menu → **Load user file…** → pick `mock-onedrive/users/admin.user.json` (or another role file).
-3. **Registry:** Menu → **Connect users registry…** → pick `mock-onedrive/users/users-registry.json`.
-4. **Semester:** Menu → **Connect OneDrive file** → `mock-onedrive/semesters/F2026_REGN_program.json`.
+2. **Connect ProgramData:** pick the `mock-onedrive/` folder (or classic **Connect users registry…** → `mock-onedrive/users/users-registry.json`).
+3. **Sign in** with a demo email/password from the table below.
+4. **Semester:** open from ProgramData `semesters/` or classic load of `mock-onedrive/semesters/F2026_REGN_program.json`.
 5. **Theory library (optional):** Connect `mock-onedrive/theory-content-library_REGN15.json` when the app supports it.
 6. **Playground:** Playground tab → Import `mock-onedrive/playgrounds/user_F2026_REGN15P_playground.json`. Saving over `F2026_REGN_program.json` should be blocked.
 
-### Role files
+### Demo accounts (permanent passwords for local testing)
 
-| File | Role | Use to test |
-|------|------|-------------|
-| `engineer.user.json` | Program Engineer | All tabs, user management, optional kind overwrite |
-| `admin.user.json` | Admin Staff | Batch semester, approve proposals, audit |
-| `lead-faculty.user.json` | Lead Course Faculty | Propose setup changes, playground |
-| `adjunct.user.json` | Adjunct Faculty | Dashboard read-only, sim roles |
+| Email | Role | Password |
+|------|------|----------|
+| `engineer@example.edu` | Program Engineer | `engineer-pass` |
+| `admin@example.edu` | Admin Staff | `admin-pass` |
+| `lead@example.edu` | Lead Course Faculty | `lead-pass` |
+| `adjunct@example.edu` | Adjunct Faculty | `adjunct-pass` |
 
-### Tamper test
-
-Edit `admin.user.json` locally and change a field — validation should fail unless the key still matches `users-registry.json`.
+Seeded demo accounts are **not** temporary passwords (`mustChangePassword: false`). Users created or reset in the Users tab get generated temporary passwords (72-hour expiry + forced change).
 
 ## Notes
 
-- File System Access requires picking files through the browser; paths are not auto-wired.
-- Re-run the seed script to reset keys and data.
+- File System Access requires picking folders/files through the browser; paths are not auto-wired.
+- Re-run the seed script to reset registry and sample semester data.
 - Production data belongs in real OneDrive, not this folder.

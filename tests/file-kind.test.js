@@ -11,7 +11,7 @@ describe('file-kind', () => {
 
   it('infers each kind from fixture shape + filename', () => {
     assert(
-      FileKind.inferFileKind({ userId: 'u1', key: 'k1' }, 'smith.user.json') === K.USER_CREDENTIAL,
+      FileKind.inferFileKind({ userId: 'u1' }, 'smith.user.json') === K.USER_CREDENTIAL,
       'user credential shape'
     );
     assert(
@@ -129,7 +129,7 @@ describe('file-kind', () => {
     FileKind.stampFileKind(root, K.PROGRAM_SEMESTER);
     assert(root.meta.fileKind === K.PROGRAM_SEMESTER, 'semester stamp');
 
-    var user = { userId: 'u', key: 'k' };
+    var user = { userId: 'u' };
     FileKind.stampFileKind(user, K.USER_CREDENTIAL);
     assert(user.fileKind === K.USER_CREDENTIAL, 'credential stamp');
   });
@@ -159,5 +159,58 @@ describe('file-kind', () => {
     assert(result.proceed === false, 'must not proceed');
     assert(result.hardBlock === true, 'hard block');
     assert(result.detected === K.USER_CREDENTIAL, 'detected from name');
+    assert(/already cleared|version history|seed/i.test(result.message || ''), 'wipe hint');
+  });
+
+  it('hard-blocks polluted user.json that contains program_semester content', () => {
+    var polluted = { meta: { fileKind: K.PROGRAM_SEMESTER }, semesters: [{ id: 's1' }] };
+    var result = FileKind.evaluateGuard(polluted, 'overwrite-test.user.json', K.PROGRAM_SEMESTER);
+    assert(result.proceed === false, 'not proceed');
+    assert(result.hardBlock === true, 'hard block despite matching content kind');
+    assert(result.detected === K.USER_CREDENTIAL, 'filename wins for high-risk');
+    assert(result.title === 'Wrong file type', 'wrong type title');
+  });
+
+  it('hard-blocks polluted program file that contains playground content', () => {
+    var polluted = {
+      meta: { fileKind: K.PLAYGROUND, playgroundSource: { courseId: 'REGN15P' } },
+      semesters: [{ id: 's1' }]
+    };
+    var result = FileKind.evaluateGuard(polluted, 'F2026_REGN_program.json', K.PLAYGROUND, {
+      suggestedName: 'user_F2026_REGN15P_playground.json'
+    });
+    assert(result.proceed === false, 'not proceed');
+    assert(result.hardBlock === true, 'hard block despite matching content kind');
+    assert(result.detected === K.PROGRAM_SEMESTER, 'filename wins for high-risk');
+    assert(result.code === FileKind.ERROR_CODES.KIND_PLAYGROUND_TO_PROGRAM, 'code');
+  });
+
+  it('hard-blocks when getFile rejects using filename only', async () => {
+    var handle = {
+      name: 'overwrite-test.user.json',
+      getFile: function () {
+        return Promise.reject(Object.assign(new Error('NotAllowedError'), { name: 'NotAllowedError' }));
+      }
+    };
+    var result = await FileKind.guardBeforeWrite(handle, K.PROGRAM_SEMESTER);
+    assert(result.proceed === false, 'must not proceed');
+    assert(result.hardBlock === true, 'hard block');
+    assert(result.detected === K.USER_CREDENTIAL, 'detected from name');
+    assert(result.empty === true, 'treated as empty/unreadable');
+  });
+
+  it('hard-blocks playground getFile reject onto program filename', async () => {
+    var handle = {
+      name: 'F2026_REGN_program.json',
+      getFile: function () {
+        return Promise.reject(Object.assign(new Error('NotAllowedError'), { name: 'NotAllowedError' }));
+      }
+    };
+    var result = await FileKind.guardBeforeWrite(handle, K.PLAYGROUND, {
+      suggestedName: 'user_F2026_REGN15P_playground.json'
+    });
+    assert(result.proceed === false, 'blocked');
+    assert(result.hardBlock === true, 'hard');
+    assert(result.detected === K.PROGRAM_SEMESTER, 'from name');
   });
 });

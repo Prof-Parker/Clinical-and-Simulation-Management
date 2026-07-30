@@ -309,7 +309,7 @@ var delegationBound = false;
         if (count === 0) {
           showAlert('No changes', 'No differences from the approved semester setup.');
         } else {
-          showAlert('Proposed', count + ' change(s) submitted for review.');
+          showAlert('Proposed', count + ' change(s) submitted for review. Sync to OneDrive to persist them on the program file.');
         }
       });
     }
