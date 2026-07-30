@@ -13,10 +13,23 @@ import { buildSemesterLabelHtml, refresh } from '../chrome.js';
 import { renderChart } from './chart.js';
 import { getScheduleFilteredStudents, populateFilters, escapeHtml } from './schedule-filters.js';
 import { resolveDisplayedSimGuestGroup } from './guest-group.js';
+import { syncScheduleTallyScroll, syncScheduleTallyLayout, bindScheduleScrollSync } from './schedule-tally.js';
+import * as ScheduleHolidayLabel from '../../core/schedule-holiday-label.js';
 
 var scheduleFullscreenActive = false;
-var tallyScrollSyncing = false;
 var scheduleSearchDebounce = null;
+
+function clinicalGroupHoverTitle(data, group) {
+  var facId = ClinicalSites.getPrimaryGroupFacility(data, group);
+  var site = facId ? DataModel.findFacilityById(data, facId) : null;
+  var siteName = (site && site.name) || 'Not assigned';
+  var facultyRec = null;
+  (data.faculty || []).forEach(function (f) {
+    if (f.clinicalGroup === group) facultyRec = f;
+  });
+  var facultyName = (facultyRec && String(facultyRec.name || '').trim()) || 'Not assigned';
+  return 'Clinical Site: ' + siteName + '\nClinical Faculty: ' + facultyName;
+}
 
 function updateSchedulePanelSemester(data) {
     var el = document.getElementById('schedulePanelSemester');
@@ -65,7 +78,7 @@ function setScheduleFullscreen(active) {
       updateSchedulePanelSemester(getData());
       requestAnimationFrame(function () {
         syncFullscreenScheduleLayout();
-        syncScheduleTallyScroll();
+        syncScheduleTallyLayout();
         var bodyScroll = document.getElementById('scheduleBodyScroll');
         if (bodyScroll) bodyScroll.focus();
       });
@@ -105,14 +118,16 @@ function bindScheduleFullscreen() {
     window.addEventListener('resize', function () {
       if (scheduleFullscreenActive) {
         syncFullscreenScheduleLayout();
-        syncScheduleTallyScroll();
+        syncScheduleTallyLayout();
       }
     });
   }
 
 function renderCellHtml(cell, student, data, weekIndex) {
     if (!cell) return '<div class="cell-empty">-</div>';
-    if (cell.inactive) return '<div class="cell-holiday">Holiday</div>';
+    if (cell.inactive || ScheduleHolidayLabel.isBreakWeek(data, weekIndex)) {
+      return '<div class="cell-holiday">Break</div>';
+    }
 
     var cfg = data.config;
     var cDay = DataModel.getClinicalDayForGroup(student.clinicalGroup, cfg);
@@ -124,6 +139,12 @@ function renderCellHtml(cell, student, data, weekIndex) {
     var orientHtml = isOrientWeek
       ? '<span class="badge-orient">' + Orientation.getOrientationLabel(data, student, weekIndex) + '</span>'
       : '';
+    var holidayLabel = ScheduleHolidayLabel.formatHolidayIndicator(
+      ScheduleHolidayLabel.holidayIndicatorDays(data, student, weekIndex)
+    );
+    var holidayHtml = holidayLabel
+      ? '<span class="badge-holiday">' + holidayLabel + '</span>'
+      : '';
 
     if (hasMakeupClin && !hasScheduledClin && !hasSim && !isOrientWeek) {
       var clinTier = MakeupDisplay.getClinicalMakeupTier(cell, student, weekIndex);
@@ -133,11 +154,16 @@ function renderCellHtml(cell, student, data, weekIndex) {
     }
 
     if (!hasScheduledClin && !hasSim && !hasMakeupClin) {
+      if (isOrientWeek && holidayHtml) {
+        return '<div class="flex-col">' + orientHtml + holidayHtml + '</div>';
+      }
       if (isOrientWeek) return '<div class="flex-col">' + orientHtml + '</div>';
+      if (holidayLabel) return '<div class="cell-holiday">' + holidayLabel + '</div>';
       return '<div class="cell-empty">-</div>';
     }
 
     var html = '<div class="flex-col">';
+    if (holidayHtml) html += holidayHtml;
     if (orientHtml) html += orientHtml;
     if (hasScheduledClin) {
       var cls = cell.clinicalMissed ? 'badge-clin badge-clin-missed' : 'badge-clin';
@@ -263,8 +289,9 @@ function render(data, options) {
       var tr = document.createElement('tr');
       if (!vr.valid) tr.className = 'schedule-row-pending';
       else if (vr.warnings && vr.warnings.length) tr.className = 'schedule-row-warning';
+      var grpTitle = escapeHtml(clinicalGroupHoverTitle(data, student.clinicalGroup)).replace(/\n/g, '&#10;');
       var cells = '<td class="sticky-col"><strong>' + escapeHtml(student.name) + '</strong></td>' +
-        '<td class="sticky-col-grp">' + student.clinicalGroup + '</td>';
+        '<td class="sticky-col-grp" title="' + grpTitle + '">' + escapeHtml(student.clinicalGroup) + '</td>';
       student.schedule.forEach(function (cell, wi) {
         var tdClass = 'cell-editable';
         if (Orientation && Orientation.weekHasOrientationConflict(data, student, wi)) {
@@ -346,7 +373,7 @@ function renderOccupancy(data, scheduleStudents) {
     clinTr.className = 'occupancy-clin-row';
     var clinLabel = document.createElement('td');
     clinLabel.className = 'sticky-col schedule-footer-label';
-    clinLabel.textContent = 'Students in clin';
+    clinLabel.textContent = 'Students in clinical';
     clinTr.appendChild(clinLabel);
     var clinGrpPad = document.createElement('td');
     clinGrpPad.className = 'sticky-col-grp';
@@ -364,33 +391,8 @@ function renderOccupancy(data, scheduleStudents) {
     }
     appendScheduleRightPadCells(clinTr);
     tfoot.appendChild(clinTr);
-    syncScheduleTallyScroll();
-  }
-
-function syncScheduleTallyScroll() {
-    var bodyScroll = document.getElementById('scheduleBodyScroll');
-    var tallyScroll = document.getElementById('scheduleTallyScroll');
-    if (!bodyScroll || !tallyScroll) return;
-    tallyScroll.scrollLeft = bodyScroll.scrollLeft;
-  }
-
-function bindScheduleScrollSync() {
-    var bodyScroll = document.getElementById('scheduleBodyScroll');
-    var tallyScroll = document.getElementById('scheduleTallyScroll');
-    if (!bodyScroll || !tallyScroll || bodyScroll.dataset.scrollBound) return;
-    bodyScroll.dataset.scrollBound = '1';
-    bodyScroll.addEventListener('scroll', function () {
-      if (tallyScrollSyncing) return;
-      tallyScrollSyncing = true;
-      tallyScroll.scrollLeft = bodyScroll.scrollLeft;
-      tallyScrollSyncing = false;
-    });
-    tallyScroll.addEventListener('scroll', function () {
-      if (tallyScrollSyncing) return;
-      tallyScrollSyncing = true;
-      bodyScroll.scrollLeft = tallyScroll.scrollLeft;
-      tallyScrollSyncing = false;
-    });
+    syncScheduleTallyLayout();
+    requestAnimationFrame(syncScheduleTallyLayout);
   }
 
 function renderSimTable(data, students) {

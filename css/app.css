@@ -483,6 +483,7 @@ html.dark .nav-tab.active { background: #2563eb; border-color: #2563eb; }
 
 .schedule-tally-table {
   margin: 0;
+  table-layout: fixed;
 }
 
 .schedule-tally-table tfoot td {
@@ -601,7 +602,9 @@ html.dark .nav-tab.active { background: #2563eb; border-color: #2563eb; }
 .schedule-master-table tfoot .schedule-footer-label {
   font-weight: 700;
   font-size: 0.75rem;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word;
+  line-height: 1.2;
 }
 
 .schedule-master-table .occupancy-sim-row td {
@@ -621,6 +624,18 @@ table.data-table tfoot { background: var(--bg); font-weight: 700; }
 
 .cell-holiday { background: #fef3c7; color: #b45309; text-align: center; padding: 0.5rem; border-radius: 0.375rem; font-size: 0.6875rem; font-weight: 600; }
 html.dark .cell-holiday { background: #422006; color: #fcd34d; }
+.badge-holiday {
+  display: block;
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+  text-align: center;
+  margin-bottom: 2px;
+}
+html.dark .badge-holiday { background: #422006; color: #fcd34d; }
 .cell-empty { color: var(--text-muted); text-align: center; opacity: 0.4; }
 .cell-makeup { text-align: center; padding: 0.5rem; border-radius: 0.375rem; font-size: 0.6875rem; font-weight: 700; color: #fff; }
 .cell-makeup.makeup-tier-clean { background: #7c3aed; }

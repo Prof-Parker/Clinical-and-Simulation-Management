@@ -8,6 +8,7 @@ import * as ClinicalSites from '../core/clinical-sites.js';
 import * as DataModel from '../core/data-model/index.js';
 import * as MakeupDisplay from '../core/makeup-display.js';
 import * as Orientation from '../core/orientation.js';
+import * as ScheduleHolidayLabel from '../core/schedule-holiday-label.js';
 import * as Validator from '../core/validator.js';
 import { showAlert } from '../ui/dialogs.js';
 
@@ -15,7 +16,7 @@ var DISCLAIMER = 'For reference only, refer to app for most current schedule.';
 
   function cellToExportText(cell, student, data, weekIndex) {
     if (!cell) return '-';
-    if (cell.inactive) return 'Holiday';
+    if (cell.inactive || ScheduleHolidayLabel.isBreakWeek(data, weekIndex)) return 'Break';
 
     var cfg = data.config;
     var cDay = DataModel.getClinicalDayForGroup(student.clinicalGroup, cfg);
@@ -25,6 +26,9 @@ var DISCLAIMER = 'For reference only, refer to app for most current schedule.';
     var hasSim = cell.sim;
     var isOrientWeek = Orientation && Orientation.isOrientationWeek(data, student, weekIndex);
     var orientLabel = isOrientWeek ? Orientation.orientationLabelForExport(data, student, weekIndex) : '';
+    var holidayLabel = ScheduleHolidayLabel.formatHolidayIndicator(
+      ScheduleHolidayLabel.holidayIndicatorDays(data, student, weekIndex)
+    );
 
     if (hasMakeupClin && !hasScheduledClin && !hasSim && !isOrientWeek) {
       var joinDay = clinMeta && clinMeta.joinedDay ? ' (' + clinMeta.joinedDay.toUpperCase() + ')' : '';
@@ -33,10 +37,14 @@ var DISCLAIMER = 'For reference only, refer to app for most current schedule.';
     }
 
     if (!hasScheduledClin && !hasSim && !hasMakeupClin) {
-      return orientLabel || '-';
+      var emptyParts = [];
+      if (orientLabel) emptyParts.push(orientLabel);
+      if (holidayLabel) emptyParts.push(holidayLabel);
+      return emptyParts.length ? emptyParts.join(' ') : '-';
     }
 
     var parts = [];
+    if (holidayLabel) parts.push(holidayLabel);
     if (orientLabel) parts.push(orientLabel);
     if (hasScheduledClin) {
       var siteSuffix = ClinicalSites
@@ -158,7 +166,7 @@ var DISCLAIMER = 'For reference only, refer to app for most current schedule.';
       rows.push(simRow);
     });
 
-    var clinRow = ['Students in clin', ''];
+    var clinRow = ['Students in clinical', ''];
     for (var cw = 0; cw < 18; cw++) {
       var clinCount = 0;
       students.forEach(function (s) {
