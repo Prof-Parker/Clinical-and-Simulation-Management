@@ -158,6 +158,31 @@ function togglePanel() {
   if (open) loadFormFromConfig(getData());
 }
 
+function formatThinConsolidateMessage(result) {
+  if (!result) return 'No thin-session consolidation ran.';
+  var lines = [
+    'Thin sim sessions before: ' + result.thinBefore +
+    ', after: ' + result.thinAfter + '.',
+    'Moved: ' + result.moved + ', skipped: ' + result.skipped + '.'
+  ];
+  (result.notes || []).slice(0, 8).forEach(function (n) {
+    lines.push('• ' + n);
+  });
+  if (!result.moved && !result.thinBefore) {
+    lines.push('No under-half sim sessions found.');
+  }
+  return lines.join('\n');
+}
+
+function applyThinConsolidate() {
+  var data = getData();
+  if (!data) return;
+  var result = Scheduler.consolidateThinSimSessions(data);
+  notifyChange();
+  setMessage(formatThinConsolidateMessage(result), false);
+  if (typeof onApplied === 'function') onApplied(data);
+}
+
 function applyRebalance() {
   var data = getData();
   if (!data) return;
@@ -192,6 +217,7 @@ function init(opts) {
   onApplied = opts.onApplied || null;
   var toggle = el('week17MakeupToggleBtn');
   var apply = el('week17MakeupApplyBtn');
+  var thinBtn = el('thinSimConsolidateBtn');
   var mode = el('week17MakeupMode');
   if (toggle) {
     toggle.addEventListener('click', function (e) {
@@ -205,6 +231,13 @@ function init(opts) {
       e.preventDefault();
       e.stopPropagation();
       applyRebalance();
+    });
+  }
+  if (thinBtn) {
+    thinBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      applyThinConsolidate();
     });
   }
   if (mode) {

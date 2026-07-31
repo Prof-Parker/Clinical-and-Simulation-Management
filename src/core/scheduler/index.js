@@ -26,6 +26,7 @@ import {
   WEEK17_MODES,
   normalizeWeek17Mode
 } from './week17-makeup-candidates.js';
+import { consolidateThinSimSessions } from './sim-thin-consolidate.js';
 import {
   getStudentClinicalDay,
   findSimWeek,
@@ -45,7 +46,8 @@ import {
   getEffectiveSimNormalCap,
   clinicalSimWeekdaysOverlap,
   blockHasRegularCapacity,
-  shouldDeferWeek18
+  shouldDeferWeek18,
+  getSimPracticalMinLoad
 } from './helpers.js';
 import {
   findMakeupSlots,
@@ -191,5 +193,7 @@ export {
   getWeek17Index,
   collectWeek17MakeupNeeds,
   WEEK17_MODES,
-  normalizeWeek17Mode
+  normalizeWeek17Mode,
+  consolidateThinSimSessions,
+  getSimPracticalMinLoad
 };
