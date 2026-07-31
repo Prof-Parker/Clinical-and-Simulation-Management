@@ -160,6 +160,7 @@
                         <p class="section-sub" style="margin:0.35rem 0 0">Full 18-week semester. Tap a cell to edit. Tracks <span id="reqClinLabel">10</span> clinical days &amp; <span id="reqSimLabel">5</span> simulations per student.</p>
                     </div>
                     <div class="dashboard-panel-summary-actions">
+                        <button id="week17MakeupToggleBtn" class="btn btn-sm no-print" type="button">Makeup clinicals week 17</button>
                         <button id="scheduleExportXlsxBtn" class="btn btn-sm schedule-export-xlsx-btn no-print" type="button">Export to Excel</button>
                         <button id="scheduleFullscreenBtn" class="btn btn-sm schedule-fullscreen-btn no-print" type="button" aria-label="Open schedule in fullscreen">Fullscreen</button>
                         <button id="scheduleFullscreenCloseBtn" class="btn btn-icon schedule-fullscreen-close hidden no-print" type="button" aria-label="Exit fullscreen" title="Exit fullscreen">
@@ -171,6 +172,27 @@
                     </div>
                 </summary>
                 <div class="dashboard-panel-body">
+                    <div id="week17MakeupPanel" class="week17-makeup-panel card-nested no-print hidden" role="region" aria-label="Makeup week clinical clustering">
+                        <div class="week17-makeup-controls">
+                            <label class="field-label" for="week17MakeupMode">Clustering mode</label>
+                            <select id="week17MakeupMode" aria-label="Makeup week clustering mode">
+                                <option value="current">Leave as scheduled</option>
+                                <option value="byAssignedDay">By assigned clinical day</option>
+                                <option value="byTargetDay">By target day</option>
+                                <option value="byPreferredSite">Consolidate at preferred site</option>
+                            </select>
+                            <div id="week17MakeupDayWrap" class="week17-makeup-field hidden">
+                                <label class="field-label" for="week17MakeupTargetDay">Target day</label>
+                                <select id="week17MakeupTargetDay" aria-label="Target makeup weekday"></select>
+                            </div>
+                            <div id="week17MakeupSiteWrap" class="week17-makeup-field hidden">
+                                <label class="field-label" for="week17MakeupPreferredSite">Preferred site</label>
+                                <select id="week17MakeupPreferredSite" aria-label="Preferred clinical site"></select>
+                            </div>
+                            <button id="week17MakeupApplyBtn" class="btn btn-sm btn-primary" type="button">Apply makeup week rebalance</button>
+                        </div>
+                        <pre id="week17MakeupMessages" class="week17-makeup-messages" aria-live="polite"></pre>
+                    </div>
                     <div class="filters dashboard-schedule-filters no-print">
                         <select id="scheduleGroupFilter" aria-label="Filter by clinical group">
                             <option value="all">All Clinical Groups</option>

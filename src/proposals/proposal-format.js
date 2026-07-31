@@ -28,6 +28,9 @@ var SENTINEL = {
     clinicalMakeupPrimaryWeek: 'Clinical makeup target week',
     clinicalMakeupFallbackWeek: 'Clinical makeup last-resort week',
     simMakeupLastResortWeek: 'Sim makeup last-resort week',
+    week17MakeupMode: 'Makeup week clinical clustering mode',
+    week17MakeupTargetDay: 'Makeup week clustering target day',
+    week17MakeupPreferredSiteId: 'Makeup week preferred clinical site',
     clinicalGroups: 'Clinical groups list',
     simGroups: 'Simulation groups list',
     simDays: 'Simulation weekdays'

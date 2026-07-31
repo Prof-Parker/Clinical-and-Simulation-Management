@@ -35,7 +35,11 @@ export function defaultConfig() {
     simDefaultEnd: '1500',
     simTimeOverrides: [],
     /** When true, a holiday date blocks the entire instructional week for algo sim/clinical. */
-    holidayBlocksFullWeek: true
+    holidayBlocksFullWeek: true,
+    /** Week 17 (makeup primary) clinical clustering — applied only via explicit dashboard Apply. */
+    week17MakeupMode: 'current',
+    week17MakeupTargetDay: 'Mon',
+    week17MakeupPreferredSiteId: null
   };
 }
 
@@ -136,6 +140,12 @@ export function normalizeConfig(cfg) {
   } else {
     cfg.holidayBlocksFullWeek = !!cfg.holidayBlocksFullWeek;
   }
+  var w17mode = cfg.week17MakeupMode;
+  if (w17mode !== 'byAssignedDay' && w17mode !== 'byTargetDay' && w17mode !== 'byPreferredSite') {
+    cfg.week17MakeupMode = 'current';
+  }
+  if (!cfg.week17MakeupTargetDay) cfg.week17MakeupTargetDay = 'Mon';
+  if (cfg.week17MakeupPreferredSiteId === undefined) cfg.week17MakeupPreferredSiteId = null;
   return cfg;
 }
 
