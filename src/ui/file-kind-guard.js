@@ -15,7 +15,6 @@ function bindButton(btn, onClick) {
   var next = btn.cloneNode(true);
   btn.parentNode.replaceChild(next, btn);
   next.addEventListener('click', function () {
-    closeDialog();
     if (onClick) onClick();
   });
   return next;
@@ -23,6 +22,7 @@ function bindButton(btn, onClick) {
 
 /**
  * Prompt from evaluateGuard / guardBeforeWrite result.
+ * Soft confirms for non-engineers require typing the target filename.
  * @returns {Promise<'proceed'|'repick'|'cancel'>}
  */
 export function promptGuardDecision(result, options) {
@@ -36,46 +36,75 @@ export function promptGuardDecision(result, options) {
     expected: result.expected,
     detected: result.detected
   });
+  var softConfirm = !!(result.needsConfirm && !result.hardBlock);
+  var requireTypedName = softConfirm && !canOverrideKind() && !!(result.fileName);
 
   return new Promise(function (resolve) {
     document.getElementById('dialogTitle').textContent = title;
-    document.getElementById('dialogBody').innerHTML = dialogMessageHtml(message);
+    var body = dialogMessageHtml(message);
+    if (requireTypedName) {
+      body += '<p class="section-sub" style="margin:0.75rem 0 0.35rem">Type the filename to confirm overwrite:</p>' +
+        '<p class="section-sub"><code>' + escapeHtml(result.fileName) + '</code></p>' +
+        '<input id="fileKindConfirmName" type="text" class="select-control" ' +
+        'aria-label="Type filename to confirm" autocomplete="off" ' +
+        'style="width:100%;margin:0.35rem 0 0">';
+    }
+    document.getElementById('dialogBody').innerHTML = body;
 
     var cancelBtn = document.getElementById('dialogCancel');
     var saveBtn = document.getElementById('dialogSave');
     var extraBtn = document.getElementById('dialogExtra');
 
+    function finish(choice) {
+      closeDialog();
+      resolve(choice);
+    }
+
     cancelBtn.style.display = '';
     cancelBtn.textContent = options.cancelLabel || 'Cancel';
-    bindButton(cancelBtn, function () { resolve('cancel'); });
+    bindButton(cancelBtn, function () { finish('cancel'); });
 
     saveBtn.style.display = '';
     saveBtn.className = 'btn btn-primary';
     saveBtn.textContent = options.repickLabel || 'Choose a different file…';
-    bindButton(saveBtn, function () { resolve('repick'); });
+    bindButton(saveBtn, function () { finish('repick'); });
 
     if (extraBtn) {
-      if (allowOverride || result.needsConfirm) {
+      if (allowOverride || (softConfirm && !requireTypedName)) {
         extraBtn.style.display = '';
         extraBtn.className = allowOverride ? 'btn btn-danger' : 'btn';
         extraBtn.textContent = allowOverride
           ? 'Overwrite anyway'
           : (options.confirmLabel || 'Overwrite anyway');
-        bindButton(extraBtn, function () { resolve('proceed'); });
+        bindButton(extraBtn, function () { finish('proceed'); });
       } else {
         extraBtn.style.display = 'none';
       }
     }
 
-    // Soft confirm (non-hard): primary is overwrite; secondary repick already on save.
-    if (result.needsConfirm && !result.hardBlock) {
+    // Soft confirm (non-hard): primary is overwrite; secondary repick.
+    if (softConfirm) {
+      saveBtn.className = 'btn btn-danger';
       saveBtn.textContent = options.confirmLabel || 'Overwrite anyway';
-      bindButton(saveBtn, function () { resolve('proceed'); });
+      bindButton(saveBtn, function () {
+        if (requireTypedName) {
+          var input = document.getElementById('fileKindConfirmName');
+          var typed = input ? String(input.value || '').trim() : '';
+          if (typed !== String(result.fileName)) {
+            if (input) {
+              input.setAttribute('aria-invalid', 'true');
+              input.focus();
+            }
+            return;
+          }
+        }
+        finish('proceed');
+      });
       if (extraBtn) {
         extraBtn.style.display = '';
         extraBtn.className = 'btn';
         extraBtn.textContent = options.repickLabel || 'Choose a different file…';
-        bindButton(extraBtn, function () { resolve('repick'); });
+        bindButton(extraBtn, function () { finish('repick'); });
       }
     }
 

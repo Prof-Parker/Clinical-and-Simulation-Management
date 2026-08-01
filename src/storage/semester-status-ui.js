@@ -5,8 +5,10 @@
 import * as ProgramData from './program-data.js';
 import { state } from '../core/state.js';
 import { idbGet, idbSet, supportsFS } from './storage-idb.js';
+import { applyFileMenuGating } from '../ui/file-menu-gating.js';
 
 var META_KEY = 'storageMeta';
+var flashTimer = null;
 
 function getMeta() {
   return idbGet(META_KEY).then(function (m) {
@@ -52,6 +54,48 @@ function configureImportInput() {
   }
 }
 
+function updateStorageModeBadge() {
+  var badge = document.getElementById('storageModeBadge');
+  if (!badge) return;
+  var mode = '';
+  if (state.appShell === 'playground') {
+    mode = 'Playground';
+  } else if (ProgramData.isProgramDataConnected()) {
+    mode = 'ProgramData';
+  } else if (state.semesterFileConnected || state.fileName) {
+    mode = supportsFS() ? 'Linked file' : 'Classic';
+  }
+  if (!mode) {
+    badge.textContent = '';
+    badge.classList.add('hidden');
+    return;
+  }
+  badge.textContent = mode;
+  badge.classList.remove('hidden');
+  badge.classList.toggle('is-classic', mode === 'Classic');
+  badge.classList.toggle('is-playground', mode === 'Playground');
+}
+
+/**
+ * Brief non-blocking status flash (replaces success modals for routine Sync).
+ */
+function flashStatus(message, kind) {
+  var el = document.getElementById('fileStatus');
+  if (!el) return;
+  if (flashTimer) {
+    clearTimeout(flashTimer);
+    flashTimer = null;
+  }
+  el.textContent = message;
+  el.className = 'file-status' + (kind === 'ok' ? ' connected' : kind === 'warn' ? ' dirty' : '');
+  el.classList.add('file-status-flash');
+  flashTimer = setTimeout(function () {
+    flashTimer = null;
+    el.classList.remove('file-status-flash');
+    updateStatusUI();
+  }, 2200);
+}
+
 function updateStatusUI() {
   var el = document.getElementById('fileStatus');
   if (!el) return;
@@ -59,28 +103,33 @@ function updateStatusUI() {
     var dirty = state.dirty;
     var name = state.fileName || meta.lastImportedFileName;
     var savedLabel = formatSavedTime(meta.lastSavedAt);
-    var label = name ? 'program semester · ' + name : 'program semester';
     var syncLinked = !!(supportsFS() && state.fileHandle);
     var programData = ProgramData.isProgramDataConnected();
+    var hasSemester = !!(meta.hasLoadedData || state.semesterFileConnected || name);
+
     if (syncLinked) {
       el.textContent = dirty
-        ? 'Unsaved — ' + label
-        : 'Connected: ' + label + (savedLabel ? ' · saved ' + savedLabel : '');
+        ? 'Unsaved — ' + (name || 'semester')
+        : 'Synced link' + (name ? ': ' + name : '') + (savedLabel ? ' · ' + savedLabel : '');
       el.className = dirty ? 'file-status dirty' : 'file-status connected';
-    } else if (meta.hasLoadedData || state.semesterFileConnected) {
+    } else if (hasSemester) {
       el.textContent = dirty
-        ? 'Unsaved on this device — ' + label +
-          ' (connect ProgramData or Save as… to link Sync)'
-        : 'Loaded on this device: ' + label +
-          ' — connect ProgramData or Save as… to link Sync' +
+        ? 'On this device (not linked)' + (name ? ' — ' + name : '')
+        : 'On this device (not linked)' + (name ? ': ' + name : '') +
           (savedLabel ? ' · ' + savedLabel : '');
       el.className = dirty ? 'file-status dirty' : 'file-status';
     } else {
       el.textContent = programData
-        ? 'ProgramData connected — load a semester file to begin'
-        : 'Connect ProgramData or open a semester file to begin';
+        ? 'ProgramData connected — open a semester'
+        : 'No semester';
       el.className = 'file-status';
     }
+
+    updateStorageModeBadge();
+    try {
+      applyFileMenuGating();
+    } catch (e) { /* menu optional during early boot */ }
+
     var syncBtn = document.getElementById('syncOneDriveBtn');
     if (!syncBtn) return;
     if (!dirty) {
@@ -114,6 +163,8 @@ export {
   isIOSDevice,
   configureImportInput,
   updateStatusUI,
+  updateStorageModeBadge,
+  flashStatus,
   shouldShowOnedriveBanner,
   initUnloadWarning
 };

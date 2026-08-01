@@ -50,6 +50,7 @@
                     <p class="section-sub header-tagline">Clinical &amp; simulation scheduling, requirement tracking, and resource allocation</p>
                     <div class="file-status-row">
                         <span id="fileStatus" class="file-status">Loading...</span>
+                        <span id="storageModeBadge" class="storage-mode-badge hidden" aria-live="polite"></span>
                         <button id="syncOneDriveBtn" class="btn btn-sm file-sync-btn hidden" type="button">Sync to OneDrive</button>
                     </div>
                 </div>
@@ -84,15 +85,26 @@
                                     <div id="menuSemesterSwitchLabel" class="menu-group-label">Switch semester</div>
                                     <div id="semesterSwitchMenu"></div>
                                 </div>
-                                <div class="menu-group" role="group" aria-labelledby="menuFileManagementLabel">
+                                <div id="menuFileManagementGroup" class="menu-group" role="group" aria-labelledby="menuFileManagementLabel">
                                     <div id="menuFileManagementLabel" class="menu-group-label">File Management</div>
+                                    <p id="menuFileClassicGuide" class="menu-file-guide hidden">
+                                        Classic mode (Sync unavailable): 1) Open a semester from OneDrive <code>semesters/</code>
+                                        2) Edit in the app 3) Download backup → Save to Files → OneDrive → replace the same file.
+                                    </p>
                                     <button id="connectProgramDataBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Connect ProgramData folder…</button>
                                     <button id="reconnectProgramDataBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Change / reconnect folder…</button>
                                     <button id="saveAsBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Save as…</button>
-                                    <button id="exportBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Download backup</button>
-                                    <button id="importBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Open copy…</button>
-                                    <button id="openFileBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">Connect OneDrive file</button>
-                                    <button id="newFileBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">New OneDrive file</button>
+                                    <div id="menuFileDangerZone" class="menu-danger-zone">
+                                        <p class="menu-danger-zone-lead">Browser cannot check the target file — replace only the matching semester file in <code>semesters/</code>.</p>
+                                        <button id="exportBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Download backup</button>
+                                        <button id="importBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Open copy…</button>
+                                    </div>
+                                    <div id="menuFileAdvancedGroup" class="menu-advanced-group hidden" role="group" aria-labelledby="menuFileAdvancedLabel">
+                                        <div id="menuFileAdvancedLabel" class="menu-group-label">Advanced file tools</div>
+                                        <p id="menuFileEngineerNote" class="menu-file-guide hidden">Program Engineer — advanced file tools enabled</p>
+                                        <button id="openFileBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Connect OneDrive file</button>
+                                        <button id="newFileBtn" class="menu-item menu-item-nested" type="button" role="menuitem">New OneDrive file</button>
+                                    </div>
                                 </div>
                                 <div class="menu-group" role="group" aria-labelledby="menuLibrariesLabel">
                                     <div id="menuLibrariesLabel" class="menu-group-label">Program libraries</div>
@@ -840,6 +852,7 @@
                 </div>
                 <div class="modal-header user-gate-header">
                     <h2 id="userGateTitle" style="margin:0">Connect ProgramData</h2>
+                    <span id="userGateLimitedBadge" class="storage-mode-badge is-classic hidden">Limited mode — Sync unavailable</span>
                 </div>
                 <div class="modal-body user-gate-body">
                     <p id="userGateError" class="user-gate-error hidden" role="alert"></p>
@@ -861,6 +874,7 @@
                             <input id="userGatePassword" type="password" autocomplete="current-password" aria-label="Password" required style="width:100%;margin:0.25rem 0 0.75rem">
                             <button id="userGateConfirmUserBtn" class="btn btn-primary" type="button">Sign in</button>
                             <button id="userGateForgotPasswordBtn" class="btn btn-sm" type="button" style="margin-top:0.5rem">Forgot password</button>
+                            <button id="userGateBackStep2Btn" class="btn btn-sm user-gate-back-btn" type="button" style="margin-top:0.5rem">Back</button>
                         </div>
                     </div>
                     <div id="userGateStepChangePassword" class="user-gate-step-panel hidden">
@@ -884,6 +898,7 @@
                         </div>
                         <div class="user-gate-actions">
                             <button id="userGateLoadSemesterBtn" class="btn btn-primary hidden" type="button">Load semester file…</button>
+                            <button id="userGateBackStep3Btn" class="btn btn-sm user-gate-back-btn" type="button">Back</button>
                             <input type="file" id="userGateSemesterFileInput" class="hidden" accept=".json,application/json">
                         </div>
                     </div>

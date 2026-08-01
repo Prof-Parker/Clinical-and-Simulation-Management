@@ -12,6 +12,9 @@
   --sim: #059669;
   --holiday: #d97706;
   --makeup: #dc2626;
+  --danger: #b91c1c;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
   --sticky-bg: #ffffff;
   --surface-alt: #f1f5f9;
 }
@@ -29,6 +32,9 @@ html.dark {
   --border: #334155;
   --primary: #3b82f6;
   --primary-light: #1e3a5f;
+  --danger: #f87171;
+  --danger-bg: #450a0a;
+  --danger-border: #7f1d1d;
   --sticky-bg: #1e293b;
   --surface-alt: #334155;
 }
@@ -75,7 +81,83 @@ html.dark .sticky-top { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
 }
 .btn:hover { filter: brightness(0.97); }
 .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn-danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+.btn-danger:hover { filter: brightness(0.97); }
 .btn-sm { min-height: 36px; padding: 0.35rem 0.75rem; font-size: 0.8125rem; }
+
+.hybrid-save-choices { margin-top: 0.5rem; }
+.hybrid-save-choice {
+  display: block;
+  width: 100%;
+  margin: 0.5rem 0;
+  text-align: left;
+}
+.hybrid-save-choice .hybrid-save-hint { font-weight: normal; }
+.hybrid-save-choice-danger {
+  border-style: dashed;
+}
+
+.menu-file-guide {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0.25rem 0.75rem 0.5rem;
+  line-height: 1.35;
+}
+.menu-danger-zone {
+  margin: 0.35rem 0.5rem 0.5rem;
+  padding: 0.35rem 0;
+  border-radius: 0.5rem;
+}
+.menu-danger-zone-lead {
+  display: none;
+  font-size: 0.72rem;
+  color: var(--danger);
+  margin: 0 0.5rem 0.35rem;
+  line-height: 1.35;
+}
+.menu-danger-zone.is-classic {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  padding: 0.35rem 0.25rem 0.5rem;
+}
+.menu-danger-zone.is-classic .menu-danger-zone-lead { display: block; }
+.menu-advanced-group { margin-top: 0.35rem; }
+
+.storage-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.storage-mode-badge.is-classic {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+.storage-mode-badge.is-playground {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.file-status-flash {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+body.user-gate-open .sticky-top,
+body.user-gate-open .nav-tabs,
+body.user-gate-open #closeoutBanner {
+  display: none !important;
+}
 
 .btn.btn-icon-remove,
 button.btn-icon-remove {

@@ -177,17 +177,29 @@ export function writeRelative(relativePath, expectedKind, textOrSerialize) {
 /**
  * List *.json file names in a subdirectory of ProgramData.
  */
-export function listJsonInDir(relativeDir) {
+/**
+ * Resolve a subdirectory under ProgramData (e.g. "semesters").
+ * @returns {Promise<FileSystemDirectoryHandle|null>}
+ */
+export function getDirectoryHandle(relativeDir, create) {
   var root = getProgramDataDir();
-  if (!root) return Promise.reject(new Error('ProgramData folder is not connected.'));
+  if (!root) return Promise.resolve(null);
   var parts = String(relativeDir || '').split('/').filter(Boolean);
+  if (!parts.length) return Promise.resolve(root);
   var chain = Promise.resolve(root);
   parts.forEach(function (seg) {
     chain = chain.then(function (dir) {
-      return dir.getDirectoryHandle(seg, { create: false });
+      return dir.getDirectoryHandle(seg, { create: !!create });
     });
   });
-  return chain.then(function (dir) {
+  return chain.catch(function () { return null; });
+}
+
+export function listJsonInDir(relativeDir) {
+  var root = getProgramDataDir();
+  if (!root) return Promise.reject(new Error('ProgramData folder is not connected.'));
+  return getDirectoryHandle(relativeDir, false).then(function (dir) {
+    if (!dir) return Promise.reject(new Error('Folder not found: ' + relativeDir));
     var names = [];
     var it = dir.values();
     function next() {

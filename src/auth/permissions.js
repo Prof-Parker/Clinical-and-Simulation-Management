@@ -9,6 +9,7 @@ import { showAlert } from '../ui/dialogs.js';
 import { getData } from '../core/state.js';
 import * as Audit from '../audit/audit.js';
 import { getNavShell } from '../ui/course-selector.js';
+import { applyFileMenuGating } from '../ui/file-menu-gating.js';
 
 function currentRole() {
     var s = UserSession && UserSession.getSession();
@@ -89,6 +90,7 @@ function currentRole() {
     if (logoutBtn) {
       logoutBtn.classList.toggle('hidden', !(UserSession && UserSession.isValidated()));
     }
+    applyFileMenuGating();
   }
 
   function apply() {

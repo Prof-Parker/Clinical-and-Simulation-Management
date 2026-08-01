@@ -253,12 +253,14 @@ function updateGateStep(errorMsg) {
 function showGateModal(errorMsg) {
   var modal = document.getElementById('userGateModal');
   if (modal) modal.classList.add('open');
+  document.body.classList.add('user-gate-open');
   updateGateStep(errorMsg || '');
 }
 
 function hideGateModal() {
   var modal = document.getElementById('userGateModal');
   if (modal) modal.classList.remove('open');
+  document.body.classList.remove('user-gate-open');
 }
 
 function logout() {
@@ -282,6 +284,7 @@ function initGateUI() {
     completePasswordChange: completePasswordChange,
     getPendingPasswordChange: getPendingPasswordChange,
     beginUserSwitch: beginUserSwitch,
+    clearSession: clearSession,
     updateGateStep: updateGateStep,
     showGateModal: showGateModal,
     finishSemesterLoad: finishSemesterLoad,

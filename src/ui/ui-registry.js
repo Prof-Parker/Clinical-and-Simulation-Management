@@ -119,7 +119,7 @@ export var UI_TABS = [
 ];
 
 export var UI_SHELL = [
-  'appMain', 'fileStatus', 'syncOneDriveBtn', 'courseStatusLine', 'courseStatusDropdown',
+  'appMain', 'fileStatus', 'storageModeBadge', 'syncOneDriveBtn', 'courseStatusLine', 'courseStatusDropdown',
   'semesterPickerWrap', 'semesterPickerBtn', 'semesterPickerLabel', 'semesterPickerMenu', 'semesterPickerFileInput',
   'menuToggle', 'menuDropdown', 'closeoutBanner', 'pwaInstallBanner', 'pwaIosInstallBanner', 'pwaOnedriveBanner'
 ];
@@ -131,9 +131,11 @@ export var UI_USER_MENU = [
 ];
 
 export var UI_MENU = [
-  'newSemesterBatchBtn', 'semesterSwitchMenu', 'connectProgramDataBtn', 'reconnectProgramDataBtn',
-  'saveAsBtn', 'openFileBtn', 'newFileBtn', 'importBtn',
-  'exportBtn', 'menuUsersLibraryBtn', 'menuClinicalSitesBtn', 'menuPlaygroundBtn',
+  'newSemesterBatchBtn', 'semesterSwitchMenu', 'menuFileManagementGroup',
+  'menuFileClassicGuide', 'connectProgramDataBtn', 'reconnectProgramDataBtn',
+  'saveAsBtn', 'menuFileDangerZone', 'openFileBtn', 'newFileBtn', 'importBtn',
+  'exportBtn', 'menuFileAdvancedGroup', 'menuFileEngineerNote',
+  'menuUsersLibraryBtn', 'menuClinicalSitesBtn', 'menuPlaygroundBtn',
   'menuExitPlaygroundBtn', 'clearStorageBtn', 'saveBtn'
 ];
 
@@ -144,12 +146,13 @@ export var UI_FILE_INPUTS = [
 
 export var UI_MODALS = {
   userGate: [
-    'userGateModal', 'userGateTitle', 'userGateConnectProgramDataBtn',
+    'userGateModal', 'userGateTitle', 'userGateLimitedBadge', 'userGateConnectProgramDataBtn',
     'userGateLoadRegistryBtn', 'userGateConfirmUserBtn', 'userGateEmail',
-    'userGatePassword', 'userGateForgotPasswordBtn', 'userGateStep1Lead', 'userGateStep2Lead', 'userGateStep3Lead',
+    'userGatePassword', 'userGateForgotPasswordBtn', 'userGateBackStep2Btn',
+    'userGateStep1Lead', 'userGateStep2Lead', 'userGateStep3Lead',
     'userGateRegistryName', 'userGateProgramDataHint', 'userGateProgramDataSemester',
     'userGateConfirmSemesterBtn', 'userGateSemesterSelect',
-    'userGateLoadSemesterBtn', 'userGateStep1', 'userGateStep2', 'userGateStepChangePassword',
+    'userGateLoadSemesterBtn', 'userGateBackStep3Btn', 'userGateStep1', 'userGateStep2', 'userGateStepChangePassword',
     'userGateChangePasswordLead', 'userGateNewPassword', 'userGateNewPasswordConfirm',
     'userGateChangePasswordBtn',
     'userGateStep3', 'userGateSemesterFileInput', 'userGateUserName'
