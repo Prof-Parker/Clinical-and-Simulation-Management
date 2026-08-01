@@ -249,10 +249,17 @@ export function getGuestCountFromSchedule(student) {
   return count;
 }
 
-/** Half of maxStudentsPerSimSession (floored at 1) — practical minimum session size. */
+/** Half of maxStudentsPerSimSession (floored at 1) — absolute practical minimum session size. */
 export function getSimPracticalMinLoad(cfg) {
   var normal = getSimCaps(cfg).normal;
   return Math.max(1, Math.floor(normal / 2));
+}
+
+/** Three-quarters of maxStudentsPerSimSession (ceiled), at least the absolute floor. */
+export function getSimIdealMinLoad(cfg) {
+  var normal = getSimCaps(cfg).normal;
+  var absolute = getSimPracticalMinLoad(cfg);
+  return Math.max(absolute, Math.ceil(normal * 0.75));
 }
 
 /**

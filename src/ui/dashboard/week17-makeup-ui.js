@@ -161,15 +161,18 @@ function togglePanel() {
 function formatThinConsolidateMessage(result) {
   if (!result) return 'No thin-session consolidation ran.';
   var lines = [
-    'Thin sim sessions before: ' + result.thinBefore +
-    ', after: ' + result.thinAfter + '.',
+    'Winner: ' + (result.winner || 'baseline') + '.',
+    'Under-absolute sessions: ' + result.thinBefore + ' → ' + result.thinAfter +
+    '; under-ideal: ' + (result.idealBefore != null ? result.idealBefore : '?') +
+    ' → ' + (result.idealAfter != null ? result.idealAfter : '?') + '.',
     'Moved: ' + result.moved + ', skipped: ' + result.skipped + '.'
   ];
   (result.notes || []).slice(0, 8).forEach(function (n) {
+    if (n.indexOf('Winner:') === 0) return;
     lines.push('• ' + n);
   });
-  if (!result.moved && !result.thinBefore) {
-    lines.push('No under-half sim sessions found.');
+  if (!result.moved && !result.thinBefore && !(result.idealBefore > 0)) {
+    lines.push('No under-absolute or under-ideal sim sessions found.');
   }
   return lines.join('\n');
 }

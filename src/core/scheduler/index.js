@@ -47,7 +47,8 @@ import {
   clinicalSimWeekdaysOverlap,
   blockHasRegularCapacity,
   shouldDeferWeek18,
-  getSimPracticalMinLoad
+  getSimPracticalMinLoad,
+  getSimIdealMinLoad
 } from './helpers.js';
 import {
   findMakeupSlots,
@@ -195,5 +196,6 @@ export {
   WEEK17_MODES,
   normalizeWeek17Mode,
   consolidateThinSimSessions,
-  getSimPracticalMinLoad
+  getSimPracticalMinLoad,
+  getSimIdealMinLoad
 };

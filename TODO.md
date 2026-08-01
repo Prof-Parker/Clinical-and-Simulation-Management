@@ -135,7 +135,7 @@ TODO.md
 - [ ] Unable to save from embeded browser, file kind guards too tight. Maybe allow classic file picker if program folder picker not active from app login. Apply red styling `danger zone warning as UI deterent`
 - [ ] **Priority before rolling out to adjunct faculty** with high numbers of users folder structure is very vulnerable to overwrite both in and out of app. Based on live user demo, app folder requires all users to have full edit access to critical files such as user.registry.json
 - [ ] allow program engineer to be assigned in role of lead faculty for a course, while still granting full UI interface
-- [ ] Add week-17 makeup clinical clustering to force to lowest number of clinical groups required to accomodate makeup needs.
+- [X] Add week-17 makeup clinical clustering to force to lowest number of clinical groups required to accomodate makeup needs. (Dashboard Apply; modes + preferred-site conflict transfer; soft-floor + multi-pass thin consolidate — see `PROJECT_IMPLEMENTATION_GUIDE.md` §5.1 and `docs/Design Docs/week17_makeup_clustering_and_sim_soft_floor.md`)
 
 
 
