@@ -7,7 +7,7 @@ import * as Scheduler from '../core/scheduler/index.js';
 import { getStudentClinicalDay } from '../core/scheduler/helpers.js';
 import { getData, state } from '../core/state.js';
 import { guardEditable } from '../auth/permissions.js';
-import { showAlert } from './dialogs.js';
+import { escapeHtml, showAlert } from './dialogs.js';
 import { refresh, switchTab } from './chrome.js';
 
 var pendingClinicalHint = null;
@@ -39,7 +39,8 @@ function toggleTypeSelects() {
 function slotBadges(slot, type) {
   var badges = [];
   if (slot.facilityJoin && type !== 'clinical') {
-    badges.push('<span class="makeup-badge makeup-badge-join">Join ' + (slot.day || '') + '</span>');
+    badges.push('<span class="makeup-badge makeup-badge-join">Join ' +
+      escapeHtml(slot.day || '') + '</span>');
   }
   if (slot.overload) {
     badges.push('<span class="makeup-badge makeup-badge-overload">Overload</span>');
@@ -58,14 +59,15 @@ function renderApplyButton(slot, sid, type, idx) {
   var btnLabel = slot.week18Fallback && type === 'sim'
     ? MakeupDisplay.week18ApplyLabel(slot, type)
     : MakeupDisplay.applyButtonLabel(slot);
-  return '<button class="' + btnClass + '" data-idx="' + idx + '" data-student="' + sid +
-    '" data-type="' + type + '">' + btnLabel + '</button>';
+  return '<button class="' + escapeHtml(btnClass) + '" data-idx="' + escapeHtml(String(idx)) +
+    '" data-student="' + escapeHtml(sid) +
+    '" data-type="' + escapeHtml(type) + '">' + escapeHtml(btnLabel) + '</button>';
 }
 
 function slotRowLabel(data, slot, type) {
   var day = slot.day || '';
   var weekLabel = MakeupDisplay.formatWeekDayLabel(data, slot.weekIndex, day);
-  return weekLabel + ' — ' + slot.reason + slotBadges(slot, type);
+  return escapeHtml(weekLabel) + ' — ' + escapeHtml(slot.reason || '') + slotBadges(slot, type);
 }
 
 function populateMissedClinicalSelect(data, student) {
@@ -91,9 +93,16 @@ function render(data) {
 
   var select = document.getElementById('makeupStudentSelect');
   var prev = select.value;
-  select.innerHTML = '<option value="">Select student...</option>';
+  select.innerHTML = '';
+  var placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = 'Select student...';
+  select.appendChild(placeholder);
   data.students.forEach(function (s) {
-    select.innerHTML += '<option value="' + s.id + '">' + s.name + '</option>';
+    var opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name;
+    select.appendChild(opt);
   });
 
   if (requiredClinicalMakeup && requiredClinicalMakeup.studentId) {
@@ -113,7 +122,8 @@ function render(data) {
   toggleTypeSelects();
 
   if (lastClinicalApplyMessage) {
-    results.innerHTML = '<p class="makeup-hint makeup-hint-required">' + lastClinicalApplyMessage + '</p>';
+    results.innerHTML = '<p class="makeup-hint makeup-hint-required">' +
+      escapeHtml(lastClinicalApplyMessage) + '</p>';
     results._slots = [];
     return;
   }
@@ -124,7 +134,8 @@ function render(data) {
     type = 'clinical';
     document.getElementById('makeupTypeSelect').value = 'clinical';
   } else if (pendingClinicalHint && pendingClinicalHint.studentId === sid) {
-    hintHtml = '<p class="makeup-hint makeup-hint-conflict">' + pendingClinicalHint.message + '</p>';
+    hintHtml = '<p class="makeup-hint makeup-hint-conflict">' +
+      escapeHtml(pendingClinicalHint.message) + '</p>';
     document.getElementById('makeupTypeSelect').value = 'clinical';
     type = 'clinical';
     pendingClinicalHint = null;
@@ -156,7 +167,8 @@ function render(data) {
       var w18Slot = Scheduler.getWeek18SimMakeupSlot(data, sid, simNumInt);
       if (existingSessions.length === 0 && w18Slot) {
         results.innerHTML = hintHtml +
-          '<p class="section-sub">No existing Sim ' + simNumInt + ' sessions in weeks 1–17. Week 18 mixed sim makeup is available as a last resort.</p>' +
+          '<p class="section-sub">No existing Sim ' + escapeHtml(String(simNumInt)) +
+          ' sessions in weeks 1–17. Week 18 mixed sim makeup is available as a last resort.</p>' +
           '<ul class="sim-day-list">' +
           '<li><span>' + slotRowLabel(data, w18Slot, 'sim') + '</span>' +
           renderApplyButton(w18Slot, sid, 'sim', 0) + '</li>' +
@@ -169,13 +181,13 @@ function render(data) {
           ? 'No existing Sim sessions found for this simulation number (weeks 1–17).'
           : 'No existing Sim ' + simNumInt + ' sessions in weeks 1–17, and Week 18 is not available (week may be inactive or already scheduled).')
         : 'Existing Sim ' + simNumInt + ' sessions are at capacity (weeks 1–17). Week 18 is not available for this student.';
-      results.innerHTML = hintHtml + '<p class="section-sub">' + emptyHint + '</p>';
+      results.innerHTML = hintHtml + '<p class="section-sub">' + escapeHtml(emptyHint) + '</p>';
       return;
     }
     var clinEmptyHint = requiredClinicalMakeup && requiredClinicalMakeup.studentId === sid
       ? 'No facility join slots are available at this student\'s oriented site (weeks 1–17). Week 18 makeup clinical will appear here only if no join slots exist.'
       : 'No facility join slots found at this student\'s oriented site (weeks 1–17). Week 18 makeup clinical is only offered when no join slots exist.';
-    results.innerHTML = hintHtml + '<p class="section-sub">' + clinEmptyHint + '</p>';
+    results.innerHTML = hintHtml + '<p class="section-sub">' + escapeHtml(clinEmptyHint) + '</p>';
     return;
   }
 

@@ -189,7 +189,7 @@ export function findMakeupSlots(data, studentId, type, targetSimNum) {
           facilityId: getCanonicalFacilityId(data, searchFacId),
           overload: overload,
           week18Fallback: false,
-          reason: 'Join ' + facName + ' clinical' +
+          reason: 'Join ' + facName + ' clinical with group ' + session.group +
             (overload ? ' (overload)' : '')
         });
       });
