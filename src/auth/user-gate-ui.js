@@ -51,7 +51,7 @@ function initGateUI(ctx) {
   /** Folder picker is unavailable in some embedded browsers (Electron webviews). */
   function connectErr(err) {
     if (isAbortError(err)) {
-      return 'Folder access was cancelled or blocked. Use Connect users registry to continue.';
+      return 'Folder access was cancelled or blocked.';
     }
     return (err && err.message) || 'Could not connect the ProgramData folder';
   }

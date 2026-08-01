@@ -472,15 +472,33 @@ export function main() {
     Theme.init(fileRoot);
     Dashboard.populateFilters(getData());
     initUI();
-    if (UserSession.isValidated() && Storage.isSemesterFileConnected()) {
-      UserSession.hideGateModal();
-      var bootTab = getNavShell() === 'theory' ? 'theory-master' : 'dashboard';
-      switchTab(bootTab);
-    } else if (UserSession.isValidated()) {
-      UserSession.showGateModal('');
-      UserSession.updateGateStep('');
+
+    function finishBoot() {
+      if (UserSession.isValidated() && Storage.isSemesterFileConnected()) {
+        UserSession.hideGateModal();
+        var bootTab = getNavShell() === 'theory' ? 'theory-master' : 'dashboard';
+        switchTab(bootTab);
+      } else if (UserSession.isValidated()) {
+        UserSession.showGateModal('');
+        UserSession.updateGateStep('');
+      }
+      document.dispatchEvent(new Event('AppReady'));
     }
-    document.dispatchEvent(new Event('AppReady'));
+
+    if (import.meta.env.DEV) {
+      return import('./dev/quick-start.js').then(function (QuickStart) {
+        if (!QuickStart.shouldQuickStart()) {
+          finishBoot();
+          return;
+        }
+        return QuickStart.runQuickStart().then(finishBoot).catch(function (err) {
+          console.error('[dev:start] failed', err);
+          UserSession.showGateModal((err && err.message) || 'Quick start failed');
+          finishBoot();
+        });
+      });
+    }
+    finishBoot();
   });
 }
 

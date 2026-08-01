@@ -1,9 +1,11 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { mockOneDrivePlugin } from './scripts/vite-mock-onedrive-plugin.js';
 
 export default defineConfig(({ command }) => ({
   base: command === 'serve' ? '/' : (process.env.SHAREPOINT_BASE_URL || process.env.VITE_DEPLOY_BASE || '/Clinical-and-Simulation-Management/'),
   plugins: [
+    mockOneDrivePlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icons/**/*', 'manifest.webmanifest'],

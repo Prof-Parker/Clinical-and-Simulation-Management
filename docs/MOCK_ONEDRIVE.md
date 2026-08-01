@@ -34,7 +34,17 @@ All names use placeholders only (`Student 1`, `Program Engineer`, etc.).
 
 Seeded JSON includes `meta.fileKind` so local testing matches production guards. Legacy files without `fileKind` still open via inference until the next save stamps the kind.
 
-## Test workflows
+## Quick start (recommended for local UI testing)
+
+```bash
+npm run dev:start
+```
+
+This seeds `mock-onedrive/` if needed, starts Vite on [http://localhost:5173](http://localhost:5173), opens the browser, connects ProgramData to `mock-onedrive/`, signs in as **engineer@example.edu**, and opens `F2026_REGN_program.json`.
+
+Uses a DEV-only virtual folder (Vite middleware) so you do not have to click through the OS folder picker. Production builds never include this path.
+
+## Manual test workflows
 
 1. Open the app (local server or GitHub Pages build).
 2. **Connect ProgramData:** pick the `mock-onedrive/` folder (or classic **Connect users registry…** → `mock-onedrive/users/users-registry.json`).
@@ -56,6 +66,7 @@ Seeded demo accounts are **not** temporary passwords (`mustChangePassword: false
 
 ## Notes
 
-- File System Access requires picking folders/files through the browser; paths are not auto-wired.
+- Prefer `npm run dev:start` for a one-command UI session; it auto-wires `mock-onedrive/` in DEV.
+- Manual File System Access still requires picking folders/files through the browser.
 - Re-run the seed script to reset registry and sample semester data.
 - Production data belongs in real OneDrive, not this folder.

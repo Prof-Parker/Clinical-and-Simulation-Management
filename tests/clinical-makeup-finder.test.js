@@ -115,4 +115,36 @@ describe('clinical makeup finder', () => {
       expect(week17Mon.length).toBeGreaterThan(0);
     }
   });
+
+  it('marks selected clinical missed when applying a clinical makeup slot', () => {
+    const sem = loadF2026();
+    const student = sem.students.find(function (s) { return s.name === 'Student 1'; });
+    expect(student).toBeTruthy();
+
+    var missedWi = -1;
+    for (var wi = 0; wi < 18; wi++) {
+      var cell = student.schedule[wi];
+      if (cell && cell.clinical && !cell.clinicalMissed) {
+        missedWi = wi;
+        break;
+      }
+    }
+    expect(missedWi).toBeGreaterThanOrEqual(0);
+
+    const slots = Scheduler.findMakeupSlots(sem, student.id, 'clinical');
+    const join = slots.find(function (s) { return s.facilityJoin && !s.week18Fallback; });
+    expect(join).toBeTruthy();
+
+    const result = Scheduler.applyMakeupSlot(
+      sem, student.id, join, 'clinical', 'Test Faculty', missedWi
+    );
+    expect(result.applied).toBe(true);
+    expect(result.missedWeekIndex).toBe(missedWi);
+    expect(result.makeupWeekIndex).toBe(join.weekIndex);
+    expect(student.schedule[missedWi].clinicalMissed).toBe(true);
+    expect(student.schedule[join.weekIndex].makeupClinical).toBe(true);
+    expect(student.makeups.some(function (m) {
+      return m.type === 'clinical' && m.weekIndex === join.weekIndex;
+    })).toBe(true);
+  });
 });

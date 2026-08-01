@@ -80,10 +80,14 @@ export function clearProgramDataDir() {
 
 /**
  * Persist and activate a ProgramData root directory handle.
+ * @param {FileSystemDirectoryHandle} dirHandle
+ * @param {{ persist?: boolean }} [options] persist:false skips IndexedDB (DEV mock FS)
  */
-export function setProgramDataDir(dirHandle) {
+export function setProgramDataDir(dirHandle, options) {
   if (!dirHandle) return Promise.resolve(null);
   state.programDataDirHandle = dirHandle;
+  if (options && options.persist === false) return Promise.resolve(dirHandle);
+  if (dirHandle.__devMockFs) return Promise.resolve(dirHandle);
   return idbSet(ROOT_KEY, dirHandle).then(function () { return dirHandle; });
 }
 

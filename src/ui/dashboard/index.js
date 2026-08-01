@@ -473,7 +473,8 @@ function init() {
       var el = document.getElementById(id);
       if (el) el.addEventListener('change', refreshScheduleView);
     });
-    ['scheduleFilterMakeupClean', 'scheduleFilterMakeupConflict', 'scheduleFilterGuestSim'].forEach(function (id) {
+    ['scheduleFilterMakeupClean', 'scheduleFilterMakeupConflict', 'scheduleFilterGuestSim',
+      'scheduleFilterMakeupWeek'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.addEventListener('change', refreshScheduleView);
     });

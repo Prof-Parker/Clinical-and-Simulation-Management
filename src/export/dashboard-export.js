@@ -123,6 +123,10 @@ var DISCLAIMER = 'For reference only, refer to app for most current schedule.';
         document.getElementById('scheduleFilterGuestSim').checked) {
       bits.push('Guest sim');
     }
+    if (document.getElementById('scheduleFilterMakeupWeek') &&
+        document.getElementById('scheduleFilterMakeupWeek').checked) {
+      bits.push('Makeup week clinical');
+    }
     if (!bits.length) return 'Filters: none (all students)';
     return 'Filters: ' + bits.join(' · ');
   }

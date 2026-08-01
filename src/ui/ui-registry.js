@@ -29,7 +29,7 @@ export var UI_TABS = [
       'scheduleBody', 'scheduleHeadRow', 'scheduleExportXlsxBtn', 'scheduleFullscreenBtn',
       'week17MakeupToggleBtn', 'week17MakeupPanel', 'week17MakeupMode', 'week17MakeupApplyBtn',
       'thinSimConsolidateBtn',
-      'scheduleGroupFilter', 'simTableBody', 'loadChart', 'weekFilter'
+      'scheduleGroupFilter', 'scheduleFilterMakeupWeek', 'simTableBody', 'loadChart', 'weekFilter'
     ]
   },
   {
@@ -48,7 +48,7 @@ export var UI_TABS = [
   {
     id: 'makeup',
     shell: 'clinical',
-    anchors: ['makeupStudentSelect', 'makeupTypeSelect', 'makeupResults']
+    anchors: ['makeupStudentSelect', 'makeupTypeSelect', 'makeupMissedClinicalSelect', 'makeupResults']
   },
   {
     id: 'audit',

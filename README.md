@@ -34,12 +34,13 @@ On first launch, use **Open semester file…** (menu) and choose your `.json` fr
 
 ```powershell
 npm install
-npm run dev
+npm run dev:start
 ```
 
-Open http://localhost:5173 (Vite dev server). Service worker registration requires `localhost` or HTTPS.
+Seeds `mock-onedrive/` if needed, starts Vite on http://localhost:5173, opens the browser, connects ProgramData, and signs in as engineer. Details: [docs/MOCK_ONEDRIVE.md](docs/MOCK_ONEDRIVE.md).
 
 ```powershell
+npm run dev           # Vite only (manual sign-in)
 npm test              # Vitest unit tests
 npm run build         # Production bundle → dist/
 npm run check:line-limit  # Enforce 500-line cap per src module

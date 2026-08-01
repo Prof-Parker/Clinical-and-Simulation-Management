@@ -242,6 +242,11 @@
                                 <span class="dot dot-sim-guest" aria-hidden="true"></span>
                                 Guest sim
                             </label>
+                            <label class="filter-check filter-check-compact" for="scheduleFilterMakeupWeek"
+                                title="Clinical scheduled on the clinical makeup target week">
+                                <input type="checkbox" id="scheduleFilterMakeupWeek">
+                                Makeup week clinical
+                            </label>
                         </div>
                         <input type="text" id="scheduleStudentSearch" placeholder="Search student..." aria-label="Search students">
                     </div>
@@ -409,7 +414,7 @@
         <div id="view-makeup" class="view-panel">
             <section class="card" style="padding:1.25rem">
                 <h3 class="section-title">Makeup Day Finder</h3>
-                <p class="section-sub">Find makeup slots by joining existing sessions only. Simulation makeup joins weeks where another student already has that Sim (1–17). Clinical makeup prefers joining an existing clinical at the student&apos;s oriented facility; Week 18 is last resort for both. Sim-on-clinical-week conflicts prioritize simulation — the clinical is marked missed, then search for clinical makeup (facility join first). Overload slots are makeup-only when a session is at normal capacity.</p>
+                <p class="section-sub">Find makeup slots by joining existing sessions only. For a missed clinical, select which clinical week was missed, then apply a join at the student&apos;s oriented facility (Week 18 last resort). Simulation makeup joins weeks where another student already has that Sim (1–17). Sim-on-clinical-week conflicts prioritize simulation — the clinical is marked missed, then search for clinical makeup (facility join first). Overload slots are makeup-only when a session is at normal capacity.</p>
                 <div class="filters">
                     <select id="makeupStudentSelect"><option value="">Select student...</option></select>
                     <select id="makeupTypeSelect">
@@ -423,7 +428,9 @@
                         <option value="4">Simulation 4</option>
                         <option value="5">Simulation 5</option>
                     </select>
-                    <input type="text" id="makeupAppliedBy" placeholder="Applied by (optional)" title="Recorded on the makeup record for the end-of-semester audit log">
+                    <select id="makeupMissedClinicalSelect" class="hidden" aria-label="Missed clinical week">
+                        <option value="">Select missed clinical…</option>
+                    </select>
                 </div>
                 <div id="makeupResults"></div>
             </section>
@@ -857,7 +864,7 @@
                 <div class="modal-body user-gate-body">
                     <p id="userGateError" class="user-gate-error hidden" role="alert"></p>
                     <div id="userGateStep1" class="user-gate-step-panel">
-                        <p id="userGateStep1Lead" class="section-sub user-gate-lead hidden">Folder connect failed. Connect <code>users-registry.json</code> directly to sign in.</p>
+                        <p id="userGateStep1Lead" class="section-sub user-gate-lead hidden">Connect <code>users-registry.json</code> to sign in.</p>
                         <div class="user-gate-actions">
                             <button id="userGateConnectProgramDataBtn" class="btn btn-primary" type="button">Connect ProgramData folder…</button>
                             <button id="userGateLoadRegistryBtn" class="btn btn-primary hidden" type="button">Connect users registry…</button>

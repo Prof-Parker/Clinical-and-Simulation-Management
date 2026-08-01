@@ -250,7 +250,9 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
       if (ProgramData.getProgramDataDir()) {
         state.programSemesterDirHandle = null;
       }
-      return idbSet(HANDLE_KEY, result.handle).then(function () {
+      var persistHandle = result.handle && !result.handle.__devMockFs;
+      var afterHandle = persistHandle ? idbSet(HANDLE_KEY, result.handle) : Promise.resolve();
+      return afterHandle.then(function () {
         return setMeta({ lastImportedFileName: result.name, hasLoadedData: true }).then(function () {
           return applyLoadedFileRoot(fileRoot);
         });
