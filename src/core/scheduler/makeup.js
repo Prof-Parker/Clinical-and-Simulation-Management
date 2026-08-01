@@ -189,8 +189,8 @@ export function findMakeupSlots(data, studentId, type, targetSimNum) {
           facilityId: getCanonicalFacilityId(data, searchFacId),
           overload: overload,
           week18Fallback: false,
-          reason: 'Join ' + facName + ' clinical on ' + session.day + ' (Week ' + (wi + 1) + ') — ' +
-            count + '/' + clinCaps.normal + (overload ? ', overload available' : '')
+          reason: 'Join ' + facName + ' clinical with group ' + session.group +
+            (overload ? ' (overload)' : '')
         });
       });
     });
@@ -232,17 +232,45 @@ export function findMakeupSlots(data, studentId, type, targetSimNum) {
   return slots;
 }
 
-export function applyMakeupSlot(data, studentId, slot, type, appliedByName) {
+export function applyMakeupSlot(data, studentId, slot, type, appliedByName, missedWeekIndex) {
   var student = data.students.find(function (s) { return s.id === studentId; });
-  if (!student) return { clinicalConflictApplied: false };
+  if (!student) return { clinicalConflictApplied: false, applied: false };
   var cell = student.schedule[slot.weekIndex];
+  var empty = { clinicalConflictApplied: false, applied: false };
+
+  function markMissedIfNeeded() {
+    if (missedWeekIndex == null || missedWeekIndex === '') return null;
+    var mi = parseInt(missedWeekIndex, 10);
+    if (isNaN(mi) || mi < 0 || mi >= 18) return null;
+    var missedCell = student.schedule[mi];
+    if (!missedCell || !missedCell.clinical || missedCell.clinicalMissed) return null;
+    missedCell.clinicalMissed = true;
+    return mi;
+  }
+
+  function result(extra) {
+    var out = {
+      clinicalConflictApplied: false,
+      applied: true,
+      missedWeekIndex: null,
+      makeupWeekIndex: slot.weekIndex,
+      makeupDay: slot.day || null
+    };
+    if (extra) {
+      Object.keys(extra).forEach(function (k) { out[k] = extra[k]; });
+    }
+    return out;
+  }
+
   if (type === 'clinical') {
+    var markedMissed = null;
     if (slot.facilityJoin) {
       var clinCaps = getClinicalCaps(data.config);
       var hostGroup = slot.hostGroup || student.clinicalGroup;
       var count = getClinicalGroupAttendanceCount(data, slot.weekIndex, hostGroup, slot.day);
-      if (count >= clinCaps.overload) return { clinicalConflictApplied: false };
-      if (count >= clinCaps.normal && !slot.overload) return { clinicalConflictApplied: false };
+      if (count >= clinCaps.overload) return empty;
+      if (count >= clinCaps.normal && !slot.overload) return empty;
+      markedMissed = markMissedIfNeeded();
       cell.makeupClinical = true;
       var joinFac = getCanonicalFacilityId(data, slot.facilityId);
       if (joinFac) cell.facilityId = joinFac;
@@ -255,6 +283,7 @@ export function applyMakeupSlot(data, studentId, slot, type, appliedByName) {
         overload: !!slot.overload
       }, appliedByName));
     } else {
+      markedMissed = markMissedIfNeeded();
       cell.makeupClinical = true;
       var w18Fac = slot.facilityId ||
         (ClinicalSites
@@ -268,11 +297,13 @@ export function applyMakeupSlot(data, studentId, slot, type, appliedByName) {
       }, appliedByName));
       if (w18Fac) cell.facilityId = getCanonicalFacilityId(data, w18Fac);
     }
+    notifyChange();
+    return result({ missedWeekIndex: markedMissed });
   } else if (type === 'sim') {
     var caps = getSimCaps(data.config);
     var count = getDaySimAttendanceCount(data, slot.weekIndex, slot.day);
-    if (count >= caps.overload) return { clinicalConflictApplied: false };
-    if (count >= caps.normal && !slot.overload) return { clinicalConflictApplied: false };
+    if (count >= caps.overload) return empty;
+    if (count >= caps.normal && !slot.overload) return empty;
 
     var existingWeek = findSimWeek(student, slot.simNum);
     if (existingWeek >= 0 && existingWeek !== slot.weekIndex) {
@@ -302,10 +333,12 @@ export function applyMakeupSlot(data, studentId, slot, type, appliedByName) {
       week18Fallback: !!slot.week18Fallback
     }, appliedByName));
     notifyChange();
-    return { clinicalConflictApplied: clinicalConflictApplied };
+    return result({
+      clinicalConflictApplied: clinicalConflictApplied,
+      missedWeekIndex: clinicalConflictApplied ? slot.weekIndex : null
+    });
   }
-  notifyChange();
-  return { clinicalConflictApplied: false };
+  return empty;
 }
 
 export function getWeek18SimMakeupSlot(data, studentId, targetSimNum) {

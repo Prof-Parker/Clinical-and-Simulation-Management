@@ -20,6 +20,7 @@ import {
   isIOSDevice,
   configureImportInput,
   updateStatusUI,
+  flashStatus,
   shouldShowOnedriveBanner,
   initUnloadWarning
 } from './semester-status-ui.js';
@@ -249,7 +250,9 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
       if (ProgramData.getProgramDataDir()) {
         state.programSemesterDirHandle = null;
       }
-      return idbSet(HANDLE_KEY, result.handle).then(function () {
+      var persistHandle = result.handle && !result.handle.__devMockFs;
+      var afterHandle = persistHandle ? idbSet(HANDLE_KEY, result.handle) : Promise.resolve();
+      return afterHandle.then(function () {
         return setMeta({ lastImportedFileName: result.name, hasLoadedData: true }).then(function () {
           return applyLoadedFileRoot(fileRoot);
         });
@@ -282,6 +285,13 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
       idbSet: idbSet,
       getFileHandle: function () { return state.fileHandle; },
       getDirHandle: function () { return state.programSemesterDirHandle; },
+      resolvePreferredDir: function () {
+        if (!ProgramData.isProgramDataConnected()) return Promise.resolve(null);
+        return ProgramData.getDirectoryHandle(ProgramData.PATHS.SEMESTERS_DIR, true).then(function (dir) {
+          if (dir) state.programSemesterDirHandle = dir;
+          return dir;
+        });
+      },
       allowDownload: true,
       write: function (handle) {
         return writeToHandle(handle, root);
@@ -314,11 +324,12 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
     return hybridSave(buildHybridSaveConfig(root), {
       forceChooser: !!options.forceChooser,
       title: options.title || 'Save as…',
-      preferredDest: options.preferredDest,
+      preferredDest: options.preferredDest || 'folder',
+      allowCreateNew: options.allowCreateNew,
+      folderLabel: options.folderLabel,
       message: (options.message ||
-        'Advanced save. Prefer Save to folder or Overwrite existing so the file type is checked before write.') +
-        (options.message ? '\n\n' : '\n\n') +
-        'Suggested filename: ' + suggested
+        'Prefer Save to folder or Overwrite existing so the file type is checked before write.') +
+        '\n\nSuggested filename: ' + suggested
     }).then(function (result) {
       if (result && result.dest === 'folder' && result.name) {
         showAlert('Saved', 'Saved as ' + result.name + ' in the selected folder.');
@@ -330,10 +341,11 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
   function createFilePicker() {
     return saveWithChooser({
       forceChooser: true,
-      preferredDest: 'new',
+      preferredDest: 'folder',
+      allowCreateNew: true,
       title: 'Save as…',
-      message: 'Create a new program semester file (use a NEW filename — Replace can wipe first), ' +
-        'overwrite an existing one (checked before write), or save into a folder.'
+      message: 'Prefer Save to the ProgramData semesters/ folder or Overwrite existing (checked before write). ' +
+        'Create new only with a NEW filename — Replace can wipe first.'
     });
   }
   function reconnectHandle() {
@@ -396,9 +408,6 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
     cacheData(fileRoot);
     markClean();
     updateStatusUI();
-    if (!supportsFS()) {
-      showAlert('Export backup', 'Save the downloaded file to college OneDrive (Files app → OneDrive) to back up your semester data.');
-    }
   }
 
   /** Download-only backup (no hybrid chooser). */
@@ -406,6 +415,10 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
     if (!getFileRoot()) return Promise.resolve();
     doExportDownload();
     return Promise.resolve();
+  }
+
+  function suggestedDownloadName() {
+    return state.fileName || suggestedSemesterFileName();
   }
   function applyLoadedFileRoot(fileRoot) {
     if (!fileRoot.meta) fileRoot.meta = {};
@@ -492,4 +505,4 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
       });
     });
   }
-export { supportsFS, init, saveCurrent, scheduleAutoSave, openFilePicker, createFilePicker, saveWithChooser, importFromFile, exportDownload, updateStatusUI, cacheData, shouldShowOnedriveBanner, configureImportInput, isIOSDevice, semesterFileToken, suggestedSemesterFileName, clearAndRestoreDefaults, applyLoadedFileRoot, writeFileRootToHandle, readFromHandle, writeToHandle, serialize, semesterFileTokenFromMeta, supportsDirectoryPicker, isSemesterFileConnected, activateFileRoot, loadFromProgramData, isCancelError, idbGet as _idbGet, idbSet as _idbSet, HANDLE_KEY as _HANDLE_KEY, DIR_HANDLE_KEY as _DIR_HANDLE_KEY };
+export { supportsFS, init, saveCurrent, scheduleAutoSave, openFilePicker, createFilePicker, saveWithChooser, importFromFile, exportDownload, updateStatusUI, flashStatus, cacheData, shouldShowOnedriveBanner, configureImportInput, isIOSDevice, semesterFileToken, suggestedSemesterFileName, suggestedDownloadName, clearAndRestoreDefaults, applyLoadedFileRoot, writeFileRootToHandle, readFromHandle, writeToHandle, serialize, semesterFileTokenFromMeta, supportsDirectoryPicker, isSemesterFileConnected, activateFileRoot, loadFromProgramData, isCancelError, idbGet as _idbGet, idbSet as _idbSet, HANDLE_KEY as _HANDLE_KEY, DIR_HANDLE_KEY as _DIR_HANDLE_KEY };

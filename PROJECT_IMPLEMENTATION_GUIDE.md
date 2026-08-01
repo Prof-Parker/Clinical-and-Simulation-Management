@@ -62,7 +62,7 @@ existing imports stable while isolating persistence, presentation, and model log
 
 **Course shell:** `#courseStatusLine` dropdown sets `meta.activeCourseCode` (`REGN15` theory shell vs `REGN15P` clinical shell). Users and Clinical Sites open from the hamburger **Program libraries** menu.
 
-**Local testing:** `npm test` runs Vitest. `node scripts/seed-mock-onedrive.js` creates gitignored `mock-onedrive/` fixtures. See [docs/MOCK_ONEDRIVE.md](docs/MOCK_ONEDRIVE.md).
+**Local testing:** `npm run dev:start` seeds `mock-onedrive/` if needed, starts Vite on `:5173`, and auto-signs in as engineer. `npm test` runs Vitest. See [docs/MOCK_ONEDRIVE.md](docs/MOCK_ONEDRIVE.md).
 
 **Role gating:** `Permissions.canTab()` / `canAction()` combined with `Audit.canEdit()` via `Permissions.guardEditable()`. Spec: [docs/Design Docs/User_roles_design.md](docs/Design%20Docs/User_roles_design.md).
 
@@ -212,8 +212,9 @@ Single-student regen: `regenerateStudent()` clears that student’s sims and re-
 ### Makeup finder (`findMakeupSlots` / `applyMakeupSlot`)
 
 - **Sim makeup:** Join existing session with same scenario number (weeks 1–17); overload only when session at normal cap.
-- **Clinical makeup:** Join existing clinical at student’s facility when possible; week 18 last resort.
+- **Clinical makeup:** User selects which scheduled clinical was missed (`Week N (Day M/D)`); makeup join options appear only after that selection. Apply marks the selected week `clinicalMissed` and places `makeupClinical` on the chosen slot; the UI confirms both weeks and clears remaining options. `appliedByName` is taken from the signed-in user’s first and last name.
 - Manual makeup does **not** apply headroom reserve.
+- UI: `src/ui/makeup-finder.js` (missed-clinical select `#makeupMissedClinicalSelect`); labels via `formatWeekDayLabel` in `src/core/makeup-display.js`.
 
 ### 5.1 Explicit makeup-week clustering and thin-sim post-pass
 

@@ -3,7 +3,7 @@
  * Single source of truth for the header badge and audit exports.
  * Bump on every commit — see .cursor/rules/app-version-bump.mdc
  */
-export var APP_VERSION = '2.10.0';
+export var APP_VERSION = '2.11.0';
 
 export function formatAppVersionLabel(version) {
   var v = version || APP_VERSION;

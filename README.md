@@ -34,12 +34,13 @@ On first launch, use **Open semester file…** (menu) and choose your `.json` fr
 
 ```powershell
 npm install
-npm run dev
+npm run dev:start
 ```
 
-Open http://localhost:5173 (Vite dev server). Service worker registration requires `localhost` or HTTPS.
+Seeds `mock-onedrive/` if needed, starts Vite on http://localhost:5173, opens the browser, connects ProgramData, and signs in as engineer. Details: [docs/MOCK_ONEDRIVE.md](docs/MOCK_ONEDRIVE.md).
 
 ```powershell
+npm run dev           # Vite only (manual sign-in)
 npm test              # Vitest unit tests
 npm run build         # Production bundle → dist/
 npm run check:line-limit  # Enforce 500-line cap per src module
@@ -57,32 +58,34 @@ npm run check:line-limit  # Enforce 500-line cap per src module
 
 Real semester data lives in:
 
-- **Connect OneDrive file** / **Open semester file…** / **Export backup** from the app menu
+- **Connect ProgramData folder…** (desktop) / **Open copy…** / **Download backup** from the app menu
 - Store `.json` files in college OneDrive — **not** in this Git repository
 
 Because this project folder may sync via OneDrive, do not save `regn-tracker.json` exports here. [`.gitignore`](.gitignore) blocks `.json` commits as a safety net.
 
+See [docs/ONEDRIVE-SETUP.md](docs/ONEDRIVE-SETUP.md) for folder layout and the role × file-action matrix.
+
 ## Sync by platform
 
-| Feature | Desktop + OneDrive folder | iPad PWA |
-|---------|---------------------------|----------|
-| Auto-save to `.json` file | Yes (Connect OneDrive file) | No — Safari limitation |
+| Feature | Desktop + ProgramData folder | iPad PWA |
+|---------|------------------------------|----------|
+| Auto-save to `.json` file | Yes (ProgramData / Sync link) | No — Safari limitation |
 | Auto-save on device | Yes (IndexedDB) | Yes (IndexedDB) |
-| OneDrive sync | Via synced folder file | Manual export/import |
+| OneDrive sync | Via linked folder / Sync | Manual **Download backup** |
 | Offline app shell | Yes, after first visit | Yes, after first visit |
 
 ### Desktop auto-sync workflow
 
-1. Save your semester file to a OneDrive-synced folder on your PC
-2. In the app: **Connect OneDrive file** → select that `.json`
-3. Edit as usual — the app writes back to the file automatically
+1. Keep the shared **ProgramData** folder on OneDrive
+2. In the app: **Connect ProgramData folder…** → sign in → open a file from `semesters/`
+3. Edit as usual — use **Sync to OneDrive** when the header shows unsaved changes
 
 ### iPad workflow
 
 1. Install the PWA from Safari (see above)
-2. **Open semester file…** → Files → OneDrive → select `.json`
+2. Sign in (classic / limited mode) → **Load semester file…** → Files → OneDrive → `semesters/` → select `.json`
 3. Work on the iPad — data saves locally between sessions
-4. When done: **Export backup** → save to OneDrive in the Files app
+4. When done: **Download backup** → save to OneDrive in the Files app (replace the same semester file)
 5. **Export to Excel** from the Master Interactive Schedule panel (respects current filters) → save the `.xlsx` to OneDrive via the share sheet for reference viewing in Excel
 
 ## Pre-commit hook (developers)

@@ -136,7 +136,8 @@ var CACHE_KEY = 'usersRegistryData';
     state.usersRegistryFileName = fileName || 'users-registry.json';
     setRegistry(migrated);
     state.usersRegistryLoadedRevision = migrated.meta.revision;
-    var chain = fileHandle ? idbSet(HANDLE_KEY, fileHandle) : Promise.resolve();
+    var persistHandle = fileHandle && !fileHandle.__devMockFs;
+    var chain = persistHandle ? idbSet(HANDLE_KEY, fileHandle) : Promise.resolve();
     return chain.then(function () {
       return idbSet(CACHE_KEY, migrated);
     }).then(function () {

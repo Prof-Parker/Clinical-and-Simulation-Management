@@ -21,7 +21,8 @@ var ROLES = {
         'audit.admin', 'semester.batchCreate', 'semester.switch',
         'users.manage', 'clinicalSites.edit', 'proposals.review',
         'theory.view', 'theory.edit', 'theory.export', 'theory.hourTargets.edit', 'theory.contactHourRules.edit',
-        'student.calendar.export'
+        'student.calendar.export',
+        'files.programData', 'files.saveAs', 'files.openCopy', 'files.downloadBackup', 'files.clearStorage'
       ],
       dashboardReadOnly: false
     },
@@ -35,7 +36,8 @@ var ROLES = {
         'dashboard.propose', 'setup.propose', 'setup.saveDraft',
         'roles.edit', 'makeup.edit', 'playground.edit', 'clinicalSites.propose', 'proposals.submit',
         'theory.view', 'theory.edit', 'theory.export',
-        'student.calendar.export'
+        'student.calendar.export',
+        'files.openCopy', 'files.downloadBackup', 'files.saveAsEscape', 'files.programDataReconnect'
       ],
       dashboardReadOnly: false
     },
@@ -43,7 +45,7 @@ var ROLES = {
       id: 'adjunct_faculty',
       displayName: 'Adjunct Faculty',
       tabs: ['dashboard', 'student', 'roles', 'theory-lecture'],
-      actions: ['roles.edit', 'theory.view'],
+      actions: ['roles.edit', 'theory.view', 'files.downloadBackup'],
       dashboardReadOnly: true
     }
   };

@@ -50,6 +50,7 @@
                     <p class="section-sub header-tagline">Clinical &amp; simulation scheduling, requirement tracking, and resource allocation</p>
                     <div class="file-status-row">
                         <span id="fileStatus" class="file-status">Loading...</span>
+                        <span id="storageModeBadge" class="storage-mode-badge hidden" aria-live="polite"></span>
                         <button id="syncOneDriveBtn" class="btn btn-sm file-sync-btn hidden" type="button">Sync to OneDrive</button>
                     </div>
                 </div>
@@ -84,15 +85,26 @@
                                     <div id="menuSemesterSwitchLabel" class="menu-group-label">Switch semester</div>
                                     <div id="semesterSwitchMenu"></div>
                                 </div>
-                                <div class="menu-group" role="group" aria-labelledby="menuFileManagementLabel">
+                                <div id="menuFileManagementGroup" class="menu-group" role="group" aria-labelledby="menuFileManagementLabel">
                                     <div id="menuFileManagementLabel" class="menu-group-label">File Management</div>
+                                    <p id="menuFileClassicGuide" class="menu-file-guide hidden">
+                                        Classic mode (Sync unavailable): 1) Open a semester from OneDrive <code>semesters/</code>
+                                        2) Edit in the app 3) Download backup → Save to Files → OneDrive → replace the same file.
+                                    </p>
                                     <button id="connectProgramDataBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Connect ProgramData folder…</button>
                                     <button id="reconnectProgramDataBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Change / reconnect folder…</button>
                                     <button id="saveAsBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Save as…</button>
-                                    <button id="exportBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Download backup</button>
-                                    <button id="importBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Open copy…</button>
-                                    <button id="openFileBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">Connect OneDrive file</button>
-                                    <button id="newFileBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">New OneDrive file</button>
+                                    <div id="menuFileDangerZone" class="menu-danger-zone">
+                                        <p class="menu-danger-zone-lead">Browser cannot check the target file — replace only the matching semester file in <code>semesters/</code>.</p>
+                                        <button id="exportBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Download backup</button>
+                                        <button id="importBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Open copy…</button>
+                                    </div>
+                                    <div id="menuFileAdvancedGroup" class="menu-advanced-group hidden" role="group" aria-labelledby="menuFileAdvancedLabel">
+                                        <div id="menuFileAdvancedLabel" class="menu-group-label">Advanced file tools</div>
+                                        <p id="menuFileEngineerNote" class="menu-file-guide hidden">Program Engineer — advanced file tools enabled</p>
+                                        <button id="openFileBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Connect OneDrive file</button>
+                                        <button id="newFileBtn" class="menu-item menu-item-nested" type="button" role="menuitem">New OneDrive file</button>
+                                    </div>
                                 </div>
                                 <div class="menu-group" role="group" aria-labelledby="menuLibrariesLabel">
                                     <div id="menuLibrariesLabel" class="menu-group-label">Program libraries</div>
@@ -229,6 +241,11 @@
                                 <input type="checkbox" id="scheduleFilterGuestSim">
                                 <span class="dot dot-sim-guest" aria-hidden="true"></span>
                                 Guest sim
+                            </label>
+                            <label class="filter-check filter-check-compact" for="scheduleFilterMakeupWeek"
+                                title="Clinical scheduled on the clinical makeup target week">
+                                <input type="checkbox" id="scheduleFilterMakeupWeek">
+                                Makeup week clinical
                             </label>
                         </div>
                         <input type="text" id="scheduleStudentSearch" placeholder="Search student..." aria-label="Search students">
@@ -397,7 +414,7 @@
         <div id="view-makeup" class="view-panel">
             <section class="card" style="padding:1.25rem">
                 <h3 class="section-title">Makeup Day Finder</h3>
-                <p class="section-sub">Find makeup slots by joining existing sessions only. Simulation makeup joins weeks where another student already has that Sim (1–17). Clinical makeup prefers joining an existing clinical at the student&apos;s oriented facility; Week 18 is last resort for both. Sim-on-clinical-week conflicts prioritize simulation — the clinical is marked missed, then search for clinical makeup (facility join first). Overload slots are makeup-only when a session is at normal capacity.</p>
+                <p class="section-sub">Find makeup slots by joining existing sessions only. For a missed clinical, select which clinical week was missed, then apply a join at the student&apos;s oriented facility (Week 18 last resort). Simulation makeup joins weeks where another student already has that Sim (1–17). Sim-on-clinical-week conflicts prioritize simulation — the clinical is marked missed, then search for clinical makeup (facility join first). Overload slots are makeup-only when a session is at normal capacity.</p>
                 <div class="filters">
                     <select id="makeupStudentSelect"><option value="">Select student...</option></select>
                     <select id="makeupTypeSelect">
@@ -411,7 +428,9 @@
                         <option value="4">Simulation 4</option>
                         <option value="5">Simulation 5</option>
                     </select>
-                    <input type="text" id="makeupAppliedBy" placeholder="Applied by (optional)" title="Recorded on the makeup record for the end-of-semester audit log">
+                    <select id="makeupMissedClinicalSelect" class="hidden" aria-label="Missed clinical week">
+                        <option value="">Select missed clinical…</option>
+                    </select>
                 </div>
                 <div id="makeupResults"></div>
             </section>
@@ -840,11 +859,12 @@
                 </div>
                 <div class="modal-header user-gate-header">
                     <h2 id="userGateTitle" style="margin:0">Connect ProgramData</h2>
+                    <span id="userGateLimitedBadge" class="storage-mode-badge is-classic hidden">Limited mode — Sync unavailable</span>
                 </div>
                 <div class="modal-body user-gate-body">
                     <p id="userGateError" class="user-gate-error hidden" role="alert"></p>
                     <div id="userGateStep1" class="user-gate-step-panel">
-                        <p id="userGateStep1Lead" class="section-sub user-gate-lead hidden">Folder connect failed. Connect <code>users-registry.json</code> directly to sign in.</p>
+                        <p id="userGateStep1Lead" class="section-sub user-gate-lead hidden">Connect <code>users-registry.json</code> to sign in.</p>
                         <div class="user-gate-actions">
                             <button id="userGateConnectProgramDataBtn" class="btn btn-primary" type="button">Connect ProgramData folder…</button>
                             <button id="userGateLoadRegistryBtn" class="btn btn-primary hidden" type="button">Connect users registry…</button>
@@ -861,6 +881,7 @@
                             <input id="userGatePassword" type="password" autocomplete="current-password" aria-label="Password" required style="width:100%;margin:0.25rem 0 0.75rem">
                             <button id="userGateConfirmUserBtn" class="btn btn-primary" type="button">Sign in</button>
                             <button id="userGateForgotPasswordBtn" class="btn btn-sm" type="button" style="margin-top:0.5rem">Forgot password</button>
+                            <button id="userGateBackStep2Btn" class="btn btn-sm user-gate-back-btn" type="button" style="margin-top:0.5rem">Back</button>
                         </div>
                     </div>
                     <div id="userGateStepChangePassword" class="user-gate-step-panel hidden">
@@ -884,6 +905,7 @@
                         </div>
                         <div class="user-gate-actions">
                             <button id="userGateLoadSemesterBtn" class="btn btn-primary hidden" type="button">Load semester file…</button>
+                            <button id="userGateBackStep3Btn" class="btn btn-sm user-gate-back-btn" type="button">Back</button>
                             <input type="file" id="userGateSemesterFileInput" class="hidden" accept=".json,application/json">
                         </div>
                     </div>

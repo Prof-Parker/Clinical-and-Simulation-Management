@@ -51,7 +51,7 @@ function initGateUI(ctx) {
   /** Folder picker is unavailable in some embedded browsers (Electron webviews). */
   function connectErr(err) {
     if (isAbortError(err)) {
-      return 'Folder access was cancelled or blocked. Use Connect users registry to continue.';
+      return 'Folder access was cancelled or blocked.';
     }
     return (err && err.message) || 'Could not connect the ProgramData folder';
   }
@@ -64,6 +64,13 @@ function initGateUI(ctx) {
    * Default: ProgramData button only.
    * After connect failure (or unsupported picker): hide ProgramData, show registry + lead text.
    */
+  function updateLimitedBadge() {
+    var badge = document.getElementById('userGateLimitedBadge');
+    if (!badge) return;
+    var classic = programDataPickerBlocked || !ProgramData.supportsDirectoryPicker();
+    badge.classList.toggle('hidden', !classic);
+  }
+
   function updateStep1Affordance() {
     var showProgramData = ProgramData.supportsDirectoryPicker() && !programDataPickerBlocked;
     var showClassic = !showProgramData;
@@ -76,6 +83,7 @@ function initGateUI(ctx) {
     if (step1Lead) {
       step1Lead.classList.toggle('hidden', !showClassic);
     }
+    updateLimitedBadge();
   }
 
   /**
@@ -128,13 +136,21 @@ function initGateUI(ctx) {
     semesterSelect.innerHTML = '<option value="">Select semester file…</option>';
     if (!usingProgramData()) return Promise.resolve();
     return ProgramData.listSemesterFiles().then(function (names) {
-      names.forEach(function (name) {
+      var seen = Object.create(null);
+      var unique = [];
+      (names || []).forEach(function (name) {
+        var key = String(name || '');
+        if (!key || seen[key]) return;
+        seen[key] = true;
+        unique.push(key);
+      });
+      unique.forEach(function (name) {
         var opt = document.createElement('option');
         opt.value = name;
         opt.textContent = name;
         semesterSelect.appendChild(opt);
       });
-      if (names.length === 1) semesterSelect.value = names[0];
+      if (unique.length === 1) semesterSelect.value = unique[0];
     }).catch(function () { /* list optional */ });
   }
 
@@ -334,6 +350,35 @@ function initGateUI(ctx) {
   if (loadSemesterBtn) {
     loadSemesterBtn.addEventListener('click', function () {
       if (semesterInput) semesterInput.click();
+    });
+  }
+
+  var backStep2Btn = document.getElementById('userGateBackStep2Btn');
+  if (backStep2Btn) {
+    backStep2Btn.addEventListener('click', function () {
+      UsersRegistryStorage.clearRegistry().then(function () {
+        programDataConnectError = '';
+        if (!ProgramData.supportsDirectoryPicker()) {
+          programDataPickerBlocked = true;
+        }
+        updateProgramDataAffordance();
+        ctx.updateGateStep('');
+        if (ctx.refresh) ctx.refresh();
+      }).catch(function () {
+        ctx.updateGateStep('Could not go back. Reload the app if this persists.');
+      });
+    });
+  }
+
+  var backStep3Btn = document.getElementById('userGateBackStep3Btn');
+  if (backStep3Btn) {
+    backStep3Btn.addEventListener('click', function () {
+      if (ctx.clearSession) ctx.clearSession();
+      if (emailInput) emailInput.value = '';
+      clearPassword();
+      updateStep3Affordance();
+      ctx.updateGateStep('');
+      if (ctx.refresh) ctx.refresh();
     });
   }
 

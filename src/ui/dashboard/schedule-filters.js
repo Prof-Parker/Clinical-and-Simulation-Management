@@ -3,6 +3,7 @@
 import * as DataModel from '../../core/data-model/index.js';
 import * as CalendarEngine from '../../core/calendar-engine.js';
 import * as ClinicalSites from '../../core/clinical-sites.js';
+import * as MakeupDisplay from '../../core/makeup-display.js';
 
 function studentStatusKey(vr) {
     if (!vr.valid) return 'pending';
@@ -31,6 +32,17 @@ function studentHasGuestSim(student) {
     });
   }
 
+/** Active clinical on the clinical makeup target week (usually Week 17). */
+function studentHasClinicalOnMakeupWeek(data, student) {
+    var wi = CalendarEngine.resolveMakeupWeeks(data).clinicalPrimary;
+    if (wi == null || !student || !student.schedule) return false;
+    var cell = student.schedule[wi];
+    if (!cell || cell.inactive) return false;
+    if (cell.makeupClinical) return true;
+    if (cell.clinical && !cell.clinicalMissed) return true;
+    return false;
+  }
+
 function getScheduleFilteredStudents(data, validation) {
     var groupEl = document.getElementById('scheduleGroupFilter');
     var simEl = document.getElementById('scheduleSimGroupFilter');
@@ -41,6 +53,7 @@ function getScheduleFilteredStudents(data, validation) {
     var makeupCleanEl = document.getElementById('scheduleFilterMakeupClean');
     var makeupConflictEl = document.getElementById('scheduleFilterMakeupConflict');
     var guestSimEl = document.getElementById('scheduleFilterGuestSim');
+    var makeupWeekEl = document.getElementById('scheduleFilterMakeupWeek');
     if (!groupEl || !simEl || !facEl) return data.students.slice();
     var groupVal = groupEl.value;
     var simVal = simEl.value;
@@ -51,7 +64,8 @@ function getScheduleFilteredStudents(data, validation) {
     var wantMakeupClean = makeupCleanEl && makeupCleanEl.checked;
     var wantMakeupConflict = makeupConflictEl && makeupConflictEl.checked;
     var wantGuestSim = guestSimEl && guestSimEl.checked;
-    var filterNonStd = wantMakeupClean || wantMakeupConflict || wantGuestSim;
+    var wantMakeupWeek = makeupWeekEl && makeupWeekEl.checked;
+    var filterNonStd = wantMakeupClean || wantMakeupConflict || wantGuestSim || wantMakeupWeek;
     return data.students.filter(function (s) {
       if (groupVal !== 'all' && s.clinicalGroup !== groupVal) return false;
       if (simVal !== 'all' && s.simGroup !== simVal) return false;
@@ -70,6 +84,7 @@ function getScheduleFilteredStudents(data, validation) {
         if (wantMakeupClean && studentHasMakeupTier(s, 'clean')) matches = true;
         if (wantMakeupConflict && studentHasMakeupTier(s, 'conflict')) matches = true;
         if (wantGuestSim && studentHasGuestSim(s)) matches = true;
+        if (wantMakeupWeek && studentHasClinicalOnMakeupWeek(data, s)) matches = true;
         if (!matches) return false;
       }
       return true;

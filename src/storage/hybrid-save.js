@@ -230,18 +230,30 @@ export function hybridSave(config, options) {
   return start.then(function (stickyResult) {
     if (stickyResult) return stickyResult;
 
-    // Resolve sticky dir before the dialog so folder choice can reuse it
+    // Resolve sticky / preferred dir before the dialog so folder choice can reuse it
     // without awaiting IDB after the click (preserves user activation for picker).
     return tryStickyDirectoryHandle(config).then(function (stickyDir) {
+      if (stickyDir) return stickyDir;
+      if (typeof config.resolvePreferredDir === 'function') {
+        return config.resolvePreferredDir();
+      }
+      return null;
+    }).then(function (stickyDir) {
+      var supportsDir = supportsDirectoryPicker() &&
+        (!!config.dirHandleKey || !!stickyDir || typeof config.resolvePreferredDir === 'function');
       return promptSaveDestination({
         title: options.title || 'Save as…',
         message: options.message,
         allowDownload: config.allowDownload !== false && typeof config.download === 'function',
         supportsFS: true,
-        supportsDirectory: supportsDirectoryPicker() && !!config.dirHandleKey,
+        supportsDirectory: supportsDir,
         suggestedName: suggestedNameOf(config),
         stickyDirHandle: stickyDir,
-        preferredDest: options.preferredDest
+        preferredDest: options.preferredDest || DEST.FOLDER,
+        allowCreateNew: options.allowCreateNew,
+        folderLabel: options.folderLabel || (stickyDir
+          ? 'Save to linked ProgramData folder…'
+          : 'Save to OneDrive folder…')
       });
     }).then(function (choice) {
       return applyChooserResult(config, choice);

@@ -36,12 +36,26 @@ The app stamps each JSON with `meta.fileKind` (or root `fileKind` on user creden
 | Clinical sites | `clinical-sites-library.json` |
 | Theory library | `theory-content-library_REGN15.json` |
 
+## Role × file actions
+
+Shared OneDrive folders usually grant full edit access to the team. The app cannot replace folder ACLs — it steers each role toward safer paths:
+
+| Role | Everyday path | Advanced / override |
+|------|---------------|---------------------|
+| Adjunct Faculty | Sync when linked; **Download backup** on iPad | No Create new, no Connect raw file, no kind override |
+| Lead Course Faculty | Sync + **Download backup**; Open copy when needed | Soft confirms; Save as only if Sync is not linked; reconnect ProgramData if already connected |
+| Administrative Staff | ProgramData reconnect, Save as (folder/overwrite preferred), New semester | Create new demoted |
+| Program Engineer | Full File Management menu | Create new + hard-block **Overwrite anyway** |
+
+Prefer **Connect ProgramData folder…** on desktop (Chrome/Edge). Prefer **Download backup** on iPad — replace only the matching file in `semesters/`.
+
 ## Create a semester file (desktop)
 
 1. Install/open the app on your computer (Chrome or Edge recommended)
-2. Set up your semester in **Setup**
-3. Menu → **File Management** → **New OneDrive file** → save into the **`semesters/`** folder (e.g. `F2026_REGN_program.json`)
-4. Next time: **Connect OneDrive file** → select the same file for automatic saving
+2. Sign in via **Connect ProgramData folder…** and open a semester from `semesters/`
+3. Or (Program Engineer / Admin): Menu → **File Management** → **Save as…** → prefer **Save to linked ProgramData folder…** into **`semesters/`**
+4. Avoid **Create new** unless you use a brand-new filename — confirming Replace in the system dialog can wipe a file before the app can check it
+5. Next time: stay on the linked Sync path, or use **Change / reconnect folder…**
 
 ## Playground saves (faculty)
 
@@ -53,8 +67,8 @@ The app stamps each JSON with `meta.fileKind` (or root `fileKind` on user creden
 ## iPad: open a file from OneDrive
 
 1. Install the app: Safari → Share → **Add to Home Screen**
-2. Open the installed app
-3. Menu → **Open semester file…**
+2. Open the installed app (classic / limited mode — Sync unavailable)
+3. Sign in, then **Load semester file…** or Menu → **Open copy…**
 4. Tap **Browse** (bottom of the picker) → **OneDrive** → navigate to your **`semesters/`** folder → select the `.json` file
 
 If the file does not appear, pull down to refresh the OneDrive folder, or open it once in the OneDrive app so it syncs to Files. The app no longer filters by file type on iPad so all files in the folder should be visible.
@@ -63,9 +77,9 @@ If you open a **playground** file at sign-in step 3, the app blocks it and asks 
 
 ## iPad: save changes back to OneDrive
 
-1. Menu → **Export backup**
-2. In the share/save sheet, choose **Save to Files** → **OneDrive**
-3. Replace the existing file or save with a dated name
+1. Menu → **Download backup** (confirm the expected filename)
+2. In the share/save sheet, choose **Save to Files** → **OneDrive** → **`semesters/`**
+3. Replace the existing matching file (or save with a dated name if you intend a copy)
 
 ## iPad: export schedule to Excel
 
@@ -73,7 +87,7 @@ If you open a **playground** file at sign-in step 3, the app blocks it and asks 
 2. On **Master Interactive Schedule**, tap **Export to Excel**
 3. In the share/save sheet, choose **Save to Files** → **OneDrive**
 
-The workbook is for reference only (disclaimer at top of each sheet). Use the app for the current schedule and **Export backup** for full semester data.
+The workbook is for reference only (disclaimer at top of each sheet). Use the app for the current schedule and **Download backup** for full semester data.
 
 ## Audit closeout (end of semester)
 

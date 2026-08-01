@@ -1,10 +1,11 @@
 {
   "name": "clinical-and-simulation-management",
-  "version": "2.10.0",
+  "version": "2.11.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:start": "node scripts/dev-start.js",
     "build": "vite build",
     "build:sharepoint": "node scripts/package-sharepoint.js",
     "preview:sharepoint": "npx serve sharepoint-package/ClinSimApp -p 4173",

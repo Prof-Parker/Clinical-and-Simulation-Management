@@ -28,7 +28,8 @@ export function getWeek18ClinicalSlot(data, student) {
     week: wi + 1,
     week18Fallback: true,
     facilityId: facId ? getCanonicalFacilityId(data, facId) : null,
-    reason: 'Week ' + (wi + 1) + ' makeup clinical at ' + getFacilityName(data, facId) + ' — last resort'
+    reason: 'Makeup clinical at ' + getFacilityName(data, facId) + ' — last resort',
+    day: getStudentClinicalDay(student, data.config)
   };
 }
 
