@@ -191,10 +191,12 @@ describe('user-session.test.js', () => {
       'Seeder',
       { firstName: 'Temp', lastName: 'User', email: 'temp@example.edu' }
     );
-    var issued = new Date('2026-07-29T12:00:00.000Z');
+    // Relative clock: fixed calendar dates go stale once "now" passes the fixture expiry.
+    var issued = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    var expectedExpiry = new Date(issued.getTime() + 72 * 60 * 60 * 1000).toISOString();
     UserData.markTemporaryPassword(registry.users.usr_temp, issued);
     expect(registry.users.usr_temp.mustChangePassword).toBe(true);
-    expect(registry.users.usr_temp.temporaryPasswordExpiresAt).toBe('2026-08-01T12:00:00.000Z');
+    expect(registry.users.usr_temp.temporaryPasswordExpiresAt).toBe(expectedExpiry);
 
     var okChange = await UserData.validateSessionByEmail('temp@example.edu', registry, tempPassword);
     expect(okChange).toMatchObject({
@@ -205,9 +207,9 @@ describe('user-session.test.js', () => {
 
     expect(UserData.isTemporaryPasswordExpired(
       registry.users.usr_temp,
-      new Date('2026-08-01T12:00:01.000Z')
+      new Date(Date.parse(expectedExpiry) + 1)
     )).toBe(true);
-    registry.users.usr_temp.temporaryPasswordExpiresAt = '2026-07-28T12:00:00.000Z';
+    registry.users.usr_temp.temporaryPasswordExpiresAt = new Date(Date.now() - 1000).toISOString();
     var expired = await UserData.validateSessionByEmail('temp@example.edu', registry, tempPassword);
     expect(expired.ok).toBe(false);
     expect(expired.error).toMatch(/expired/i);
