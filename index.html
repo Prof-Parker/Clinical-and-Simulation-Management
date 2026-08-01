@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" id="themeColorMeta" content="#2563eb">
+    <meta name="description" content="REGN 15P clinical and simulation scheduling, requirement tracking, and resource allocation.">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Clin &amp; Sim">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Shasta College ADN Course Manager</title>
+    <script>
+    (function () {
+      var p = localStorage.getItem('regnThemePreference');
+      var dark = p === 'dark' || (p !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (dark) document.documentElement.classList.add('dark');
+    })();
+    </script>
+    <link rel="icon" href="/Clinical-and-Simulation-Management/icons/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/Clinical-and-Simulation-Management/icons/icon-180.png">
+    <link rel="manifest" href="/Clinical-and-Simulation-Management/manifest.webmanifest">
+  <script type="module" crossorigin src="/Clinical-and-Simulation-Management/assets/index-xT5FITzV.js"></script>
+  <link rel="stylesheet" crossorigin href="/Clinical-and-Simulation-Management/assets/index-CSnidqVE.css">
+<link rel="manifest" href="/Clinical-and-Simulation-Management/manifest.webmanifest"></head>
+<body>
+    <div class="app-container" id="appMain">
+        <div id="pwaInstallBanner" class="pwa-banner hidden no-print" role="region" aria-label="Install app">
+            <span>Install Clinical &amp; Simulation Management for quick access.</span>
+            <div class="pwa-banner-actions">
+                <button id="pwaInstallBtn" class="btn btn-sm btn-primary" type="button">Install</button>
+                <button id="pwaInstallDismiss" class="btn btn-sm" type="button" aria-label="Dismiss">Dismiss</button>
+            </div>
+        </div>
+        <div id="pwaIosInstallBanner" class="pwa-banner hidden no-print" role="region" aria-label="Add to Home Screen">
+            <span>On iPad: tap <strong>Share</strong> → <strong>Add to Home Screen</strong> to install this app.</span>
+            <button id="pwaIosInstallDismiss" class="btn btn-sm" type="button" aria-label="Dismiss">Dismiss</button>
+        </div>
+        <div id="pwaOnedriveBanner" class="pwa-banner pwa-banner-info hidden no-print" role="region" aria-label="Open semester file">
+            <span>Open your semester file from college OneDrive: Menu → <strong>Open semester file…</strong>, then tap <strong>Browse</strong> → <strong>OneDrive</strong>.</span>
+            <div class="pwa-banner-actions">
+                <button id="pwaOnedriveImportBtn" class="btn btn-sm btn-primary" type="button">Open file</button>
+                <button id="pwaOnedriveDismiss" class="btn btn-sm" type="button" aria-label="Dismiss">Dismiss</button>
+            </div>
+        </div>
+        <div class="sticky-top no-print">
+            <header class="header-row">
+                <div class="header-brand">
+                    <div class="header-title-row">
+                        <h1 class="header-title">Shasta College ADN Course Manager</h1>
+                        <span id="appVersionBadge" class="header-version" aria-label="App version"></span>
+                    </div>
+                    <p class="section-sub header-tagline">Clinical &amp; simulation scheduling, requirement tracking, and resource allocation</p>
+                    <div class="file-status-row">
+                        <span id="fileStatus" class="file-status">Loading...</span>
+                        <button id="syncOneDriveBtn" class="btn btn-sm file-sync-btn hidden" type="button">Sync to OneDrive</button>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="header-right-controls">
+                        <div class="user-menu-wrap">
+                            <button id="userMenuToggle" class="user-avatar-btn hidden" type="button" aria-label="Open user menu" aria-haspopup="menu" aria-expanded="false" aria-controls="userMenuDropdown">
+                                <span id="userStatusLine" class="user-avatar-initials" aria-hidden="true"></span>
+                            </button>
+                            <div id="userMenuDropdown" class="menu-dropdown user-menu-dropdown hidden" role="menu">
+                                <div class="user-menu-identity">
+                                    <h2 id="userMenuName" class="user-menu-name"></h2>
+                                    <h3 id="userMenuRole" class="user-menu-role"></h3>
+                                </div>
+                                <hr class="menu-divider">
+                                <button id="darkModeToggle" class="menu-item" type="button" role="menuitem">Dark / Light Mode</button>
+                                <button id="changePasswordBtn" class="menu-item" type="button" role="menuitem">Change password…</button>
+                                <button id="switchUserMenuBtn" class="menu-item" type="button" role="menuitem">Sign in as different user…</button>
+                                <button id="loadRegistryMenuBtn" class="menu-item" type="button" role="menuitem">Connect users registry…</button>
+                                <button id="logoutUserMenuBtn" class="menu-item menu-item-danger hidden" type="button" role="menuitem">Log out</button>
+                            </div>
+                        </div>
+                        <div class="menu-wrap">
+                            <button id="menuToggle" class="btn btn-icon" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="menuDropdown">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/>
+                                </svg>
+                            </button>
+                            <div id="menuDropdown" class="menu-dropdown hidden" role="menu">
+                                <button id="newSemesterBatchBtn" class="menu-item" type="button" role="menuitem">New semester…</button>
+                                <div class="menu-group" role="group" aria-labelledby="menuSemesterSwitchLabel">
+                                    <div id="menuSemesterSwitchLabel" class="menu-group-label">Switch semester</div>
+                                    <div id="semesterSwitchMenu"></div>
+                                </div>
+                                <div class="menu-group" role="group" aria-labelledby="menuFileManagementLabel">
+                                    <div id="menuFileManagementLabel" class="menu-group-label">File Management</div>
+                                    <button id="connectProgramDataBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Connect ProgramData folder…</button>
+                                    <button id="reconnectProgramDataBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Change / reconnect folder…</button>
+                                    <button id="saveAsBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Save as…</button>
+                                    <button id="exportBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Download backup</button>
+                                    <button id="importBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Open copy…</button>
+                                    <button id="openFileBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">Connect OneDrive file</button>
+                                    <button id="newFileBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">New OneDrive file</button>
+                                </div>
+                                <div class="menu-group" role="group" aria-labelledby="menuLibrariesLabel">
+                                    <div id="menuLibrariesLabel" class="menu-group-label">Program libraries</div>
+                                    <button id="menuUsersLibraryBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Users registry</button>
+                                    <button id="menuClinicalSitesBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Clinical sites library</button>
+                                </div>
+                                <div class="menu-group" role="group" aria-labelledby="menuPlaygroundLabel">
+                                    <div id="menuPlaygroundLabel" class="menu-group-label">Sandbox</div>
+                                    <button id="menuPlaygroundBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Course playground…</button>
+                                    <button id="menuExitPlaygroundBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">Return to semester file</button>
+                                </div>
+                                <hr class="menu-divider">
+                                <button id="clearStorageBtn" class="menu-item menu-item-danger" type="button" role="menuitem">Clear storage &amp; restore defaults</button>
+                                <button id="saveBtn" class="menu-item menu-item-primary" type="button" role="menuitem">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="header-status-wrap course-status-wrap">
+                        <div class="course-status-display">
+                            <div class="semester-picker" id="semesterPickerWrap">
+                                <button id="semesterPickerBtn" type="button" class="semester-picker-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="semesterPickerMenu">
+                                    <span id="semesterPickerLabel" class="semester-picker-label course-status-semester"></span>
+                                    <svg class="semester-picker-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" d="M6 9l6 6 6-6"/></svg>
+                                </button>
+                                <ul id="semesterPickerMenu" class="semester-picker-menu hidden" role="listbox"></ul>
+                                <input type="file" id="semesterPickerFileInput" class="hidden" accept=".json,application/json">
+                            </div>
+                            <button id="courseStatusLine" type="button" class="course-status-line" aria-live="polite" aria-haspopup="listbox" aria-expanded="false" aria-controls="courseStatusDropdown">No semester file connected</button>
+                        </div>
+                        <div id="courseStatusDropdown" class="course-status-dropdown hidden" role="listbox"></div>
+                    </div>
+                </div>
+                <input type="file" id="importFileInput" class="hidden">
+                <input type="file" id="importUserFileInput" class="hidden" accept=".json,application/json">
+                <input type="file" id="importRegistryFileInput" class="hidden" accept=".json,application/json">
+                <input type="file" id="importPlaygroundInput" class="hidden" accept=".json,application/json">
+                <input type="file" id="importTheoryLibraryInput" class="hidden" accept=".json,application/json">
+            </header>
+
+            <div id="closeoutBanner" class="closeout-banner hidden no-print" role="status"></div>
+            <nav class="nav-tabs" aria-label="Main navigation">
+                <button class="nav-tab active" data-tab="dashboard" data-shell="clinical" type="button">Dashboard</button>
+                <button class="nav-tab" data-tab="student" data-shell="clinical" type="button">Student View</button>
+                <button class="nav-tab" data-tab="roles" data-shell="clinical" type="button">Simulation Roles</button>
+                <button class="nav-tab" data-tab="makeup" data-shell="clinical" type="button">Makeup Finder</button>
+                <button class="nav-tab" data-tab="audit" data-shell="clinical" type="button">Audit</button>
+                <button class="nav-tab" data-tab="setup" data-shell="clinical" type="button">Setup</button>
+                <button class="nav-tab hidden" data-tab="playground-dashboard" data-shell="playground" type="button">Dashboard</button>
+                <button class="nav-tab hidden" data-tab="playground-setup" data-shell="playground" type="button">Setup</button>
+                <button class="nav-tab hidden" data-tab="theory-master" data-shell="theory" type="button">Master Calendar</button>
+                <button class="nav-tab hidden" data-tab="theory-lecture" data-shell="theory" type="button">Lecture Assignments</button>
+                <button class="nav-tab hidden" data-tab="theory-coordinator" data-shell="theory" type="button">Coordinator</button>
+            </nav>
+        </div>
+
+        <!-- DASHBOARD -->
+        <div id="view-dashboard" class="view-panel active">
+            <div id="conflictsPanel" class="conflicts-panel hidden no-print"></div>
+
+            <details id="masterSchedulePanel" class="card no-print dashboard-panel-details" open>
+                <summary class="dashboard-panel-summary">
+                    <div class="dashboard-panel-summary-text">
+                        <div id="schedulePanelSemester" class="schedule-panel-semester" aria-hidden="true"></div>
+                        <h3 class="section-title" style="margin:0">Master Interactive Schedule</h3>
+                        <p class="section-sub" style="margin:0.35rem 0 0">Full 18-week semester. Tap a cell to edit. Tracks <span id="reqClinLabel">10</span> clinical days &amp; <span id="reqSimLabel">5</span> simulations per student.</p>
+                    </div>
+                    <div class="dashboard-panel-summary-actions">
+                        <button id="week17MakeupToggleBtn" class="btn btn-sm no-print" type="button">Makeup clinicals week 17</button>
+                        <button id="scheduleExportXlsxBtn" class="btn btn-sm schedule-export-xlsx-btn no-print" type="button">Export to Excel</button>
+                        <button id="scheduleFullscreenBtn" class="btn btn-sm schedule-fullscreen-btn no-print" type="button" aria-label="Open schedule in fullscreen">Fullscreen</button>
+                        <button id="scheduleFullscreenCloseBtn" class="btn btn-icon schedule-fullscreen-close hidden no-print" type="button" aria-label="Exit fullscreen" title="Exit fullscreen">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/>
+                            </svg>
+                        </button>
+                        <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
+                    </div>
+                </summary>
+                <div class="dashboard-panel-body">
+                    <div id="week17MakeupPanel" class="week17-makeup-panel card-nested no-print hidden" role="region" aria-label="Makeup week clinical clustering">
+                        <div class="week17-makeup-controls">
+                            <label class="field-label" for="week17MakeupMode">Clustering mode</label>
+                            <select id="week17MakeupMode" aria-label="Makeup week clustering mode">
+                                <option value="current">Leave as scheduled</option>
+                                <option value="byAssignedDay">By assigned clinical day</option>
+                                <option value="byTargetDay">By target day</option>
+                                <option value="byPreferredSite">Consolidate at preferred site</option>
+                            </select>
+                            <div id="week17MakeupDayWrap" class="week17-makeup-field hidden">
+                                <label class="field-label" for="week17MakeupTargetDay">Target day</label>
+                                <select id="week17MakeupTargetDay" aria-label="Target makeup weekday"></select>
+                            </div>
+                            <div id="week17MakeupSiteWrap" class="week17-makeup-field hidden">
+                                <label class="field-label" for="week17MakeupPreferredSite">Preferred site</label>
+                                <select id="week17MakeupPreferredSite" aria-label="Preferred clinical site"></select>
+                            </div>
+                            <button id="week17MakeupApplyBtn" class="btn btn-sm btn-primary" type="button">Apply makeup week rebalance</button>
+                            <button id="thinSimConsolidateBtn" class="btn btn-sm" type="button">Consolidate thin sim sessions</button>
+                        </div>
+                        <pre id="week17MakeupMessages" class="week17-makeup-messages" aria-live="polite"></pre>
+                    </div>
+                    <div class="filters dashboard-schedule-filters no-print">
+                        <select id="scheduleGroupFilter" aria-label="Filter by clinical group">
+                            <option value="all">All Clinical Groups</option>
+                        </select>
+                        <select id="scheduleSimGroupFilter" aria-label="Filter by simulation group">
+                            <option value="all">All Sim Groups</option>
+                        </select>
+                        <select id="scheduleFacilityFilter" class="schedule-filter-facility" aria-label="Filter by facility">
+                            <option value="all">All Facilities</option>
+                        </select>
+                        <select id="scheduleSectionFilter" aria-label="Filter by section">
+                            <option value="all">All Sections</option>
+                        </select>
+                        <select id="scheduleStatusFilter" aria-label="Filter by status">
+                            <option value="all">All Statuses</option>
+                            <option value="complete">Complete</option>
+                            <option value="warning">Complete*</option>
+                            <option value="pending">Pending</option>
+                        </select>
+                        <span class="schedule-filter-divider" aria-hidden="true"></span>
+                        <div class="schedule-nonstd-filters" role="group" aria-label="Non-standard schedule">
+                            <label class="filter-check filter-check-compact" for="scheduleFilterMakeupClean" title="Makeup with no schedule conflict">
+                                <input type="checkbox" id="scheduleFilterMakeupClean">
+                                <span class="dot dot-makeup-clean" aria-hidden="true"></span>
+                                Makeup (no conflict)
+                            </label>
+                            <label class="filter-check filter-check-compact" for="scheduleFilterMakeupConflict" title="Makeup that conflicts with clinical or sim">
+                                <input type="checkbox" id="scheduleFilterMakeupConflict">
+                                <span class="dot dot-makeup-conflict" aria-hidden="true"></span>
+                                Makeup (conflict)
+                            </label>
+                            <label class="filter-check filter-check-compact" for="scheduleFilterGuestSim" title="Attending sim as guest in another group">
+                                <input type="checkbox" id="scheduleFilterGuestSim">
+                                <span class="dot dot-sim-guest" aria-hidden="true"></span>
+                                Guest sim
+                            </label>
+                        </div>
+                        <input type="text" id="scheduleStudentSearch" placeholder="Search student..." aria-label="Search students">
+                    </div>
+                    <div class="legend dashboard-panel-legend">
+                        <span class="legend-item"><span class="dot dot-clin"></span> Clinical</span>
+                        <span class="legend-item"><span class="dot dot-sim"></span> Simulation</span>
+                        <span class="legend-item"><span class="dot dot-holiday"></span> Holiday / Break</span>
+                        <span class="legend-item"><span class="dot dot-makeup-clean"></span> Makeup (no conflict)</span>
+                        <span class="legend-item"><span class="dot dot-makeup-conflict"></span> Makeup (schedule conflict)</span>
+                        <span class="legend-item"><span class="dot dot-makeup-lastresort"></span> Makeup (last resort)</span>
+                        <span class="legend-item"><span class="legend-overload-star">*</span> Overload</span>
+                        <span class="legend-sep" aria-hidden="true">|</span>
+                        <span class="legend-item"><span class="dot dot-status-complete"></span> Complete</span>
+                        <span class="legend-item"><span class="dot dot-status-warning"></span> Complete*</span>
+                        <span class="legend-item"><span class="dot dot-status-pending"></span> Pending row</span>
+                    </div>
+                    <div class="schedule-table-outer">
+                        <div class="schedule-table-scroll custom-scrollbar" id="scheduleBodyScroll">
+                            <table class="data-table schedule-master-table">
+                                <thead><tr id="scheduleHeadRow"></tr></thead>
+                                <tbody id="scheduleBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="schedule-tally-pin no-print">
+                            <div class="schedule-tally-scroll custom-scrollbar" id="scheduleTallyScroll">
+                                <table class="data-table schedule-master-table schedule-tally-table">
+                                    <tfoot id="scheduleOccupancyFoot"></tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+            <details class="card no-print dashboard-panel-details" open>
+                <summary class="dashboard-panel-summary">
+                    <div class="dashboard-panel-summary-text">
+                        <h3 class="section-title" style="margin:0">Simulation Groups &amp; Progression</h3>
+                        <p class="section-sub" style="margin:0.35rem 0 0">Track simulation assignments (Sim 1–5) by student.</p>
+                    </div>
+                    <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
+                </summary>
+                <div class="dashboard-panel-body">
+                    <div class="legend dashboard-panel-legend">
+                        <span class="legend-item"><span class="dot dot-sim-guest"></span> Guest sim group</span>
+                    </div>
+                    <div class="custom-scrollbar">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="sticky-col">Student</th>
+                                    <th>Clinical</th>
+                                    <th>Sim Group</th>
+                                    <th style="text-align:center">Sim 1</th>
+                                    <th style="text-align:center">Sim 2</th>
+                                    <th style="text-align:center">Sim 3</th>
+                                    <th style="text-align:center">Sim 4</th>
+                                    <th style="text-align:center">Sim 5</th>
+                                </tr>
+                            </thead>
+                            <tbody id="simTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </details>
+
+            <section class="grid-2 no-print">
+                <details class="card dashboard-panel-details" open>
+                    <summary class="dashboard-panel-summary">
+                        <div class="dashboard-panel-summary-text">
+                            <h3 class="section-title" style="margin:0">Sim Center Load</h3>
+                            <p class="section-sub" style="margin:0.35rem 0 0">Peak students per week (max per session configurable).</p>
+                        </div>
+                        <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
+                    </summary>
+                    <div class="dashboard-panel-body">
+                        <div class="chart-container"><canvas id="loadChart"></canvas></div>
+                    </div>
+                </details>
+                <details class="card dashboard-panel-details" open>
+                    <summary class="dashboard-panel-summary">
+                        <div class="dashboard-panel-summary-text">
+                            <h3 class="section-title" style="margin:0">Weekly Simulation Rosters</h3>
+                        </div>
+                        <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
+                    </summary>
+                    <div class="dashboard-panel-body">
+                        <div class="dashboard-panel-week-filter">
+                            <label for="weekFilter">Week</label>
+                            <select id="weekFilter"></select>
+                        </div>
+                        <div class="sim-roster-grid">
+                            <div class="sim-day-card">
+                                <div class="sim-day-header"><span>Monday</span><span id="monCount">0</span></div>
+                                <ul id="monSimList" class="sim-day-list"></ul>
+                                <p id="monEmpty" class="section-sub hidden" style="padding:1rem;text-align:center">No Monday sims.</p>
+                            </div>
+                            <div class="sim-day-card">
+                                <div class="sim-day-header"><span>Tuesday</span><span id="tueCount">0</span></div>
+                                <ul id="tueSimList" class="sim-day-list"></ul>
+                                <p id="tueEmpty" class="section-sub hidden" style="padding:1rem;text-align:center">No Tuesday sims.</p>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+            </section>
+
+        </div>
+
+        <!-- STUDENT VIEW -->
+        <div id="view-student" class="view-panel">
+            <section class="card no-print" style="padding:1.25rem;margin-bottom:1rem">
+                <div class="filters">
+                    <select id="studentViewSelect" class="select-control" aria-label="Select student"><option value="">Select student...</option></select>
+                    <select id="studentCalendarType" class="select-control" aria-label="Calendar view">
+                        <option value="summary">Clinical and Sim Summary</option>
+                        <option value="detailed">Detailed Weekly</option>
+                    </select>
+                    <label class="filter-check" for="showMarkupToggle"><input type="checkbox" id="showMarkupToggle"> Show missed / makeup markup</label>
+                    <button id="printStudentBtn" class="btn btn-primary" type="button" disabled title="Select a student to print their calendar">Print Calendar</button>
+                    <button id="exportStudentIcsBtn" class="btn" type="button" disabled title="Select a student to export an Outlook/iCal calendar">Export .ics</button>
+                    <button id="batchExportStudentCalBtn" class="btn" type="button">Batch export…</button>
+                </div>
+            </section>
+            <div id="studentCalendarPrint"></div>
+        </div>
+
+        <!-- SIMULATION ROLES -->
+        <div id="view-roles" class="view-panel">
+            <section class="card" style="padding:1.25rem">
+                <div id="simFacultyBanner" class="sim-faculty-banner hidden" role="status">
+                    Open a semester file to manage simulation roles. Role data is saved inside the semester file (obfuscated in JSON exports).
+                </div>
+                <div class="filters role-filters" style="margin-bottom:1rem">
+                    <select id="roleSimSelect">
+                        <option value="1">Simulation 1</option>
+                    </select>
+                    <select id="roleGroupSelect">
+                        <option value="0:Mon">Monday — Week 1</option>
+                    </select>
+                    <span id="roleSessionMeta" class="role-session-meta" aria-live="polite"></span>
+                </div>
+                <div id="roleTableWrap" class="custom-scrollbar">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th class="sticky-col" rowspan="2">Student</th>
+                                <th colspan="4" style="text-align:center">Cumulative</th>
+                                <th colspan="4" style="text-align:center">Assign Roles</th>
+                                <th colspan="2" style="text-align:center">Performance Flags</th>
+                            </tr>
+                            <tr>
+                                <th>Pri</th><th>Sec</th><th>Eva</th><th>Scr</th>
+                                <th>Iter 1</th><th>Iter 2</th><th>Iter 3</th><th>Iter 4</th>
+                                <th>Primary</th><th>Secondary</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roleTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- MAKEUP FINDER -->
+        <div id="view-makeup" class="view-panel">
+            <section class="card" style="padding:1.25rem">
+                <h3 class="section-title">Makeup Day Finder</h3>
+                <p class="section-sub">Find makeup slots by joining existing sessions only. Simulation makeup joins weeks where another student already has that Sim (1–17). Clinical makeup prefers joining an existing clinical at the student&apos;s oriented facility; Week 18 is last resort for both. Sim-on-clinical-week conflicts prioritize simulation — the clinical is marked missed, then search for clinical makeup (facility join first). Overload slots are makeup-only when a session is at normal capacity.</p>
+                <div class="filters">
+                    <select id="makeupStudentSelect"><option value="">Select student...</option></select>
+                    <select id="makeupTypeSelect">
+                        <option value="clinical">Missed Clinical</option>
+                        <option value="sim">Missed Simulation</option>
+                    </select>
+                    <select id="makeupSimSelect" class="hidden">
+                        <option value="1">Simulation 1</option>
+                        <option value="2">Simulation 2</option>
+                        <option value="3">Simulation 3</option>
+                        <option value="4">Simulation 4</option>
+                        <option value="5">Simulation 5</option>
+                    </select>
+                    <input type="text" id="makeupAppliedBy" placeholder="Applied by (optional)" title="Recorded on the makeup record for the end-of-semester audit log">
+                </div>
+                <div id="makeupResults"></div>
+            </section>
+        </div>
+
+        <!-- AUDIT / CLOSEOUT -->
+        <div id="view-audit" class="view-panel">
+            <div id="auditCloseout"></div>
+        </div>
+
+        <!-- SETUP -->
+        <div id="view-setup" class="view-panel">
+            <div class="setup-actions-sticky card no-print">
+                <div class="setup-actions">
+                    <button id="saveSetupBtn" class="btn btn-primary" type="button">Save Setup</button>
+                    <button id="proposeSetupChangesBtn" class="btn hidden" type="button">Propose changes</button>
+                    <button id="importPlaygroundSetupBtn" class="btn hidden" type="button">Import playground…</button>
+                    <button id="createCourseTemplateBtn" class="btn hidden" type="button">Create course template</button>
+                    <button id="regenerateSchedulesBtn" class="btn" type="button">Regenerate Schedules</button>
+                    <button id="setupAdvancedConfigBtn" class="btn" type="button" aria-expanded="false">Advanced Configuration</button>
+                    <button id="finalizeSemesterBtn" class="btn btn-finalize" type="button">Finalize Semester</button>
+                </div>
+            </div>
+            <div id="setupProposalsPanel" class="setup-proposals-panel hidden card no-print" role="region" aria-label="Pending proposed changes"></div>
+            <section id="setupScheduleWarningsSection" class="setup-schedule-warnings-section hidden" style="margin-bottom:1rem" aria-live="polite">
+                <div id="setupScheduleWarnings" class="setup-schedule-warnings hidden" role="alert"></div>
+            </section>
+            <section class="card" style="padding:1.25rem;margin-bottom:1rem">
+                <h3 class="section-title">Semester</h3>
+                <div class="grid-2 setup-semester-fields">
+                    <label>Season
+                        <select id="semesterSeasonSelect">
+                            <option value="spring">Spring</option>
+                            <option value="fall">Fall</option>
+                        </select>
+                    </label>
+                    <label>Year<select id="semesterYearSelect"></select></label>
+                    <label class="setup-start-date-label">Start date<input type="date" id="semesterStartDate" class="date-input"></label>
+                </div>
+                <div class="setup-holidays-card setup-semester-holidays">
+                    <div class="setup-config-divider"></div>
+                    <h3 class="section-title" style="margin:0">Holidays &amp; Breaks</h3>
+                    <div id="setupHolidays" style="margin-top:1rem"></div>
+                </div>
+                <div id="setupAdvancedPanel" class="setup-advanced-panel hidden">
+                    <p id="setupConfigSubtitle" class="section-sub" style="margin:0.5rem 0 0"></p>
+                    <p id="setupPendingNewSemesterBanner" class="setup-new-semester-banner hidden">Review scheduling settings, then save and create the new semester.</p>
+                    <label id="setupNewSemesterCourseLabel" class="setup-new-semester-course hidden">New semester course
+                        <select id="setupNewSemesterCourse"></select>
+                    </label>
+                    <div class="grid-2 setup-advanced-grid">
+                        <label>Clinical days required<input type="number" id="cfgClinDays"></label>
+                        <label>Simulation days required<input type="number" id="cfgSimDays"></label>
+                        <label>Max students<input type="number" id="cfgMaxStudents"></label>
+                        <label>Max per clinical group<input type="number" id="cfgMaxClinGroup"></label>
+                        <label>Max clinical group (makeup overload only)<input type="number" id="cfgMaxClinOverload"></label>
+                        <label>Max students per sim session<input type="number" id="cfgMaxSimSession" title="Program-wide cap per weekday; also limits effective sim group size"></label>
+                        <label>Max guest sims per student<input type="number" id="cfgMaxGuestSims" min="0" title="Soft cap: prefer moving sim groups during rebalance so each student guests at most this many times (default 1)"></label>
+                        <label>Max sim session (makeup overload only)<input type="number" id="cfgMaxSimOverload"></label>
+                        <label>Sim makeup headroom (seats reserved per session)<input type="number" id="cfgSimHeadroom" min="0" max="3" title="During initial schedule generation, reserve this many seats per sim session for absence makeups"></label>
+                        <label class="filter-check filter-check-compact" style="align-self:end;padding-bottom:0.55rem">
+                          <input type="checkbox" id="cfgHolidayBlocksWeek" title="When checked, a holiday date blocks the entire instructional week for algorithmic sim/clinical placement. When unchecked, only that weekday is blocked (Mon/Tue streams may diverge).">
+                          Holiday blocks full week for sim/clinical
+                        </label>
+                        <label>Clinical start week<input type="number" id="cfgClinStart"></label>
+                        <label>Simulation start week<input type="number" id="cfgSimStart"></label>
+                        <label>Clinical makeup target week<input type="number" id="cfgClinMakeupPrimary" min="1" max="18" placeholder="Auto" title="Leave blank to use second-to-last active week"></label>
+                        <label>Clinical makeup last resort week<input type="number" id="cfgClinMakeupFallback" min="1" max="18" placeholder="Auto" title="Leave blank to use last active week"></label>
+                        <label>Sim makeup last resort week<input type="number" id="cfgSimMakeupLastResort" min="1" max="18" placeholder="Auto" title="Leave blank to use last active week"></label>
+                    </div>
+                    <p class="section-sub">Makeup week fields left blank use the last active semester weeks (after holidays/breaks).</p>
+                    <div class="setup-config-divider"></div>
+                    <p class="section-sub">Clinical site library editing moved to the Clinical Sites tab.</p>
+                    <div id="cfgSiteLibrary" class="config-list hidden"></div>
+                    <div class="setup-advanced-footer">
+                        <button id="setupConfigResetDefaultsBtn" class="btn btn-sm" type="button">Use program defaults</button>
+                        <button id="setupConfigApplyFutureBtn" class="btn btn-sm" type="button">Apply to future semesters</button>
+                        <button id="setupSaveAddSemesterBtn" class="btn btn-sm btn-primary hidden" type="button">Save &amp; Add Semester</button>
+                    </div>
+                </div>
+            </section>
+            <div class="setup-config-grid">
+                <section class="card setup-program-card" style="padding:1.25rem">
+                    <div class="setup-program-grid">
+                        <div class="setup-program-column setup-program-left">
+                            <div class="setup-program-block setup-sections-block">
+                                <h3 class="section-title" style="margin:0">Registrar Sections</h3>
+                                <p class="section-sub setup-sections-hint">Registrar section codes (e.g. F6011). Sections are assigned per student in the roster&mdash;multiple clinical cohorts may share a section, and students in one cohort may use different sections.</p>
+                                <div id="setupSections"></div>
+                            </div>
+                            <div class="setup-program-block setup-faculty-block">
+                                <h3 class="section-title" style="margin:0 0 0.35rem">Clinical Faculty</h3>
+                                <p class="section-sub setup-sections-hint">Type a name to search adjunct faculty from the user registry (when connected).</p>
+                                <datalist id="setupAdjunctFacultyList"></datalist>
+                                <div id="setupFaculty"></div>
+                            </div>
+                            <div class="setup-program-block setup-sim-instructors-block">
+                                <h3 class="section-title" style="margin:0 0 0.35rem">Simulation Faculty</h3>
+                                <p class="section-sub setup-sections-hint">Instructors who teach simulation sessions (distinct from student sim roles). Used on the Theory Master Calendar faculty display.</p>
+                                <div id="setupSimInstructors"></div>
+                            </div>
+                            <div class="setup-program-block setup-course-staff-block">
+                                <h3 class="section-title" style="margin:0 0 0.35rem">Course Staff</h3>
+                                <p class="section-sub setup-sections-hint">Lead course faculty attests makeup records at end-of-semester closeout (see Audit tab). Not the same as per-group clinical faculty above.</p>
+                                <div class="setup-lead-faculty-fields">
+                                    <label>Lead faculty name</label>
+                                    <div id="leadFacultyNameControl">
+                                        <select id="leadFacultySelect" class="select-control hidden" aria-label="Lead faculty name"></select>
+                                        <input type="text" id="leadFacultyName" placeholder="Required before closeout" aria-label="Lead faculty name">
+                                    </div>
+                                    <label for="leadFacultyEmail">Lead faculty email</label>
+                                    <input type="text" id="leadFacultyEmail" placeholder="Auto-filled from registry" aria-label="Lead faculty email">
+                                </div>
+                                <p id="leadFacultyRegistryHint" class="section-sub setup-lead-faculty-hint hidden"></p>
+                            </div>
+                        </div>
+                        <div class="setup-program-block setup-facilities-block">
+                            <h3 class="section-title" style="margin:0">Facilities &amp; Clinical Groups</h3>
+                            <p class="section-sub setup-sections-hint">One entry per clinical site. A clinical group may use one site all semester or multiple sites (clinical weeks rotate across listed sites in order).</p>
+                            <div id="setupFacilities"></div>
+                            <div class="setup-config-divider"></div>
+                            <div class="config-section-header">
+                                <h4 style="margin:0">Clinical groups</h4>
+                            </div>
+                            <div id="cfgClinicalGroupsList" class="config-list"></div>
+                            <div class="setup-config-divider"></div>
+                            <div class="config-section-header">
+                                <h4 style="margin:0">Simulation groups</h4>
+                            </div>
+                            <p class="section-sub">Primary weekday and even/odd week pattern per simulation group. Count may differ from clinical groups; when counts match, regenerate aligns C1→SG1, etc.</p>
+                            <div id="cfgSimGroupsList" class="config-list"></div>
+                            <div class="setup-sim-times-block">
+                                <h4 style="margin:0">Simulation times</h4>
+                                <p class="section-sub">Default session window for calendars and audit hours. Optional overrides per sim number.</p>
+                                <div class="setup-sim-times-grid">
+                                    <label>Default start
+                                        <input type="time" id="cfgSimDefaultStart" aria-label="Default simulation start time">
+                                    </label>
+                                    <label>Default end
+                                        <input type="time" id="cfgSimDefaultEnd" aria-label="Default simulation end time">
+                                    </label>
+                                </div>
+                                <div id="cfgSimTimeOverrides" class="config-list" style="margin-top:0.65rem"></div>
+                            </div>
+                            <h4 style="margin:0">Simulation days</h4>
+                            <p class="section-sub">Days of the week when simulation sessions may be scheduled.</p>
+                            <div id="cfgSimDaysList" class="config-list"></div>
+                        </div>
+                    </div>
+                </section>
+                <section class="card setup-orientations-card" style="padding:1.25rem">
+                    <h3 class="section-title" style="margin:0">Orientation Days</h3>
+                    <p class="section-sub" style="margin:0.35rem 0 0">One orientation date per clinical group and site. Master schedule shows &ldquo;Orient SRMC&rdquo; style labels.</p>
+                    <div id="setupOrientations" style="margin-top:1rem"></div>
+                </section>
+            </div>
+            <section class="card setup-roster-full" style="padding:1.25rem">
+                <div class="setup-roster-header">
+                    <div>
+                        <h3 class="section-title" style="margin:0">Student Roster</h3>
+                        <p class="section-sub" style="margin:0.35rem 0 0">Drag students between cohorts. Set each student&rsquo;s registrar section individually, or use the cohort Section control to assign all at once (you can still split students across sections afterward).</p>
+                    </div>
+                    <div class="setup-roster-actions">
+                        <button id="rebalanceStudentsBtn" class="btn btn-sm btn-rebalance-clinical" type="button" title="Evenly distribute students across clinical groups">Rebalance clinical groups</button>
+                        <button id="rebalanceSimGroupsBtn" class="btn btn-sm btn-rebalance-sim" type="button" title="Balance sim groups to session cap and regenerate until guest soft cap is met">Rebalance simulation groups</button>
+                    </div>
+                </div>
+                <div id="setupRoster"></div>
+            </section>
+        </div>
+
+        <!-- PLAYGROUND DASHBOARD -->
+        <div id="view-playground-dashboard" class="view-panel">
+            <section id="playgroundShellBar" class="card playground-shell-bar" style="padding:1.25rem;margin-bottom:1rem">
+                <h3 class="section-title">Course Playground</h3>
+                <p id="playgroundStatus" class="section-sub">Trial semester configurations without affecting the live semester file.</p>
+                <div class="filters" style="margin:1rem 0">
+                    <button id="playgroundLoadSemesterBtn" class="btn btn-sm" type="button">Copy current semester</button>
+                    <select id="playgroundCourseSelect" class="select-control" aria-label="Course template"></select>
+                    <button id="playgroundLoadCourseBtn" class="btn btn-sm" type="button">Load course template</button>
+                    <button id="playgroundImportBtn" class="btn btn-sm" type="button">Import playground file…</button>
+                    <button id="playgroundSaveBtn" class="btn btn-sm btn-primary" type="button">Save playground</button>
+                    <button id="playgroundSaveAsBtn" class="btn btn-sm" type="button">Save playground as…</button>
+                </div>
+            </section>
+            <div id="pgDashEmptyState" class="card playground-empty-state" style="padding:1.25rem">
+                <p class="section-sub">Load or import a playground file to preview the master schedule and simulation progression.</p>
+            </div>
+            <div id="pgDashContent" class="hidden">
+                <div id="pgDashConflictsPanel" class="conflicts-panel hidden no-print"></div>
+                <details class="card no-print dashboard-panel-details" open>
+                    <summary class="dashboard-panel-summary">
+                        <div class="dashboard-panel-summary-text">
+                            <h3 class="section-title" style="margin:0">Master Schedule</h3>
+                            <p class="section-sub" style="margin:0.35rem 0 0">Read-only preview. Tracks <span id="pgDashReqClinLabel">10</span> clinical days &amp; <span id="pgDashReqSimLabel">5</span> simulations per student.</p>
+                        </div>
+                    </summary>
+                    <div class="dashboard-panel-body">
+                        <div class="legend dashboard-panel-legend">
+                            <span class="legend-item"><span class="dot dot-clin"></span> Clinical</span>
+                            <span class="legend-item"><span class="dot dot-sim"></span> Simulation</span>
+                            <span class="legend-item"><span class="dot dot-holiday"></span> Holiday / Break</span>
+                        </div>
+                        <div class="schedule-table-outer">
+                            <div class="schedule-table-scroll custom-scrollbar" id="pgDashScheduleBodyScroll">
+                                <table class="data-table schedule-master-table">
+                                    <thead><tr id="pgDashScheduleHeadRow"></tr></thead>
+                                    <tbody id="pgDashScheduleBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+                <details class="card no-print dashboard-panel-details" open style="margin-top:1rem">
+                    <summary class="dashboard-panel-summary">
+                        <div class="dashboard-panel-summary-text">
+                            <h3 class="section-title" style="margin:0">Simulation Groups &amp; Progression</h3>
+                        </div>
+                    </summary>
+                    <div class="dashboard-panel-body">
+                        <div class="custom-scrollbar">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sticky-col">Student</th>
+                                        <th>Clinical</th>
+                                        <th>Sim Group</th>
+                                        <th style="text-align:center">Sim 1</th>
+                                        <th style="text-align:center">Sim 2</th>
+                                        <th style="text-align:center">Sim 3</th>
+                                        <th style="text-align:center">Sim 4</th>
+                                        <th style="text-align:center">Sim 5</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pgDashSimTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </details>
+                <details class="card no-print dashboard-panel-details" open style="margin-top:1rem">
+                    <summary class="dashboard-panel-summary">
+                        <div class="dashboard-panel-summary-text">
+                            <h3 class="section-title" style="margin:0">Sim Center Load</h3>
+                        </div>
+                    </summary>
+                    <div class="dashboard-panel-body">
+                        <div class="chart-container"><canvas id="pgDashLoadChart"></canvas></div>
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <!-- PLAYGROUND SETUP -->
+        <div id="view-playground-setup" class="view-panel">
+            <div id="playgroundSetupRoot" class="playground-setup-root hidden"></div>
+        </div>
+
+        <!-- USERS -->
+        <div id="view-users" class="view-panel">
+            <section class="card" style="padding:1.25rem">
+                <h3 class="section-title">User Management</h3>
+                <div id="usersAdminPanel"></div>
+            </section>
+        </div>
+
+        <!-- CLINICAL SITES -->
+        <div id="view-clinical-sites" class="view-panel">
+            <section class="card" style="padding:1.25rem">
+                <h3 class="section-title">Clinical Site Library</h3>
+                <p class="section-sub">Program-wide catalog of clinical sites shared across courses.</p>
+                <div id="clinicalSitesConnectPrompt" class="clinical-sites-connect-prompt">
+                    <button id="clinicalSitesConnectBtn" class="btn btn-sm" type="button">Connect library file</button>
+                    <button id="clinicalSitesCreateBtn" class="btn btn-sm" type="button">New library file</button>
+                </div>
+                <div id="clinicalSitesTabLibrary" class="config-list"></div>
+                <div id="clinicalSitesProposals" class="setup-proposals-panel"></div>
+            </section>
+        </div>
+
+        <!-- THEORY MASTER -->
+        <div id="view-theory-master" class="view-panel">
+            <div class="setup-actions-sticky card no-print">
+                <div class="setup-actions">
+                    <button id="theorySaveSetupBtn" class="btn btn-primary" type="button">Save Setup</button>
+                    <button id="theoryAdvancedConfigBtn" class="btn" type="button" aria-expanded="false">Advanced Configuration</button>
+                </div>
+            </div>
+            <section class="card" style="padding:1.25rem">
+                <h3 class="section-title">Master Calendar</h3>
+                <p class="section-sub">Sun–Sat week grid — theory tracks, skills labs, assignments, and holidays.</p>
+                <div id="theoryMasterSetup" class="theory-master-setup setup-advanced-panel hidden">
+                    <div class="theory-master-setup-body">
+                        <div class="theory-master-setup-grid">
+                            <fieldset class="theory-master-setup-fieldset">
+                                <legend>Lecture days &amp; times</legend>
+                                <div id="theoryLectureWeekdays" class="theory-weekday-checks" role="group" aria-label="Default lecture weekdays"></div>
+                                <label>Lecture start
+                                    <input type="time" id="theoryDefaultLectureStart" class="select-control" aria-label="Default lecture start">
+                                </label>
+                                <label>Lecture end
+                                    <input type="time" id="theoryDefaultLectureEnd" class="select-control" aria-label="Default lecture end">
+                                </label>
+                                <label>Skills lab start
+                                    <input type="time" id="theoryDefaultSkillsStart" class="select-control" aria-label="Default skills start">
+                                </label>
+                                <label>Skills lab end
+                                    <input type="time" id="theoryDefaultSkillsEnd" class="select-control" aria-label="Default skills end">
+                                </label>
+                            </fieldset>
+                            <fieldset class="theory-master-setup-fieldset">
+                                <legend>Theory faculty roster</legend>
+                                <div id="theoryFacultyRoster" class="config-list"></div>
+                            </fieldset>
+                            <fieldset class="theory-master-setup-fieldset">
+                                <legend>Skills lab faculty roster</legend>
+                                <label>Default skills faculty required
+                                    <input type="number" id="theoryDefaultSkillsFacultyRequired" class="select-control" min="0" max="10" step="1" aria-label="Default skills faculty required">
+                                </label>
+                                <div id="theorySkillsFacultyRoster" class="config-list"></div>
+                            </fieldset>
+                            <fieldset class="theory-master-setup-fieldset">
+                                <legend>Module topics</legend>
+                                <label class="filter-check filter-check-compact">
+                                    <input type="radio" name="theoryModuleSeedMode" id="theoryModuleSeedBlank" value="blank" checked>
+                                    Leave module information blank
+                                </label>
+                                <label class="filter-check filter-check-compact">
+                                    <input type="radio" name="theoryModuleSeedMode" id="theoryModuleSeedPull" value="pull">
+                                    Pull topics in order from another semester
+                                </label>
+                                <label class="theory-seed-semester-label">Source semester
+                                    <select id="theoryModuleSeedSemester" class="select-control" aria-label="Source semester for topics" disabled></select>
+                                </label>
+                                <button type="button" class="btn btn-sm" id="theoryModuleSeedApplyBtn">Apply topic seed</button>
+                            </fieldset>
+                        </div>
+                    </div>
+                </div>
+                <div class="theory-master-toolbar" id="theoryMasterToolbar">
+                    <label class="filter-check filter-check-compact">
+                        <input type="checkbox" id="theoryShowLecturers" checked>
+                        Show lecturers
+                    </label>
+                    <label class="filter-check filter-check-compact">
+                        <input type="checkbox" id="theoryShowPracticumFaculty" checked>
+                        Show skills / sim / clinical faculty
+                    </label>
+                    <label class="filter-check filter-check-compact">
+                        <input type="checkbox" id="theoryShowSkillsLabContent" checked>
+                        Show skills lab content
+                    </label>
+                </div>
+                <aside id="theoryTopicLibraryPanel" class="theory-topic-library">
+                    <div class="theory-library-header">
+                        <div>
+                            <h4 class="section-sub">Content library</h4>
+                            <p class="section-sub theory-library-hint">Topic and skills banks for the event editor — separate from the semester program file.</p>
+                        </div>
+                        <div class="theory-library-lock-actions">
+                            <button id="theoryLibraryUnlockBtn" class="btn btn-sm hidden" type="button">Unlock editing</button>
+                            <button id="theoryLibraryLockBtn" class="btn btn-sm hidden" type="button">Lock editing</button>
+                        </div>
+                    </div>
+                    <div id="theoryLibraryConnectPrompt" class="clinical-sites-connect-prompt">
+                        <button id="theoryLibraryConnectBtn" class="btn btn-sm" type="button">Connect theory content library</button>
+                        <button id="theoryLibraryCreateBtn" class="btn btn-sm" type="button">New theory content library</button>
+                    </div>
+                    <p id="theoryLibraryStatus" class="theory-library-status hidden" role="status"></p>
+                    <p id="theoryLibraryUnlockedBanner" class="theory-library-unlocked-banner hidden" role="status">
+                        Editing unlocked — keep content aligned with the Course Outline of Record (COR).
+                    </p>
+                    <div id="theoryLibrarySections" class="theory-library-sections hidden">
+                        <details class="theory-library-section" open>
+                            <summary class="theory-library-section-summary">
+                                <span class="theory-library-section-title">Topics</span>
+                                <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
+                            </summary>
+                            <ul id="theoryTopicLibraryList" class="theory-topic-list"></ul>
+                        </details>
+                        <details class="theory-library-section" open>
+                            <summary class="theory-library-section-summary">
+                                <span class="theory-library-section-title">Skills lab</span>
+                                <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
+                            </summary>
+                            <p class="section-sub theory-library-hint">Tag skills as introduction, practice, and/or testout. Not every skill needs every tag.</p>
+                            <ul id="theorySkillsLibraryList" class="theory-topic-list theory-skills-list"></ul>
+                        </details>
+                    </div>
+                </aside>
+                <div id="theoryMasterGrid"></div>
+            </section>
+        </div>
+
+        <!-- THEORY LECTURE -->
+        <div id="view-theory-lecture" class="view-panel">
+            <section class="card" style="padding:1.25rem">
+                <h3 class="section-title">Lecture Assignments</h3>
+                <label class="filter-check"><input type="checkbox" id="theoryLectureMyFilter"> My assignments only</label>
+                <table class="data-table"><thead><tr><th>Week</th><th>Date</th><th>Day</th><th>Topic</th><th>Lecturer</th><th>Skills Lab</th></tr></thead>
+                <tbody id="theoryLectureTableBody"></tbody></table>
+            </section>
+        </div>
+
+        <!-- THEORY COORDINATOR -->
+        <div id="view-theory-coordinator" class="view-panel">
+            <section class="card" style="padding:1.25rem">
+                <div class="theory-coordinator-header">
+                    <h3 class="section-title">Coordinator</h3>
+                    <span id="theoryCoordinatorStatusChip" class="theory-coordinator-chip"></span>
+                    <button id="theoryHourSettingsBtn" class="btn btn-sm" type="button">Hour settings</button>
+                </div>
+                <div id="theorySimWarnBanner" class="closeout-banner hidden" role="status"></div>
+                <div id="theoryCoordinatorGrid"></div>
+            </section>
+        </div>
+    </div>
+
+    <!-- User gate modal (fullscreen sign-in) -->
+    <div id="userGateModal" class="modal-overlay no-print open user-gate-modal" role="dialog" aria-modal="true" aria-labelledby="userGateTitle">
+        <div class="user-gate-shell">
+            <div class="user-gate-panel modal-content">
+                <div class="user-gate-steps" aria-label="Sign-in progress">
+                    <span class="user-gate-step-indicator active" data-step="1">1. ProgramData</span>
+                    <span class="user-gate-step-indicator" data-step="2">2. User</span>
+                    <span class="user-gate-step-indicator" data-step="3">3. Semester</span>
+                </div>
+                <div class="modal-header user-gate-header">
+                    <h2 id="userGateTitle" style="margin:0">Connect ProgramData</h2>
+                </div>
+                <div class="modal-body user-gate-body">
+                    <p id="userGateError" class="user-gate-error hidden" role="alert"></p>
+                    <div id="userGateStep1" class="user-gate-step-panel">
+                        <p id="userGateStep1Lead" class="section-sub user-gate-lead hidden">Folder connect failed. Connect <code>users-registry.json</code> directly to sign in.</p>
+                        <div class="user-gate-actions">
+                            <button id="userGateConnectProgramDataBtn" class="btn btn-primary" type="button">Connect ProgramData folder…</button>
+                            <button id="userGateLoadRegistryBtn" class="btn btn-primary hidden" type="button">Connect users registry…</button>
+                        </div>
+                    </div>
+                    <div id="userGateStep2" class="user-gate-step-panel hidden">
+                        <p id="userGateStep2Lead" class="section-sub user-gate-lead hidden">Registry connected. Sign in with your email address and password.</p>
+                        <p id="userGateRegistryName" class="user-gate-connected-file hidden"></p>
+                        <p id="userGateProgramDataHint" class="section-sub hidden"></p>
+                        <div class="user-gate-programdata-user" style="margin:0.75rem 0">
+                            <label class="section-sub" for="userGateEmail">Email address</label>
+                            <input id="userGateEmail" type="email" autocomplete="username" aria-label="Email address" required style="width:100%;margin:0.25rem 0 0.75rem">
+                            <label class="section-sub" for="userGatePassword">Password</label>
+                            <input id="userGatePassword" type="password" autocomplete="current-password" aria-label="Password" required style="width:100%;margin:0.25rem 0 0.75rem">
+                            <button id="userGateConfirmUserBtn" class="btn btn-primary" type="button">Sign in</button>
+                            <button id="userGateForgotPasswordBtn" class="btn btn-sm" type="button" style="margin-top:0.5rem">Forgot password</button>
+                        </div>
+                    </div>
+                    <div id="userGateStepChangePassword" class="user-gate-step-panel hidden">
+                        <p id="userGateChangePasswordLead" class="section-sub user-gate-lead">Choose a new password before continuing.</p>
+                        <div style="margin:0.75rem 0">
+                            <label class="section-sub" for="userGateNewPassword">New password</label>
+                            <input id="userGateNewPassword" type="password" autocomplete="new-password" aria-label="New password" required style="width:100%;margin:0.25rem 0 0.75rem">
+                            <label class="section-sub" for="userGateNewPasswordConfirm">Confirm new password</label>
+                            <input id="userGateNewPasswordConfirm" type="password" autocomplete="new-password" aria-label="Confirm new password" required style="width:100%;margin:0.25rem 0 0.75rem">
+                            <button id="userGateChangePasswordBtn" class="btn btn-primary" type="button">Save new password</button>
+                        </div>
+                    </div>
+                    <div id="userGateStep3" class="user-gate-step-panel hidden">
+                        <p id="userGateUserName" class="user-gate-connected-file"></p>
+                        <p id="userGateStep3Lead" class="section-sub user-gate-lead hidden">Signed in. Load a semester JSON file to continue.</p>
+                        <div id="userGateProgramDataSemester" class="user-gate-programdata-semester" style="margin:0.75rem 0">
+                            <p class="section-sub user-gate-lead">Signed in. Open a program semester file from <code>semesters/</code>.</p>
+                            <label class="section-sub" for="userGateSemesterSelect">Semester file</label>
+                            <select id="userGateSemesterSelect" class="select-control" aria-label="Semester file" style="width:100%;margin:0.25rem 0 0.75rem"></select>
+                            <button id="userGateConfirmSemesterBtn" class="btn btn-primary" type="button">Open semester</button>
+                        </div>
+                        <div class="user-gate-actions">
+                            <button id="userGateLoadSemesterBtn" class="btn btn-primary hidden" type="button">Load semester file…</button>
+                            <input type="file" id="userGateSemesterFileInput" class="hidden" accept=".json,application/json">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New semester batch wizard -->
+    <div id="newSemesterBatchModal" class="modal-overlay no-print" role="dialog" aria-modal="true" aria-labelledby="newSemesterBatchTitle">
+        <div class="modal-content batch-semester-modal-content" style="max-width:36rem">
+            <div class="modal-header">
+                <h2 id="newSemesterBatchTitle" style="margin:0">New semester</h2>
+                <button id="newSemesterBatchClose" class="btn btn-sm" type="button" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body batch-semester-modal-body" id="newSemesterBatchBody"></div>
+        </div>
+    </div>
+
+    <!-- Config Modal (legacy — new semester flow uses Setup tab) -->
+    <div id="configModal" class="modal-overlay no-print hidden" aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 style="margin:0">Scheduling Configuration</h2>
+                    <p id="configModalSubtitle" class="section-sub" style="margin:0.35rem 0 0"></p>
+                </div>
+                <button id="configModalClose" class="btn btn-sm" type="button">&times;</button>
+            </div>
+            <div class="modal-body" id="configModalBody"></div>
+            <div class="modal-footer config-modal-footer">
+                <div class="config-modal-footer-left">
+                    <button id="configResetDefaultsBtn" class="btn btn-sm" type="button">Use program defaults</button>
+                    <button id="configApplyFutureBtn" class="btn btn-sm" type="button">Apply to future semesters</button>
+                </div>
+                <div class="config-modal-footer-right">
+                    <button id="configModalCancel" class="btn" type="button">Cancel</button>
+                    <button id="configModalSave" class="btn btn-primary" type="button">Save for this semester</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cell Edit Dialog -->
+    <div id="dialogModal" class="modal-overlay no-print" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" aria-describedby="dialogBody">
+        <div class="modal-content" style="max-width:28rem">
+            <div class="modal-header">
+                <h2 id="dialogTitle" style="margin:0">Edit</h2>
+            </div>
+            <div class="modal-body" id="dialogBody"></div>
+            <div class="modal-footer">
+                <button id="dialogCancel" class="btn" type="button">Cancel</button>
+                <button id="dialogExtra" class="btn" type="button" style="display:none">Extra</button>
+                <button id="dialogSave" class="btn btn-primary" type="button">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <style id="wrong-entry-warn-style">
+      #wrong-entry-warn { display: none; position: fixed; inset: 0; z-index: 999999; background: #0f172a; color: #e2e8f0; padding: 2rem; font-family: Segoe UI, system-ui, sans-serif; line-height: 1.55; overflow: auto; }
+      #wrong-entry-warn h1 { margin-top: 0; color: #fbbf24; font-size: 1.35rem; }
+      #wrong-entry-warn code { background: #334155; padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.92em; }
+      #wrong-entry-warn ol { padding-left: 1.25rem; }
+      #wrong-entry-warn li { margin: 0.5rem 0; }
+    </style>
+    <script>
+    (function () {
+      var mod = document.querySelector('script[type="module"][src*="/src/main.js"]');
+      if (!mod) return;
+      function showWrongEntryWarn() {
+        var el = document.getElementById('wrong-entry-warn');
+        if (el) el.style.display = 'block';
+      }
+      if (location.protocol === 'file:') {
+        document.addEventListener('DOMContentLoaded', showWrongEntryWarn);
+        return;
+      }
+      setTimeout(function () {
+        if (!window.__regnAppBooted) showWrongEntryWarn();
+      }, 2000);
+    })();
+    </script>
+    <div id="wrong-entry-warn" role="alert">
+      <h1>This file is the development entry point — not the built app</h1>
+      <p>You are seeing unstyled HTML because bundled CSS and JavaScript are not loaded.</p>
+      <ol>
+        <li><strong>Local development:</strong> run <code>npm run dev</code> and open the URL Vite prints (usually <code>http://localhost:5173</code>).</li>
+        <li><strong>Local test of SharePoint build:</strong> run <code>npm run build:sharepoint</code>, then <code>npm run preview:sharepoint</code>, and open <code>http://localhost:4173</code>.</li>
+        <li><strong>SharePoint:</strong> upload the entire <code>sharepoint-package/ClinSimApp/</code> folder (including <code>assets/</code>), then open the direct link ending in <code>/ClinSimApp/index.html</code> — not the SharePoint preview pane.</li>
+      </ol>
+    </div>
+
+</body>
+</html>
