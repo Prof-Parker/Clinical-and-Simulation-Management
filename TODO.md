@@ -5,7 +5,7 @@ TODO.md
 - [X] Add section card scroll bars
 - [X] default to 
 - [X] fixed headers, student name and clinical group sidebars for Master interactive schedule
-- [ ] Hover function for clinical group (clinical site name, scheduled day)
+- [X] Hover function for clinical group (clinical site name, scheduled day)
 - [X] Sim Faculty UI: Move menu items to simulation roles page
 - [X] Add historic 2026 4/4 (eligible-list + holiday week-block; Sun–Sat weeks; regen tests)
 - [X] Move current 5/4 default to FALL 2026
@@ -119,7 +119,31 @@ TODO.md
 
 ### Lower priority TODO:
 - [ ] Add in app bug and feature request function
+- [ ] Add linked clinical, sim and skills lab student performance flags (start with strong/weak and free text notes, expand to include tags for specific competencies? `clinical judgement, safety, sterile technique, medication administration, time management, interpersonal skills, professional conduct/behavior `)
 
-## Bugs identified in v2.5.0 
-- [ ] Advanced config input fields in praciticum setup were not working (no updown buttons, static no free text) when opening on college computer (working on dev computer)
+# Priority items from demo
+- [ ] Build out 1st-3rd semester for clinicals and sims
+- [ ] add self scheduling support for faculty
+- [ ] Integrate audra contact hour tracking support (theory only)
+- [X] Debug file kind guards — [file_kind_guards_login_debug.md](file_kind_guards_login_debug.md)
+- [ ] **Priority**select which clinical day was missed on make up finder. Highlight/mark missed clinical or sim days. 
+- [ ] **Priority**makup finder should exclude missed sim as makeup option (example student 1 missed sim 1, make up finder shows week 5 as option even though this was the missed sim)
+- [X] Remove load user file and connect user registry buttons from hamburger menu. Leave Logout button
+- [ ] Add back button to login page steps 2,3
+- [ ] Hide bottom and top bars 
+- [ ] Possible duplicate file names in login page step 3
+- [ ] Unable to save from embeded browser, file kind guards too tight. Maybe allow classic file picker if program folder picker not active from app login. Apply red styling `danger zone warning as UI deterent`
+- [ ] **Priority before rolling out to adjunct faculty** with high numbers of users folder structure is very vulnerable to overwrite both in and out of app. Based on live user demo, app folder requires all users to have full edit access to critical files such as user.registry.json
+- [ ] allow program engineer to be assigned in role of lead faculty for a course, while still granting full UI interface
+- [X] Add week-17 makeup clinical clustering to force to lowest number of clinical groups required to accomodate makeup needs. (Dashboard Apply; modes + preferred-site conflict transfer; soft-floor + multi-pass thin consolidate — see `PROJECT_IMPLEMENTATION_GUIDE.md` §5.1 and `docs/Design Docs/week17_makeup_clustering_and_sim_soft_floor.md`)
+
+
+
+## Closed out issues
+
+### Bugs identified in v2.5.0 
+- [X] Advanced config input fields in praciticum setup were not working (no updown buttons, static no free text) when opening on college computer (working on dev computer)
 - [X] 4 clinical group and 4 sim group setup with rebalance both results in numerous guest sim placements when there should be 0 (root cause: colliding sim block weeks on holiday bump; fixed via eligible-list allocator + week-block holiday model)
+
+## Deferred Items
+- [ ] Look at adding microsoft graph support or easier way to load files — see proposed path: [azure_mvp_fork.md](azure_mvp_fork.md) (Azure fork + Entra; Graph optional later) (defered, acceptable support with new user login process and programdata folder picker)

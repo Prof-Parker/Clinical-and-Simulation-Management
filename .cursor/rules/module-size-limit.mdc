@@ -1,0 +1,41 @@
+---
+description: Keep JS modules under ~500 lines; split new logic instead of growing files
+alwaysApply: true
+---
+
+# Module size limit (~500 lines)
+
+Every `.js` module in `src/` should stay under **~500 lines**. This is a soft ceiling, not a hard
+lint: 510 lines is fine, 700 is not.
+
+## When writing new code
+
+1. **New module?** Plan it to land under ~500 lines. If the responsibility is clearly bigger, split
+   it into a folder with an `index.js` entry point plus focused siblings — the existing pattern in
+   `src/core/scheduler/` (`index.js`, `sim-placement.js`, `helpers.js`) and `src/ui/setup/`.
+
+2. **Adding to an existing file?** Check the current line count first. If your addition would push it
+   past ~500, extract the new logic into a new, clearly named module and import it, rather than
+   appending.
+
+3. **Name by responsibility, not by size.** `roster-balance-rebalance.js`, `proposal-format.js`,
+   `theory-library-storage.js` — never `utils2.js`, `helpers-extra.js`, or `<file>-part2.js`.
+
+4. **Extract along seams.** Pull out a cohesive unit (pure calculation, storage adapter, formatter,
+   one UI panel), not an arbitrary bottom slice of the file.
+
+## Do NOT do drive-by refactors
+
+If a file is already large, **leave the unrelated code alone**. Do not split, reorganize, or move
+existing functions just because you happened to open the file.
+
+- ✅ Your new feature goes in a new module; the existing file gets an import and a call site.
+- ❌ Your one-line fix turns into a 400-line move of untouched code into three new files.
+
+Refactoring an already-large file is its own task. Only do it when the user explicitly asks for that
+refactor. If you think a file needs splitting, say so in your summary and move on.
+
+## Reporting
+
+When you skip an extraction or notice a file over the ceiling, mention it briefly in your response
+so the user can decide — do not silently expand the file.

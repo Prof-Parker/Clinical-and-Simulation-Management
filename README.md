@@ -4,9 +4,15 @@ Browser-based app for REGN 15P cohort scheduling, clinical and simulation requir
 
 **Live app (PWA):** https://prof-parker.github.io/Clinical-and-Simulation-Management/
 
-On the **Dashboard**, use **Export to Excel** on the Master Interactive Schedule panel to download a filtered `.xlsx` workbook (master schedule + sim progression sheets).
+On the **Dashboard**, use **Export to Excel** on the Master Interactive Schedule panel to download a filtered `.xlsx` workbook (master schedule + sim progression sheets). The same summary area hosts **Makeup clinicals week N** (clinical clustering modes) and **Consolidate thin sim sessions** (multi-pass thin-sim post-pass)—both are explicit actions, not part of regenerate.
 
 On **Student View**, use **Export .ics** for one student, or **Batch export…** to download a ZIP of per-student calendar PDFs, Outlook/iCal `.ics` files, and a Power Automate CSV (see [docs/POWER_AUTOMATE_STUDENT_CALENDARS.md](docs/POWER_AUTOMATE_STUDENT_CALENDARS.md)).
+
+## Docs for implementers
+
+- [PROJECT_IMPLEMENTATION_GUIDE.md](PROJECT_IMPLEMENTATION_GUIDE.md) — architecture, scheduling pipeline, Week-17 / thin-sim post-passes (§5.1)
+- [docs/Design Docs/Scheduling_rules.md](docs/Design%20Docs/Scheduling_rules.md) — scheduling contract (including one scenario per day)
+- [docs/Design Docs/week17_makeup_clustering_and_sim_soft_floor.md](docs/Design%20Docs/week17_makeup_clustering_and_sim_soft_floor.md) — makeup clustering + soft floor design notes
 
 ## Install the app
 

@@ -18,6 +18,15 @@ import {
   scheduleConflictClinicalMakeups,
   scheduleMissedMakeups
 } from './clinical.js';
+import { rebalanceWeek17ClinicalMakeups } from './week17-clinical-makeup.js';
+import { previewWeek17MakeupOutcomes, applyPreviewOutcomeToConfig } from './week17-makeup-preview.js';
+import {
+  getWeek17Index,
+  collectWeek17MakeupNeeds,
+  WEEK17_MODES,
+  normalizeWeek17Mode
+} from './week17-makeup-candidates.js';
+import { consolidateThinSimSessions } from './sim-thin-consolidate.js';
 import {
   getStudentClinicalDay,
   findSimWeek,
@@ -37,7 +46,9 @@ import {
   getEffectiveSimNormalCap,
   clinicalSimWeekdaysOverlap,
   blockHasRegularCapacity,
-  shouldDeferWeek18
+  shouldDeferWeek18,
+  getSimPracticalMinLoad,
+  getSimIdealMinLoad
 } from './helpers.js';
 import {
   findMakeupSlots,
@@ -81,6 +92,12 @@ export function regenerateAll(data) {
   data.students.forEach(function (s) {
     scheduleMissedMakeups(s, data);
   });
+  // Clustering is explicit-Apply only; remind when a non-current mode is stored.
+  if (normalizeWeek17Mode(data.config && data.config.week17MakeupMode) !== WEEK17_MODES.current) {
+    data._week17ClusteringStale = true;
+  } else {
+    data._week17ClusteringStale = false;
+  }
   return data;
 }
 
@@ -170,5 +187,15 @@ export {
   shouldDeferWeek18,
   buildSimPlacementCandidates,
   getEffectiveSimNormalCap,
-  clinicalSimWeekdaysOverlap
+  clinicalSimWeekdaysOverlap,
+  rebalanceWeek17ClinicalMakeups,
+  previewWeek17MakeupOutcomes,
+  applyPreviewOutcomeToConfig,
+  getWeek17Index,
+  collectWeek17MakeupNeeds,
+  WEEK17_MODES,
+  normalizeWeek17Mode,
+  consolidateThinSimSessions,
+  getSimPracticalMinLoad,
+  getSimIdealMinLoad
 };

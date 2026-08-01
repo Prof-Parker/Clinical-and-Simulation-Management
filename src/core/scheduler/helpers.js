@@ -249,7 +249,23 @@ export function getGuestCountFromSchedule(student) {
   return count;
 }
 
-export function candidateLoadScore(data, weekIndex, day, cfg) {
+/** Half of maxStudentsPerSimSession (floored at 1) — absolute practical minimum session size. */
+export function getSimPracticalMinLoad(cfg) {
+  var normal = getSimCaps(cfg).normal;
+  return Math.max(1, Math.floor(normal / 2));
+}
+
+/** Three-quarters of maxStudentsPerSimSession (ceiled), at least the absolute floor. */
+export function getSimIdealMinLoad(cfg) {
+  var normal = getSimCaps(cfg).normal;
+  var absolute = getSimPracticalMinLoad(cfg);
+  return Math.max(absolute, Math.ceil(normal * 0.75));
+}
+
+/**
+ * Legacy under-cap score: prefer lower absolute load (spreads).
+ */
+export function candidateLoadScoreRaw(data, weekIndex, day, cfg) {
   var count = getDaySimAttendanceCount(data, weekIndex, day);
   var normal = getSimCaps(cfg).normal;
   var reserve = cfg.simMakeupHeadroomReserved;
@@ -259,6 +275,35 @@ export function candidateLoadScore(data, weekIndex, day, cfg) {
   if (count >= normal) return 10000 + count;
   if (reserve > 0 && count >= softCap) return 1000 + count;
   return count;
+}
+
+/**
+ * Soft-floor score: prefer joining already-open thin sessions over empty;
+ * among open sessions still prefer lower load; empty still beats healthy.
+ */
+export function candidateLoadScoreSoftFloor(data, weekIndex, day, cfg) {
+  var count = getDaySimAttendanceCount(data, weekIndex, day);
+  var normal = getSimCaps(cfg).normal;
+  var half = getSimPracticalMinLoad(cfg);
+  var reserve = cfg.simMakeupHeadroomReserved;
+  if (reserve == null || isNaN(reserve)) reserve = 1;
+  reserve = Math.max(0, parseInt(reserve, 10) || 0);
+  var softCap = Math.max(1, normal - reserve);
+  if (count >= normal) return 10000 + count;
+  if (reserve > 0 && count >= softCap) return 1000 + count;
+  if (count > 0 && count < half) return count;
+  if (count === 0) return half;
+  return half + count;
+}
+
+/**
+ * Default load score. Pass applySoftFloor:true for join-thin-over-empty preference.
+ */
+export function candidateLoadScore(data, weekIndex, day, cfg, opts) {
+  if (opts && opts.applySoftFloor) {
+    return candidateLoadScoreSoftFloor(data, weekIndex, day, cfg);
+  }
+  return candidateLoadScoreRaw(data, weekIndex, day, cfg);
 }
 
 export function simDaysOrderForWeek(student, wi, sch, cfg) {
@@ -316,8 +361,12 @@ export function compareCandidatesByLoad(student, data, a, b, cfg) {
   var dayPref = compareCandidatesByDayPreference(student, data, a, b, cfg, simGroups);
   if (dayPref != null && dayPref !== 0) return dayPref;
 
-  var sa = candidateLoadScore(data, a.weekIndex, a.day, cfg);
-  var sb = candidateLoadScore(data, b.weekIndex, b.day, cfg);
+  // Soft floor only when both candidates are home seats (protect guest fairness).
+  var aHome = a.hostSimGroup === student.simGroup;
+  var bHome = b.hostSimGroup === student.simGroup;
+  var soft = !!(aHome && bHome);
+  var sa = candidateLoadScore(data, a.weekIndex, a.day, cfg, { applySoftFloor: soft });
+  var sb = candidateLoadScore(data, b.weekIndex, b.day, cfg, { applySoftFloor: soft });
   if (sa !== sb) return sa - sb;
   if (a.weekIndex !== b.weekIndex) return a.weekIndex - b.weekIndex;
   if (clinicalSimWeekdaysOverlap(student, cfg)) {

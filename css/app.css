@@ -2894,3 +2894,36 @@ html.dark .theory-coord-semester-totals td { box-shadow: 0 -2px 8px rgba(0, 0, 0
 .batch-step .btn { margin-top: 0.5rem; }
 .batch-holidays-card { margin: 1rem 0; }
 .batch-semester-modal-body { max-height: min(70vh, 32rem); }
+
+/* Week 17 makeup clinical clustering (dashboard) */
+.week17-makeup-panel {
+  margin: 0.5rem 0 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--surface-alt, var(--surface));
+}
+.week17-makeup-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  align-items: flex-end;
+}
+.week17-makeup-field { display: flex; flex-direction: column; gap: 0.2rem; }
+.week17-makeup-messages {
+  margin: 0.65rem 0 0;
+  padding: 0.5rem 0.65rem;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 0.85rem;
+  max-height: 10rem;
+  overflow: auto;
+  background: var(--surface);
+  border-radius: 0.3rem;
+  border: 1px solid var(--border);
+}
+.week17-makeup-messages:empty { display: none; }
+.week17-makeup-messages.week17-makeup-reminder {
+  border-color: var(--warning, #c9a227);
+  background: color-mix(in srgb, var(--warning, #c9a227) 12%, var(--surface));
+}

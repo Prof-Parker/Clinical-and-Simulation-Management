@@ -27,6 +27,8 @@ export var UI_TABS = [
     shell: 'clinical',
     anchors: [
       'scheduleBody', 'scheduleHeadRow', 'scheduleExportXlsxBtn', 'scheduleFullscreenBtn',
+      'week17MakeupToggleBtn', 'week17MakeupPanel', 'week17MakeupMode', 'week17MakeupApplyBtn',
+      'thinSimConsolidateBtn',
       'scheduleGroupFilter', 'simTableBody', 'loadChart', 'weekFilter'
     ]
   },

@@ -15,6 +15,7 @@ import { getScheduleFilteredStudents, populateFilters, escapeHtml } from './sche
 import { resolveDisplayedSimGuestGroup } from './guest-group.js';
 import { syncScheduleTallyScroll, syncScheduleTallyLayout, bindScheduleScrollSync } from './schedule-tally.js';
 import * as ScheduleHolidayLabel from '../../core/schedule-holiday-label.js';
+import * as Week17MakeupUi from './week17-makeup-ui.js';
 
 var scheduleFullscreenActive = false;
 var scheduleSearchDebounce = null;
@@ -248,6 +249,7 @@ function render(data, options) {
     var validation = Validator.validateAll(data);
     var scheduleStudents = getScheduleFilteredStudents(data, validation);
     var cfg = data.config;
+    Week17MakeupUi.updateReminderFromData(data);
 
     document.getElementById('reqClinLabel').textContent = cfg.clinicalDaysRequired;
     document.getElementById('reqSimLabel').textContent = cfg.simDaysRequired;
@@ -452,6 +454,12 @@ function renderSimRoster(data) {
 function init() {
     bindScheduleScrollSync();
     bindScheduleFullscreen();
+    Week17MakeupUi.init({
+      onApplied: function () {
+        var d = getData();
+        if (d) render(d, { preserveView: true });
+      }
+    });
     var exportBtn = document.getElementById('scheduleExportXlsxBtn');
     if (exportBtn) {
       exportBtn.addEventListener('click', function (e) {
