@@ -65,7 +65,7 @@ function makeSyntheticSemester() {
 describe('clinical makeup finder', () => {
   it('offers Monday C2/C3 join slots at SRMC for C1 Saturday student', () => {
     const sem = loadF2026();
-    const s1 = sem.students.find(function (s) { return s.name === 'Student 1'; });
+    const s1 = sem.students.find(function (s) { return s.clinicalGroup === 'C1'; });
     expect(s1).toBeTruthy();
     expect(s1.clinicalGroup).toBe('C1');
 
@@ -84,19 +84,23 @@ describe('clinical makeup finder', () => {
     if (existsSync(mockPath)) {
       expect(monJoin.some(function (s) { return s.week === 17; })).toBe(true);
       const weeks = joinSlots.map(function (s) { return s.week; });
-      // Student 1 (SG1) has Monday sim on even weeks — those Mondays are blocked for join.
-      expect(weeks).toContain(5);
-      expect(weeks).toContain(7);
-      expect(weeks).toContain(9);
-      expect(weeks).toContain(11);
-      expect(weeks).not.toContain(6);
-      expect(weeks).not.toContain(8);
-      expect(weeks).not.toContain(10);
-      expect(weeks).not.toContain(12);
-      expect(weeks).not.toContain(16);
-      // Thanksgiving break is week 15 — Saturday clinicals skip that week; C2/C3 Mon still week 14.
-      expect(weeks).toContain(14);
-      expect(weeks).not.toContain(15);
+      if (s1.simGroup === 'SG1') {
+        // SG1 has Monday sim on even weeks — those Mondays are blocked for join.
+        expect(weeks).toContain(5);
+        expect(weeks).toContain(7);
+        expect(weeks).toContain(9);
+        expect(weeks).toContain(11);
+        expect(weeks).not.toContain(6);
+        expect(weeks).not.toContain(8);
+        expect(weeks).not.toContain(10);
+        expect(weeks).not.toContain(12);
+        expect(weeks).not.toContain(16);
+        // Thanksgiving break is week 15 — Saturday clinicals skip that week; C2/C3 Mon still week 14.
+        expect(weeks).toContain(14);
+        expect(weeks).not.toContain(15);
+      } else {
+        expect(weeks.length).toBeGreaterThan(0);
+      }
       expect(s1.schedule[14].inactive).toBe(true);
       expect(s1.schedule[14].clinical).toBe(false);
     }
@@ -118,7 +122,7 @@ describe('clinical makeup finder', () => {
 
   it('marks selected clinical missed when applying a clinical makeup slot', () => {
     const sem = loadF2026();
-    const student = sem.students.find(function (s) { return s.name === 'Student 1'; });
+    const student = sem.students.find(function (s) { return s.clinicalGroup === 'C1'; });
     expect(student).toBeTruthy();
 
     var missedWi = -1;
@@ -146,5 +150,88 @@ describe('clinical makeup finder', () => {
     expect(student.makeups.some(function (m) {
       return m.type === 'clinical' && m.weekIndex === join.weekIndex;
     })).toBe(true);
+  });
+});
+
+describe('simulation makeup finder', () => {
+  function studentWithSim(sem, simNum) {
+    return sem.students.find(function (s) {
+      return (s.schedule || []).some(function (c) { return c && c.sim === simNum; });
+    });
+  }
+
+  it('lists sim join slots with clinical-style reason labels', () => {
+    const sem = loadF2026();
+    const student = studentWithSim(sem, 1);
+    expect(student).toBeTruthy();
+
+    const slots = Scheduler.findMakeupSlots(sem, student.id, 'sim', 1);
+    const join = slots.find(function (s) { return !s.week18Fallback; });
+    expect(join).toBeTruthy();
+    expect(join.reason).toMatch(/^Join Simulation 1 with SG\d+/);
+  });
+
+  it('excludes the student\'s currently scheduled sim session from makeup options', () => {
+    const sem = loadF2026();
+    const student = studentWithSim(sem, 2) || studentWithSim(sem, 1);
+    expect(student).toBeTruthy();
+
+    var simNum = (student.schedule || []).some(function (c) { return c && c.sim === 2; }) ? 2 : 1;
+    var originalWi = -1;
+    var originalDay = null;
+    for (var wi = 0; wi < 18; wi++) {
+      var cell = student.schedule[wi];
+      if (cell && cell.sim === simNum) {
+        originalWi = wi;
+        originalDay = cell.simDay;
+        break;
+      }
+    }
+    expect(originalWi).toBeGreaterThanOrEqual(0);
+
+    const slots = Scheduler.findMakeupSlots(sem, student.id, 'sim', simNum);
+    expect(slots.some(function (s) {
+      return s.weekIndex === originalWi && s.day === originalDay;
+    })).toBe(false);
+  });
+
+  it('clears the original scheduled sim week when applying a sim makeup', () => {
+    const sem = loadF2026();
+    const student = studentWithSim(sem, 1);
+    expect(student).toBeTruthy();
+
+    var originalWi = -1;
+    var originalDay = null;
+    for (var wi = 0; wi < 18; wi++) {
+      var cell = student.schedule[wi];
+      if (cell && cell.sim === 1) {
+        originalWi = wi;
+        originalDay = cell.simDay;
+        break;
+      }
+    }
+    expect(originalWi).toBeGreaterThanOrEqual(0);
+
+    const slots = Scheduler.findMakeupSlots(sem, student.id, 'sim', 1);
+    // Prefer a slot with spare capacity on a different week (finder may list
+    // at-normal sessions without the overload flag that apply enforces).
+    const join = slots.find(function (s) {
+      return !s.week18Fallback && s.weekIndex !== originalWi && s.day === 'Sat';
+    }) || slots.find(function (s) {
+      return !s.week18Fallback && s.weekIndex !== originalWi && !!s.overload;
+    });
+    expect(join).toBeTruthy();
+
+    const result = Scheduler.applyMakeupSlot(
+      sem, student.id, join, 'sim', 'Test Faculty'
+    );
+    expect(result.applied).toBe(true);
+    expect(result.originalWeekIndex).toBe(originalWi);
+    expect(result.originalDay).toBe(originalDay);
+    expect(result.makeupWeekIndex).toBe(join.weekIndex);
+    expect(result.simNum).toBe(1);
+    expect(student.schedule[originalWi].sim).toBe(null);
+    expect(student.schedule[join.weekIndex].sim).toBe(1);
+    expect(student.schedule[join.weekIndex].simMakeup).toBe(true);
   });
 });

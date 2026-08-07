@@ -48,7 +48,7 @@ export var UI_TABS = [
   {
     id: 'makeup',
     shell: 'clinical',
-    anchors: ['makeupStudentSelect', 'makeupTypeSelect', 'makeupMissedClinicalSelect', 'makeupResults']
+    anchors: ['makeupStudentSelect', 'makeupTypeSelect', 'makeupSimSelect', 'makeupMissedClinicalSelect', 'makeupResults']
   },
   {
     id: 'audit',

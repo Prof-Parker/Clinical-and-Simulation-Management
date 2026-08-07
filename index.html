@@ -414,14 +414,14 @@
         <div id="view-makeup" class="view-panel">
             <section class="card" style="padding:1.25rem">
                 <h3 class="section-title">Makeup Day Finder</h3>
-                <p class="section-sub">Find makeup slots by joining existing sessions only. For a missed clinical, select which clinical week was missed, then apply a join at the student&apos;s oriented facility (Week 18 last resort). Simulation makeup joins weeks where another student already has that Sim (1–17). Sim-on-clinical-week conflicts prioritize simulation — the clinical is marked missed, then search for clinical makeup (facility join first). Overload slots are makeup-only when a session is at normal capacity.</p>
+                <p class="section-sub">Find makeup slots by joining existing sessions only. For a missed clinical, select which clinical week was missed, then apply a join at the student&apos;s oriented facility (Week 18 last resort). For a missed simulation, choose Simulation 1–5 (labels include the student&apos;s originally scheduled week), then apply a join where another student already has that Sim (weeks 1–17; Week 18 last resort). Sim-on-clinical-week conflicts prioritize simulation — the clinical is marked missed, then search for clinical makeup (facility join first). Overload slots are makeup-only when a session is at normal capacity.</p>
                 <div class="filters">
                     <select id="makeupStudentSelect"><option value="">Select student...</option></select>
                     <select id="makeupTypeSelect">
                         <option value="clinical">Missed Clinical</option>
                         <option value="sim">Missed Simulation</option>
                     </select>
-                    <select id="makeupSimSelect" class="hidden">
+                    <select id="makeupSimSelect" class="hidden" aria-label="Missed simulation">
                         <option value="1">Simulation 1</option>
                         <option value="2">Simulation 2</option>
                         <option value="3">Simulation 3</option>

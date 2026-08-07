@@ -4,7 +4,7 @@
 
 import * as MakeupDisplay from '../core/makeup-display.js';
 import * as Scheduler from '../core/scheduler/index.js';
-import { getStudentClinicalDay } from '../core/scheduler/helpers.js';
+import { findSimWeek, getStudentClinicalDay } from '../core/scheduler/helpers.js';
 import { getData, state } from '../core/state.js';
 import { guardEditable } from '../auth/permissions.js';
 import { escapeHtml, showAlert } from './dialogs.js';
@@ -12,12 +12,12 @@ import { refresh, switchTab } from './chrome.js';
 
 var pendingClinicalHint = null;
 var requiredClinicalMakeup = null;
-/** Set after a successful clinical apply; cleared when student/type changes. */
-var lastClinicalApplyMessage = null;
+/** Set after a successful clinical/sim apply; cleared when student/type changes. */
+var lastApplyMessage = null;
 
 function requestClinicalMakeup(studentId) {
   requiredClinicalMakeup = { studentId: studentId };
-  lastClinicalApplyMessage = null;
+  lastApplyMessage = null;
   var studentSelect = document.getElementById('makeupStudentSelect');
   var typeSelect = document.getElementById('makeupTypeSelect');
   if (studentSelect) studentSelect.value = studentId;
@@ -88,6 +88,32 @@ function populateMissedClinicalSelect(data, student) {
   if (prev && el.querySelector('option[value="' + prev + '"]')) el.value = prev;
 }
 
+function populateSimSelect(data, student) {
+  var el = document.getElementById('makeupSimSelect');
+  if (!el) return;
+  var prev = el.value;
+  var required = (data.config && data.config.simDaysRequired) || 5;
+  el.innerHTML = '';
+  for (var n = 1; n <= required; n++) {
+    var opt = document.createElement('option');
+    opt.value = String(n);
+    var label = 'Simulation ' + n;
+    if (student) {
+      var wi = findSimWeek(student, n);
+      if (wi >= 0) {
+        var cell = student.schedule[wi];
+        var day = (cell && cell.simDay) || '';
+        label += ' — ' + MakeupDisplay.formatWeekDayLabel(data, wi, day);
+      } else {
+        label += ' — not scheduled';
+      }
+    }
+    opt.textContent = label;
+    el.appendChild(opt);
+  }
+  if (prev && el.querySelector('option[value="' + prev + '"]')) el.value = prev;
+}
+
 function render(data) {
   toggleTypeSelects();
 
@@ -119,11 +145,12 @@ function render(data) {
   var student = sid ? data.students.find(function (s) { return s.id === sid; }) : null;
 
   populateMissedClinicalSelect(data, student);
+  populateSimSelect(data, student);
   toggleTypeSelects();
 
-  if (lastClinicalApplyMessage) {
+  if (lastApplyMessage) {
     results.innerHTML = '<p class="makeup-hint makeup-hint-required">' +
-      escapeHtml(lastClinicalApplyMessage) + '</p>';
+      escapeHtml(lastApplyMessage) + '</p>';
     results._slots = [];
     return;
   }
@@ -213,29 +240,58 @@ function getAppliedByName() {
   return String(session.name || '').trim();
 }
 
-function clearClinicalApplyMessage() {
-  lastClinicalApplyMessage = null;
+function clearApplyMessage() {
+  lastApplyMessage = null;
+}
+
+function buildClinicalApplyMessage(data, student, applyResult, slot) {
+  var clinDay = student ? getStudentClinicalDay(student, data.config) : '';
+  var missedLabel = applyResult.missedWeekIndex != null
+    ? MakeupDisplay.formatWeekDayLabel(data, applyResult.missedWeekIndex, clinDay)
+    : 'the selected clinical';
+  var makeupDay = applyResult.makeupDay || slot.day || clinDay;
+  var makeupLabel = MakeupDisplay.formatWeekDayLabel(
+    data, applyResult.makeupWeekIndex, makeupDay
+  );
+  return missedLabel + ' has been marked as missed and makeup day ' +
+    makeupLabel + ' has been applied.';
+}
+
+function buildSimApplyMessage(data, applyResult, slot) {
+  var simNum = applyResult.simNum || slot.simNum;
+  var makeupDay = applyResult.makeupDay || slot.day || '';
+  var makeupLabel = MakeupDisplay.formatWeekDayLabel(
+    data, applyResult.makeupWeekIndex, makeupDay
+  );
+  if (applyResult.originalWeekIndex != null) {
+    var origLabel = MakeupDisplay.formatWeekDayLabel(
+      data, applyResult.originalWeekIndex, applyResult.originalDay || ''
+    );
+    return 'Simulation ' + simNum + ' on ' + origLabel +
+      ' has been cleared and makeup day ' + makeupLabel + ' has been applied.';
+  }
+  return 'Makeup day ' + makeupLabel + ' has been applied for Simulation ' + simNum + '.';
 }
 
 function init() {
   document.getElementById('makeupStudentSelect').addEventListener('change', function () {
     if (requiredClinicalMakeup) requiredClinicalMakeup = null;
-    clearClinicalApplyMessage();
+    clearApplyMessage();
     refresh();
   });
   document.getElementById('makeupTypeSelect').addEventListener('change', function () {
     if (requiredClinicalMakeup) requiredClinicalMakeup = null;
-    clearClinicalApplyMessage();
+    clearApplyMessage();
     refresh();
   });
   document.getElementById('makeupSimSelect').addEventListener('change', function () {
-    clearClinicalApplyMessage();
+    clearApplyMessage();
     refresh();
   });
   var missedEl = document.getElementById('makeupMissedClinicalSelect');
   if (missedEl) {
     missedEl.addEventListener('change', function () {
-      clearClinicalApplyMessage();
+      clearApplyMessage();
       refresh();
     });
   }
@@ -268,7 +324,7 @@ function init() {
       data, studentId, slot, applyType, getAppliedByName(), missedWeekIndex
     );
 
-    if (applyType === 'clinical' && !applyResult.applied) {
+    if (!applyResult.applied) {
       showAlert('Could not apply', 'That makeup slot is no longer available (session may be at capacity).');
       return;
     }
@@ -283,24 +339,12 @@ function init() {
       requiredClinicalMakeup = null;
     }
 
-    if (applyType === 'clinical' && applyResult.applied) {
-      var student = data.students.find(function (s) { return s.id === studentId; });
-      var clinDay = student ? getStudentClinicalDay(student, data.config) : '';
-      var missedLabel = applyResult.missedWeekIndex != null
-        ? MakeupDisplay.formatWeekDayLabel(data, applyResult.missedWeekIndex, clinDay)
-        : 'the selected clinical';
-      var makeupDay = applyResult.makeupDay || slot.day || clinDay;
-      var makeupLabel = MakeupDisplay.formatWeekDayLabel(
-        data, applyResult.makeupWeekIndex, makeupDay
-      );
-      var msg = missedLabel + ' has been marked as missed and makeup day ' +
-        makeupLabel + ' has been applied.';
-      lastClinicalApplyMessage = msg;
-      showAlert('Makeup applied', msg);
-      refresh();
-      return;
-    }
-
+    var student = data.students.find(function (s) { return s.id === studentId; });
+    var msg = applyType === 'sim'
+      ? buildSimApplyMessage(data, applyResult, slot)
+      : buildClinicalApplyMessage(data, student, applyResult, slot);
+    lastApplyMessage = msg;
+    showAlert('Makeup applied', msg);
     refresh();
   });
 }
