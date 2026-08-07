@@ -1,12 +1,6 @@
 /**
- * Power Automate email CSV for student calendar batch export.
+ * Power Automate email JSON for student calendar batch export.
  */
-
-function csvEscape(value) {
-  var s = String(value == null ? '' : value);
-  if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
-  return s;
-}
 
 function applyTemplate(template, fields) {
   return String(template || '').replace(/\{\{(\w+)\}\}/g, function (_, key) {
@@ -64,24 +58,18 @@ function buildEmailRows(students, opts) {
   });
 }
 
-function rowsToCsv(rows) {
-  var headers = [
-    'Email', 'StudentName', 'Subject', 'Body', 'AttachmentFilename', 'IcsFilename',
-    'ClinicalGroup', 'SimGroup', 'Section'
-  ];
-  var lines = [headers.join(',')];
-  (rows || []).forEach(function (row) {
-    lines.push(headers.map(function (h) { return csvEscape(row[h]); }).join(','));
-  });
-  // UTF-8 BOM helps Excel / Power Automate recognize encoding
-  return '\uFEFF' + lines.join('\r\n') + '\r\n';
+/**
+ * Serialize email rows as JSON for Power Automate "Parse JSON".
+ * Wrapped object (not a bare array) so Parse JSON + Apply to each is reliable.
+ */
+function rowsToJson(rows) {
+  return JSON.stringify({ emails: rows || [] }, null, 2) + '\n';
 }
 
 export {
-  csvEscape,
   applyTemplate,
   DEFAULT_SUBJECT,
   DEFAULT_BODY,
   buildEmailRows,
-  rowsToCsv
+  rowsToJson
 };

@@ -1,6 +1,6 @@
 # Power Automate — student calendar email batch
 
-The app exports a **ZIP** with one PDF and one Outlook/iCal **`.ics`** file per student, plus a CSV that Power Automate can use to send Outlook messages from a faculty or admin mailbox. There is **no Microsoft Graph login in the app**; you drop the unzipped files into OneDrive/SharePoint and let a flow attach them.
+The app exports a **ZIP** with one PDF and one Outlook/iCal **`.ics`** file per student, plus a JSON file that Power Automate can parse (no CSV connector / premium API required) to send Outlook messages from a faculty or admin mailbox. There is **no Microsoft Graph login in the app**; you drop the unzipped files into OneDrive/SharePoint and let a flow attach them.
 
 ## Export from the app
 
@@ -32,22 +32,26 @@ The app exports a **ZIP** with one PDF and one Outlook/iCal **`.ics`** file per 
 ```
 OneDrive/.../Student Calendar Mailings/
   {CourseId}/{SeasonYear}/{ExportDate}/
-    power-automate-email.csv
+    power-automate-email.json
     pdfs/
-      REGN15P_Fall2026_Student_1_xxxxxx_summary.pdf
+      Student_1_xxxxxx_summary.pdf
       ...
     ics/
-      REGN15P_Fall2026_Student_1_xxxxxx.ics
+      Student_1_xxxxxx.ics
       ...
     README-onedrive.txt
 ```
 
+Filenames are kept short on purpose (student slug + id tail + type) so zip extract works under deep OneDrive paths on Windows. Course and term stay in the folder path, not the file name.
+
 Example: `Student Calendar Mailings/REGN15P/Fall2026/2026-07-25/`
 
-## CSV columns
+## JSON shape
 
-| Column | Use in flow |
-|--------|-------------|
+Root object with an `emails` array. Each element:
+
+| Property | Use in flow |
+|----------|-------------|
 | `Email` | Outlook **To** |
 | `StudentName` | Logging / conditions |
 | `Subject` | Mail subject |
@@ -56,23 +60,41 @@ Example: `Student Calendar Mailings/REGN15P/Fall2026/2026-07-25/`
 | `IcsFilename` | Calendar file name under `ics/` |
 | `ClinicalGroup` / `SimGroup` / `Section` | Optional filters |
 
-The CSV includes a UTF-8 BOM for Excel compatibility.
+Example:
+
+```json
+{
+  "emails": [
+    {
+      "Email": "student1@example.edu",
+      "StudentName": "Student 1",
+      "Subject": "Fall 2026 — Your Clinical and Sim Summary calendar",
+      "Body": "Hello Student 1,\n\n...",
+      "AttachmentFilename": "Student_1_xxxxxx_summary.pdf",
+      "IcsFilename": "Student_1_xxxxxx.ics",
+      "ClinicalGroup": "C1",
+      "SimGroup": "S1",
+      "Section": "01"
+    }
+  ]
+}
+```
 
 Merge fields also include `{{icsFilename}}` alongside `{{attachmentName}}`.
 
 ## Power Automate sketch
 
-1. **Trigger:** When a file is created (or manually run) on `power-automate-email.csv` in the export folder.
-2. **List rows** from the CSV (Excel Online / “Create CSV table” / SharePoint file content parse).
-3. **Apply to each** row:
+1. **Trigger:** When a file is created (or manually run) on `power-automate-email.json` in the export folder.
+2. **Get file content** of that JSON, then **Parse JSON** with a schema matching the shape above (generate from sample payload).
+3. **Apply to each** item in `emails`:
    - **Get file content** of `pdfs/{AttachmentFilename}` from the same folder
    - **Get file content** of `ics/{IcsFilename}` from the same folder
    - **Send an email (V2)** from the shared faculty/admin Outlook mailbox:
      - To: `Email`
      - Subject: `Subject`
      - Body: `Body`
-     - Attachments: PDF + `.ics` (name = column value, content = file bytes)
-4. Optional: skip rows where `Email` is blank; notify admin of skips.
+     - Attachments: PDF + `.ics` (name = property value, content = file bytes)
+4. Optional: skip items where `Email` is blank; notify admin of skips.
 
 Use a connection owned by the mailbox that should appear as the sender (or a shared mailbox the flow is allowed to send as).
 

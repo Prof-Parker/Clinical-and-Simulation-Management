@@ -13,9 +13,9 @@ import {
 } from '../src/export/student-calendar-batch.js';
 import {
   buildEmailRows,
-  rowsToCsv,
+  rowsToJson,
   applyTemplate
-} from '../src/export/power-automate-csv.js';
+} from '../src/export/power-automate-json.js';
 import {
   buildSummaryHtml,
   buildDetailedHtml,
@@ -23,7 +23,7 @@ import {
 } from '../src/export/student-calendar-html.js';
 
 describe('student-calendar-batch.test.js', () => {
-  it('filters, builds HTML/CSV, and includes audit hours', () => {
+  it('filters, builds HTML/JSON, and includes audit hours', () => {
     let failed = 0;
     function assert(condition, message) {
       if (!condition) {
@@ -78,7 +78,11 @@ describe('student-calendar-batch.test.js', () => {
 
     var fname = attachmentFilename(sem, student, 'summary');
     assert(fname.indexOf('_summary.pdf') > 0, 'attachment ends with _summary.pdf');
+    assert(fname.indexOf(slugName(student.name)) === 0, 'attachment starts with slug');
+    assert(fname.length <= 48, 'attachment short enough for deep OneDrive paths');
     assert(slugName('Student 1') === 'Student_1', 'slug name');
+    assert(slugName('A Very Long Student Name That Exceeds Limit XYZ', 24).length === 24,
+      'slug truncates to max');
 
     var rows = buildEmailRows([student], {
       calendarType: 'summary',
@@ -88,12 +92,14 @@ describe('student-calendar-batch.test.js', () => {
       bodyTemplate: 'Hi {{studentName}} file {{attachmentName}}',
       attachmentFor: function (s) { return attachmentFilename(sem, s, 'summary'); }
     });
-    assert(rows[0].Email === 'student1@example.edu', 'csv email');
+    assert(rows[0].Email === 'student1@example.edu', 'json email');
     assert(rows[0].Subject.indexOf(student.name) >= 0, 'subject merge');
     assert(rows[0].AttachmentFilename === fname, 'attachment filename in row');
-    var csv = rowsToCsv(rows);
-    assert(csv.charCodeAt(0) === 0xFEFF, 'csv has BOM');
-    assert(csv.indexOf('Email,StudentName,Subject') >= 0, 'csv headers');
+    var json = rowsToJson(rows);
+    var parsed = JSON.parse(json);
+    assert(Array.isArray(parsed.emails), 'json has emails array');
+    assert(parsed.emails[0].Email === 'student1@example.edu', 'json email field');
+    assert(parsed.emails[0].AttachmentFilename === fname, 'json attachment field');
 
     assert(applyTemplate('Hello {{studentName}}', { studentName: 'Student 1' }) === 'Hello Student 1',
       'template merge');

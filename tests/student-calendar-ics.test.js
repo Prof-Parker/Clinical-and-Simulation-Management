@@ -14,7 +14,7 @@ import {
   formatLocalDateTime,
   DEFAULT_ASSIGNMENT_DUE
 } from '../src/export/student-calendar-ics.js';
-import { buildEmailRows, rowsToCsv } from '../src/export/power-automate-csv.js';
+import { buildEmailRows, rowsToJson } from '../src/export/power-automate-json.js';
 
 function seedTheoryDay(sem, date, events) {
   TheoryData.migrateTheory(sem);
@@ -120,6 +120,6 @@ describe('student-calendar-ics', () => {
       icsFor: function () { return icsFilename(sem, student); }
     });
     expect(rows[0].IcsFilename).toMatch(/\.ics$/);
-    expect(rowsToCsv(rows)).toContain('IcsFilename');
+    expect(JSON.parse(rowsToJson(rows)).emails[0].IcsFilename).toMatch(/\.ics$/);
   });
 });

@@ -1,5 +1,5 @@
 /**
- * Batch export student calendars as ZIP (PDFs + ICS + Power Automate CSV).
+ * Batch export student calendars as ZIP (PDFs + ICS + Power Automate JSON).
  */
 
 import JSZip from 'jszip';
@@ -10,28 +10,31 @@ import { showAlert, showDialog } from '../ui/dialogs.js';
 import { canAction } from '../auth/permissions.js';
 import { buildCalendarHtml } from './student-calendar-html.js';
 import {
-  DEFAULT_SUBJECT, DEFAULT_BODY, buildEmailRows, rowsToCsv
-} from './power-automate-csv.js';
+  DEFAULT_SUBJECT, DEFAULT_BODY, buildEmailRows, rowsToJson
+} from './power-automate-json.js';
 import { htmlToPdfBlob } from './student-calendar-pdf.js';
 import { buildStudentIcs, icsFilename } from './student-calendar-ics.js';
 
-function slugName(name) {
+/** Max student-name segment in export filenames (Windows MAX_PATH / deep OneDrive). */
+var SLUG_MAX = 24;
+
+function slugName(name, maxLen) {
+  var limit = maxLen == null ? SLUG_MAX : maxLen;
   return String(name || 'student')
     .trim()
     .replace(/[^a-zA-Z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
-    .slice(0, 40) || 'student';
+    .slice(0, limit) || 'student';
 }
 
+/**
+ * Short, unique PDF name. Course/term live in the OneDrive folder path, not the file.
+ * Example: Student_1_a1b2c3_summary.pdf
+ */
 function attachmentFilename(semester, student, calendarType) {
-  var meta = semester.meta || {};
-  var season = meta.semesterSeason === 'fall' ? 'Fall' : 'Spring';
-  var year = meta.semesterYear || '';
-  var course = meta.courseId || 'COURSE';
   var kind = calendarType === 'detailed' ? 'detailed' : 'summary';
-  var idTail = String(student.id || '').slice(-6);
-  return course + '_' + season + year + '_' + slugName(student.name) +
-    '_' + idTail + '_' + kind + '.pdf';
+  var idTail = String(student.id || '').slice(-6) || 'id';
+  return slugName(student.name) + '_' + idTail + '_' + kind + '.pdf';
 }
 
 function filterStudents(semester, filter) {
@@ -64,14 +67,14 @@ function onedriveReadme(semester, calendarType) {
     'Suggested OneDrive folder:',
     'Student Calendar Mailings/' + course + '/' + season + year + '/' + date + '/',
     '',
-    'Contents:',
-    '  power-automate-email.csv  — import rows into Power Automate',
-    '  pdfs/                     — one PDF per student (' + calendarType + ')',
-    '  ics/                      — one Outlook/iCal .ics calendar per student',
+    'Contents (flat zip — unzip directly into the folder above):',
+    '  power-automate-email.json — Parse JSON in Power Automate (emails array)',
+    '  pdfs/                     — short PDF names: {Student}_{id}_{type}.pdf',
+    '  ics/                      — matching .ics: {Student}_{id}.ics',
     '',
     'Power Automate sketch:',
     '  1. Place this folder in OneDrive/SharePoint.',
-    '  2. For each CSV row: send Outlook email To=Email, Subject, Body.',
+    '  2. Parse JSON → Apply to each emails[]: send Outlook To=Email, Subject, Body.',
     '  3. Attach pdfs/{AttachmentFilename} and ics/{IcsFilename} from this folder.',
     '',
     'See docs/POWER_AUTOMATE_STUDENT_CALENDARS.md in the app repository.',
@@ -101,10 +104,9 @@ function zipFilename(semester, calendarType) {
 
 function buildZip(semester, students, calendarType, emailOpts, showMarkup) {
   var zip = new JSZip();
-  var folderName = zipFilename(semester, calendarType).replace(/\.zip$/, '');
-  var root = zip.folder(folderName);
-  var pdfs = root.folder('pdfs');
-  var icsFolder = root.folder('ics');
+  // Flat zip root (pdfs/, ics/, json) — avoid a long wrapper folder under deep OneDrive paths.
+  var pdfs = zip.folder('pdfs');
+  var icsFolder = zip.folder('ics');
   var rows = buildEmailRows(students, {
     calendarType: calendarType,
     semesterName: (semester.meta && semester.meta.semesterName) || '',
@@ -118,8 +120,8 @@ function buildZip(semester, students, calendarType, emailOpts, showMarkup) {
       return icsFilename(semester, s);
     }
   });
-  root.file('power-automate-email.csv', rowsToCsv(rows));
-  root.file('README-onedrive.txt', onedriveReadme(semester, calendarType));
+  zip.file('power-automate-email.json', rowsToJson(rows));
+  zip.file('README-onedrive.txt', onedriveReadme(semester, calendarType));
 
   var chain = Promise.resolve();
   students.forEach(function (student) {
@@ -251,7 +253,7 @@ function promptBatchExport(semester) {
     var subject = subjectEl ? subjectEl.value : DEFAULT_SUBJECT;
     var body = bodyEl ? bodyEl.value : DEFAULT_BODY;
     var missingNote = missing.length
-      ? missing.length + ' student(s) missing email (PDF included; blank Email in CSV).\n\n'
+      ? missing.length + ' student(s) missing email (PDF included; blank Email in JSON).\n\n'
       : '';
 
     buildZip(semester, students, calendarType, {
@@ -263,7 +265,7 @@ function promptBatchExport(semester) {
         missingNote +
         'Downloaded ' + result.filename + ' (' + result.count +
         ' calendars).\n\nUnzip into OneDrive under Student Calendar Mailings/… ' +
-        'and import power-automate-email.csv into your flow.');
+        'and use power-automate-email.json with Parse JSON in your flow.');
     }).catch(function (err) {
       showAlert('Export failed', String(err && err.message || err));
     });

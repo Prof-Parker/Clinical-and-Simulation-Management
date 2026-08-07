@@ -6,7 +6,7 @@ Browser-based app for REGN 15P cohort scheduling, clinical and simulation requir
 
 On the **Dashboard**, use **Export to Excel** on the Master Interactive Schedule panel to download a filtered `.xlsx` workbook (master schedule + sim progression sheets). The same summary area hosts **Makeup clinicals week N** (clinical clustering modes) and **Consolidate thin sim sessions** (multi-pass thin-sim post-pass)—both are explicit actions, not part of regenerate.
 
-On **Student View**, use **Export .ics** for one student, or **Batch export…** to download a ZIP of per-student calendar PDFs, Outlook/iCal `.ics` files, and a Power Automate CSV (see [docs/POWER_AUTOMATE_STUDENT_CALENDARS.md](docs/POWER_AUTOMATE_STUDENT_CALENDARS.md)).
+On **Student View**, use **Export .ics** for one student, or **Batch export…** to download a ZIP of per-student calendar PDFs, Outlook/iCal `.ics` files, and a Power Automate JSON file (see [docs/POWER_AUTOMATE_STUDENT_CALENDARS.md](docs/POWER_AUTOMATE_STUDENT_CALENDARS.md)).
 
 ## Docs for implementers
 

@@ -273,18 +273,18 @@ function buildStudentIcs(semester, student, opts) {
   return body;
 }
 
+/**
+ * Short .ics name aligned with batch PDF stems (Windows MAX_PATH / deep OneDrive).
+ * Example: Student_1_a1b2c3.ics
+ */
 function icsFilename(semester, student) {
-  var meta = semester.meta || {};
-  var season = meta.semesterSeason === 'fall' ? 'Fall' : 'Spring';
-  var year = meta.semesterYear || '';
-  var course = meta.courseId || 'COURSE';
-  var idTail = String(student.id || '').slice(-6);
+  var idTail = String(student.id || '').slice(-6) || 'id';
   var name = String(student.name || 'student')
     .trim()
     .replace(/[^a-zA-Z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
-    .slice(0, 40) || 'student';
-  return course + '_' + season + year + '_' + name + '_' + idTail + '.ics';
+    .slice(0, 24) || 'student';
+  return name + '_' + idTail + '.ics';
 }
 
 function downloadIcsText(text, filename) {
