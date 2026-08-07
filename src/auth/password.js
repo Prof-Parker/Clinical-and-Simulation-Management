@@ -19,11 +19,10 @@ var ARGON2_PARAMS = {
 
 function randomSalt(byteLength) {
   var salt = new Uint8Array(byteLength || 16);
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(salt);
-  } else {
-    for (var i = 0; i < salt.length; i++) salt[i] = Math.floor(Math.random() * 256);
+  if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') {
+    throw new Error('Secure random generator is unavailable');
   }
+  crypto.getRandomValues(salt);
   return salt;
 }
 

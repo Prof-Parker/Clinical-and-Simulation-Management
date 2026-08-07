@@ -10,6 +10,12 @@ import * as UsersRegistryStorage from '../storage/users-registry-storage.js';
 import { escapeHtml, showAlert, showConfirm, showDialog } from './dialogs.js';
 import { refresh } from './chrome.js';
 import { showTemporaryCredentialDialog } from './users-temp-credentials.js';
+import {
+  fillRoleFilterOptions,
+  fillRoleOptions,
+  fillHelpDeskEngineerOptions,
+  setHelpDeskStatusEl
+} from './users-admin-options.js';
 
 var filterState = {
   query: '',
@@ -18,19 +24,11 @@ var filterState = {
 };
 
 function esc(text) {
-  return escapeHtml ? escapeHtml(text == null ? '' : String(text)) : String(text == null ? '' : text);
+  return escapeHtml(text == null ? '' : String(text));
 }
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
-}
-
-function buildRoleOptions(selectedRole) {
-  return UserTemplate.listRoles().map(function (role) {
-    return '<option value="' + esc(role.id) + '"' +
-      (selectedRole === role.id ? ' selected' : '') + '>' +
-      esc(role.displayName) + '</option>';
-  }).join('');
 }
 
 function displayField(value) {
@@ -51,52 +49,6 @@ function userMatchesFilters(uid, entry, filters) {
     entry.email
   ].join(' ').toLowerCase();
   return haystack.indexOf(q) >= 0;
-}
-
-function buildRoleFilterOptions(selectedRole) {
-  var html = '<option value="">All roles</option>';
-  UserTemplate.listRoles().forEach(function (r) {
-    html += '<option value="' + esc(r.id) + '"' + (selectedRole === r.id ? ' selected' : '') + '>' +
-      esc(r.displayName) + '</option>';
-  });
-  return html;
-}
-
-function buildHelpDeskEngineerOptions(registry) {
-  var selectedId = String((registry.meta && registry.meta.helpDeskEngineerUserId) || '');
-  var engineers = UserData.listProgramEngineers(registry);
-  var html = '<option value="">(Not assigned)</option>';
-  var selectedValid = false;
-  engineers.forEach(function (eng) {
-    if (eng.userId === selectedId) selectedValid = true;
-    html += '<option value="' + esc(eng.userId) + '"' +
-      (eng.userId === selectedId ? ' selected' : '') + '>' +
-      esc(eng.label) + '</option>';
-  });
-  if (selectedId && !selectedValid) {
-    var stale = registry.users[selectedId];
-    var staleLabel = stale
-      ? (UserData.formatFullName(stale.firstName, stale.lastName) || selectedId) +
-        ' — invalid or inactive'
-      : selectedId + ' — missing';
-    html += '<option value="' + esc(selectedId) + '" selected disabled>' +
-      esc(staleLabel) + '</option>';
-  }
-  return { html: html, selectedId: selectedId, selectedValid: !selectedId || selectedValid };
-}
-
-function helpDeskStatusHtml(registry) {
-  var helpDesk = UserData.getHelpDeskEngineer(registry);
-  if (helpDesk.error) {
-    var assigned = String((registry.meta && registry.meta.helpDeskEngineerUserId) || '');
-    if (!assigned) {
-      return '<p class="section-sub text-muted">No help desk engineer assigned for forgot-password emails.</p>';
-    }
-    return '<p class="section-sub" style="color:var(--danger, #b91c1c)">Help desk engineer assignment is invalid. Choose an active program engineer.</p>';
-  }
-  var name = UserData.formatFullName(helpDesk.entry.firstName, helpDesk.entry.lastName) || helpDesk.userId;
-  return '<p class="section-sub">Forgot-password emails go to ' + esc(name) +
-    ' (' + esc(helpDesk.email) + ').</p>';
 }
 
 function buildUserRowsHtml(registry, filters) {
@@ -201,30 +153,23 @@ function render() {
     return;
   }
 
-  var helpDeskOpts = buildHelpDeskEngineerOptions(registry);
   container.innerHTML =
     '<div class="users-admin-toolbar">' +
     '<button type="button" class="btn btn-primary btn-sm" id="usersCreateBtn">Create user</button>' +
     '<button type="button" class="btn btn-sm" id="usersSaveRegistryBtn">Save registry</button>' +
     '<label class="section-sub" for="usersHelpDeskEngineerSelect" style="display:inline-flex;align-items:center;gap:0.5rem;margin:0">' +
       'Help desk engineer' +
-      '<select id="usersHelpDeskEngineerSelect" class="select-control" aria-label="Help desk engineer">' +
-        helpDeskOpts.html +
-      '</select>' +
+      '<select id="usersHelpDeskEngineerSelect" class="select-control" aria-label="Help desk engineer"></select>' +
     '</label>' +
     '</div>' +
-    helpDeskStatusHtml(registry) +
     '<div class="filters users-admin-filters">' +
     '<input type="search" id="usersSearchInput" class="users-search-input" ' +
-      'placeholder="Search name or email" aria-label="Search users by name or email" ' +
-      'value="' + esc(filterState.query) + '">' +
-    '<select id="usersRoleFilter" class="select-control" aria-label="Filter by role">' +
-      buildRoleFilterOptions(filterState.role) +
-    '</select>' +
+      'placeholder="Search name or email" aria-label="Search users by name or email">' +
+    '<select id="usersRoleFilter" class="select-control" aria-label="Filter by role"></select>' +
     '<select id="usersStatusFilter" class="select-control" aria-label="Filter by status">' +
     '<option value="">All statuses</option>' +
-    '<option value="active"' + (filterState.status === 'active' ? ' selected' : '') + '>Active</option>' +
-    '<option value="revoked"' + (filterState.status === 'revoked' ? ' selected' : '') + '>Revoked</option>' +
+    '<option value="active">Active</option>' +
+    '<option value="revoked">Revoked</option>' +
     '</select>' +
     '</div>' +
     '<p id="usersFilterSummary" class="section-sub users-filter-summary"></p>' +
@@ -247,13 +192,20 @@ function render() {
     '<button type="button" class="btn btn-primary btn-sm" id="usersCreateConfirmBtn">Create New User</button>' +
     '</div>';
 
+  var searchInput = document.getElementById('usersSearchInput');
+  if (searchInput) searchInput.value = filterState.query;
+  fillRoleFilterOptions(document.getElementById('usersRoleFilter'), filterState.role);
+  var statusFilter = document.getElementById('usersStatusFilter');
+  if (statusFilter) statusFilter.value = filterState.status || '';
+  fillHelpDeskEngineerOptions(document.getElementById('usersHelpDeskEngineerSelect'), registry);
+  setHelpDeskStatusEl(container, registry);
+
   refreshUserTable(registry);
   wireFilters(registry);
 
   document.getElementById('usersCreateBtn').addEventListener('click', function () {
     document.getElementById('usersCreateForm').classList.remove('hidden');
-    var sel = document.getElementById('usersNewRole');
-    sel.innerHTML = buildRoleOptions('');
+    fillRoleOptions(document.getElementById('usersNewRole'), '');
   });
   document.getElementById('usersSaveRegistryBtn').addEventListener('click', function () {
     UsersRegistryStorage.mergeSave(registry).then(function (result) {
@@ -362,17 +314,13 @@ function editUser(userId) {
   showDialog(
     'Edit user',
     '<label class="section-sub" for="usersEditFirstName">First name</label>' +
-    '<input id="usersEditFirstName" type="text" autocomplete="given-name" required value="' +
-      esc(entry.firstName) + '" style="width:100%;margin:0.25rem 0 0.75rem">' +
+    '<input id="usersEditFirstName" type="text" autocomplete="given-name" required style="width:100%;margin:0.25rem 0 0.75rem">' +
     '<label class="section-sub" for="usersEditLastName">Last name</label>' +
-    '<input id="usersEditLastName" type="text" autocomplete="family-name" required value="' +
-      esc(entry.lastName) + '" style="width:100%;margin:0.25rem 0 0.75rem">' +
+    '<input id="usersEditLastName" type="text" autocomplete="family-name" required style="width:100%;margin:0.25rem 0 0.75rem">' +
     '<label class="section-sub" for="usersEditEmail">Email</label>' +
-    '<input id="usersEditEmail" type="email" autocomplete="email" required value="' +
-      esc(entry.email) + '" style="width:100%;margin:0.25rem 0 0.75rem">' +
+    '<input id="usersEditEmail" type="email" autocomplete="email" required style="width:100%;margin:0.25rem 0 0.75rem">' +
     '<label class="section-sub" for="usersEditRole">Role</label>' +
-    '<select id="usersEditRole" class="select-control" required style="width:100%;margin:0.25rem 0">' +
-      buildRoleOptions(entry.role) + '</select>',
+    '<select id="usersEditRole" class="select-control" required style="width:100%;margin:0.25rem 0"></select>',
     function () {
       var firstName = document.getElementById('usersEditFirstName').value.trim();
       var lastName = document.getElementById('usersEditLastName').value.trim();
@@ -406,6 +354,16 @@ function editUser(userId) {
       });
     }
   );
+  setTimeout(function () {
+    var firstEl = document.getElementById('usersEditFirstName');
+    var lastEl = document.getElementById('usersEditLastName');
+    var emailEl = document.getElementById('usersEditEmail');
+    var roleEl = document.getElementById('usersEditRole');
+    if (firstEl) firstEl.value = entry.firstName || '';
+    if (lastEl) lastEl.value = entry.lastName || '';
+    if (emailEl) emailEl.value = entry.email || '';
+    if (roleEl) fillRoleOptions(roleEl, entry.role);
+  }, 0);
 }
 
 function resetPassword(userId) {

@@ -46,6 +46,16 @@ npm run build         # Production bundle → dist/
 npm run check:line-limit  # Enforce 500-line cap per src module
 ```
 
+### Dependencies note (SheetJS)
+
+Excel export uses [SheetJS Community Edition](https://cdn.sheetjs.com/) `xlsx@0.20.3` installed from the official CDN tarball (not the unmaintained npm registry build). If you reinstall from scratch and `xlsx` is missing, run:
+
+```powershell
+npm install https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
+```
+
+`package.json` also pins patched transitive build tooling via `overrides` (`fast-uri@3.1.5`, `postcss@^8.5.26`).
+
 ## Data policy (FERPA)
 
 **GitHub stores source code only — never real student data.**
@@ -114,7 +124,7 @@ Before every commit or push:
 
 ```
 index.html              Vite entry (loads src/main.js)
-package.json            npm scripts and dependencies (Chart.js, SheetJS)
+package.json            npm scripts and dependencies (Chart.js, SheetJS CE via CDN tarball)
 vite.config.js          Vite + PWA plugin
 src/
   main.js               Boot, menu, tab routing

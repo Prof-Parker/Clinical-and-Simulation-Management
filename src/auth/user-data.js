@@ -19,7 +19,16 @@ var TEMP_PASSWORD_TTL_MS = 72 * 60 * 60 * 1000;
 
 function uid(prefix) {
   var p = prefix || 'usr';
-  return p + '_' + Math.random().toString(36).slice(2, 10);
+  if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') {
+    throw new Error('Secure random generator is unavailable');
+  }
+  var bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  var hex = '';
+  for (var i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, '0');
+  }
+  return p + '_' + hex;
 }
 
 function createEmptyRegistry() {

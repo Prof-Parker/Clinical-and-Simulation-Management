@@ -145,16 +145,34 @@ function buildZip(semester, students, calendarType, emailOpts, showMarkup) {
   });
 }
 
+function filterNamesJsonAttr(names) {
+  return encodeURIComponent(JSON.stringify(names || []));
+}
+
+function parseFilterNames(dataEl, attr) {
+  try {
+    var raw = decodeURIComponent(dataEl.getAttribute(attr) || '');
+    var list = JSON.parse(raw || '[]');
+    return Array.isArray(list) ? list.map(function (n) { return String(n); }) : [];
+  } catch (err) {
+    return [];
+  }
+}
+
+function fillSelectOptions(selectEl, names) {
+  selectEl.textContent = '';
+  (names || []).forEach(function (name) {
+    var opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    selectEl.appendChild(opt);
+  });
+}
+
 function filterOptionsHtml(semester) {
-  var simOpts = DataModel.getSimGroups(semester.config).map(function (g) {
-    return '<option value="' + g + '">' + g + '</option>';
-  }).join('');
-  var clinOpts = DataModel.getClinicalGroups(semester.config).map(function (g) {
-    return '<option value="' + g + '">' + g + '</option>';
-  }).join('');
-  var secOpts = (semester.sections || []).map(function (s) {
-    return '<option value="' + s.name + '">' + s.name + '</option>';
-  }).join('');
+  var simNames = DataModel.getSimGroups(semester.config);
+  var clinNames = DataModel.getClinicalGroups(semester.config);
+  var secNames = (semester.sections || []).map(function (s) { return s.name; });
   return '<label>Calendar type' +
     '<select id="batchCalType" class="select-control">' +
     '<option value="summary">Clinical and Sim Summary</option>' +
@@ -168,9 +186,9 @@ function filterOptionsHtml(semester) {
     '<label id="batchCalFilterWrap" class="hidden">Group / section' +
     '<select id="batchCalFilter" class="select-control"></select></label>' +
     '<div id="batchCalFilterData" class="hidden" ' +
-    'data-sim="' + encodeURIComponent(simOpts) + '" ' +
-    'data-clin="' + encodeURIComponent(clinOpts) + '" ' +
-    'data-sec="' + encodeURIComponent(secOpts) + '"></div>' +
+    'data-sim="' + filterNamesJsonAttr(simNames) + '" ' +
+    'data-clin="' + filterNamesJsonAttr(clinNames) + '" ' +
+    'data-sec="' + filterNamesJsonAttr(secNames) + '"></div>' +
     '<label>Email subject' +
     '<input type="text" id="batchCalSubject" value="' + DEFAULT_SUBJECT.replace(/"/g, '&quot;') + '"></label>' +
     '<label>Email body' +
@@ -191,12 +209,15 @@ function bindBatchDialogUi(semester) {
     var mode = scope.value;
     var show = mode !== 'all';
     wrap.classList.toggle('hidden', !show);
-    if (!show) return;
-    var html = '';
-    if (mode === 'simGroup') html = decodeURIComponent(dataEl.getAttribute('data-sim') || '');
-    if (mode === 'clinicalGroup') html = decodeURIComponent(dataEl.getAttribute('data-clin') || '');
-    if (mode === 'section') html = decodeURIComponent(dataEl.getAttribute('data-sec') || '');
-    filter.innerHTML = html;
+    if (!show) {
+      filter.textContent = '';
+      return;
+    }
+    var names = [];
+    if (mode === 'simGroup') names = parseFilterNames(dataEl, 'data-sim');
+    if (mode === 'clinicalGroup') names = parseFilterNames(dataEl, 'data-clin');
+    if (mode === 'section') names = parseFilterNames(dataEl, 'data-sec');
+    fillSelectOptions(filter, names);
   }
   scope.addEventListener('change', refreshFilter);
   refreshFilter();
