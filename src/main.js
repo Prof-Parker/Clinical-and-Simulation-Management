@@ -7,6 +7,7 @@ import '../css/print.css';
 import '../css/audit-print.css';
 import './pwa.js';
 import { formatAppVersionLabel } from './app-version.js';
+import { runBootTail } from './boot-finish.js';
 
 function paintAppVersionBadge() {
   var el = document.getElementById('appVersionBadge');
@@ -472,33 +473,12 @@ export function main() {
     Theme.init(fileRoot);
     Dashboard.populateFilters(getData());
     initUI();
-
-    function finishBoot() {
-      if (UserSession.isValidated() && Storage.isSemesterFileConnected()) {
-        UserSession.hideGateModal();
-        var bootTab = getNavShell() === 'theory' ? 'theory-master' : 'dashboard';
-        switchTab(bootTab);
-      } else if (UserSession.isValidated()) {
-        UserSession.showGateModal('');
-        UserSession.updateGateStep('');
-      }
-      document.dispatchEvent(new Event('AppReady'));
-    }
-
-    if (import.meta.env.DEV) {
-      return import('./dev/quick-start.js').then(function (QuickStart) {
-        if (!QuickStart.shouldQuickStart()) {
-          finishBoot();
-          return;
-        }
-        return QuickStart.runQuickStart().then(finishBoot).catch(function (err) {
-          console.error('[dev:start] failed', err);
-          UserSession.showGateModal((err && err.message) || 'Quick start failed');
-          finishBoot();
-        });
-      });
-    }
-    finishBoot();
+    return runBootTail({
+      UserSession: UserSession,
+      Storage: Storage,
+      getNavShell: getNavShell,
+      switchTab: switchTab
+    });
   });
 }
 

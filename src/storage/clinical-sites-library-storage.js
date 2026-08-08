@@ -31,8 +31,9 @@ var CACHE_KEY = 'clinicalSitesLibraryData';
   }
 
   function migrate(raw) {
-    if (!raw || !raw.sites) return createEmpty();
-    if (!raw.meta) raw.meta = { version: 1 };
+    if (!raw || !Array.isArray(raw.sites)) return createEmpty();
+    if (!raw.meta || typeof raw.meta !== 'object') raw.meta = { version: 1 };
+    raw.sites = raw.sites.filter(function (s) { return s && typeof s === 'object'; });
     return raw;
   }
 

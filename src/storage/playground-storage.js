@@ -182,19 +182,20 @@ function importFromFile(file) {
     var reader = new FileReader();
     reader.onload = function () {
       try {
-        resolve(DataModel.migrateFile(JSON.parse(reader.result)));
+        resolve(JSON.parse(reader.result));
       } catch (e) { reject(e); }
     };
     reader.onerror = reject;
     reader.readAsText(file);
-  }).then(function (root) {
-    var check = FileKind.assertFileKind(root, PLAYGROUND_KIND, {
+  }).then(function (raw) {
+    var check = FileKind.assertFileKind(raw, PLAYGROUND_KIND, {
       fileName: file && file.name,
       suggestedName: 'user_{term}_{courseId}_playground.json'
     });
     if (check.ok) {
-      FileKind.stampFileKind(root, PLAYGROUND_KIND);
-      return root;
+      var okRoot = DataModel.migrateFile(raw);
+      FileKind.stampFileKind(okRoot, PLAYGROUND_KIND);
+      return okRoot;
     }
     if (check.detected === FileKind.FILE_KINDS.PROGRAM_SEMESTER) {
       return promptGuardDecision({
@@ -213,7 +214,7 @@ function importFromFile(file) {
         repickLabel: 'Choose a different file…'
       }).then(function (choice) {
         if (choice !== 'proceed') return Promise.reject(new Error('cancelled'));
-        return stampImportedPlayground(root);
+        return stampImportedPlayground(DataModel.migrateFile(raw));
       });
     }
     alertKindError(check);

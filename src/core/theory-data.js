@@ -180,10 +180,12 @@ function migrateEventFields(ev) {
 export function migrateTheory(semester) {
   if (!semester) return semester;
   var codes = ['REGN15', 'REGN15P'];
-  if (semester.meta && semester.meta.courseId && semester.meta.courseId.indexOf('REGN') === 0) {
-    var cid = semester.meta.courseId;
-    if (/P$/i.test(cid) && cid !== 'REGN35P-36P') {
-      codes = [cid.replace(/P$/i, ''), cid];
+  var courseId = semester.meta && semester.meta.courseId != null
+    ? String(semester.meta.courseId)
+    : '';
+  if (courseId.indexOf('REGN') === 0) {
+    if (/P$/i.test(courseId) && courseId !== 'REGN35P-36P') {
+      codes = [courseId.replace(/P$/i, ''), courseId];
     }
   }
   if (!semester.simInstructors) semester.simInstructors = [];
@@ -210,11 +212,12 @@ export function migrateTheory(semester) {
   if (t.settings.showSkillsLabContent == null) t.settings.showSkillsLabContent = true;
   if (!t.settings.courseHourTargets) t.settings.courseHourTargets = defaultCourseHourTargets(t.courseCodes);
   if (!t.settings.contactHourRules) t.settings.contactHourRules = defaultContactHourRules(t.courseCodes);
-  if (!t.days) t.days = [];
-  if (!t.weekSummaries) t.weekSummaries = {};
-  if (!t.facultyNeeded) t.facultyNeeded = [];
+  if (!Array.isArray(t.days)) t.days = [];
+  t.days = t.days.filter(function (day) { return day && typeof day === 'object'; });
+  if (!t.weekSummaries || typeof t.weekSummaries !== 'object') t.weekSummaries = {};
+  if (!Array.isArray(t.facultyNeeded)) t.facultyNeeded = [];
   t.days.forEach(function (day) {
-    if (!day.events) day.events = [];
+    if (!Array.isArray(day.events)) day.events = [];
     day.events.forEach(migrateEventFields);
   });
   renumberAllWeekModules(t);

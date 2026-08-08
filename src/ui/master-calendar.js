@@ -7,7 +7,7 @@ import * as DataModel from '../core/data-model/index.js';
 import * as Orientation from '../core/orientation.js';
 import { getData, notifyChange } from '../core/state.js';
 import { guardEditable } from '../auth/permissions.js';
-import { showDialog } from './dialogs.js';
+import { escapeHtml, showDialog } from './dialogs.js';
 import { refresh } from './chrome.js';
 
 function clinicalFacilitySelectHtml(data, student, weekIndex, cell) {
@@ -23,9 +23,9 @@ function clinicalFacilitySelectHtml(data, student, weekIndex, cell) {
     allowed.forEach(function (facId) {
       var fac = DataModel.findFacilityById(data, facId);
       var name = fac ? fac.name : facId;
-      html += '<option value="' + facId + '"' +
+      html += '<option value="' + escapeHtml(String(facId)) + '"' +
         (DataModel.sameFacilitySite(data, selected, facId) ? ' selected' : '') + '>' +
-        name + '</option>';
+        escapeHtml(name) + '</option>';
     });
     html += '</select></label><br>';
     return html;
@@ -34,10 +34,11 @@ function clinicalFacilitySelectHtml(data, student, weekIndex, cell) {
   function openCellEditor(studentId, weekIndex) {
     if (!guardEditable('masterCell')) return;
     var data = getData();
+    if (!data || !data.students) return;
     var student = data.students.find(function (s) { return s.id === studentId; });
-    if (!student) return;
+    if (!student || !student.schedule) return;
     var cell = student.schedule[weekIndex];
-    if (cell.inactive) return;
+    if (!cell || cell.inactive) return;
 
     var simVal = cell.sim || '';
     var clinChecked = cell.clinical ? 'checked' : '';
@@ -55,7 +56,7 @@ function clinicalFacilitySelectHtml(data, student, weekIndex, cell) {
       : '';
 
     var html =
-      '<p><strong>' + student.name + '</strong> — Week ' + (weekIndex + 1) + '</p>' +
+      '<p><strong>' + escapeHtml(student.name) + '</strong> — Week ' + (weekIndex + 1) + '</p>' +
       '<div class="dialog-check-list">' +
       '<label class="filter-check" for="editOrientation"><input type="checkbox" id="editOrientation" ' + orientChecked + '> Orientation day</label>' +
       orientHint +

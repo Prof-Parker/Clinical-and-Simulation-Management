@@ -5,7 +5,16 @@
 export function parseDate(iso) {
   if (!iso) return null;
   var p = String(iso).split('-');
-  return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+  if (p.length < 3) return null;
+  var y = parseInt(p[0], 10);
+  var m = parseInt(p[1], 10);
+  var day = parseInt(p[2], 10);
+  if (isNaN(y) || isNaN(m) || isNaN(day)) return null;
+  var d = new Date(y, m - 1, day);
+  if (isNaN(d.getTime())) return null;
+  // Reject overflow dates like 2026-02-31 that Date quietly rolls forward.
+  if (d.getFullYear() !== y || d.getMonth() !== m - 1 || d.getDate() !== day) return null;
+  return d;
 }
 
 export function toISO(d) {
