@@ -129,13 +129,28 @@ TODO.md
 - [ ] **Priority**select which clinical day was missed on make up finder. Highlight/mark missed clinical or sim days. 
 - [ ] **Priority**makup finder should exclude missed sim as makeup option (example student 1 missed sim 1, make up finder shows week 5 as option even though this was the missed sim)
 - [X] Remove load user file and connect user registry buttons from hamburger menu. Leave Logout button
-- [ ] Add back button to login page steps 2,3
+- [X] Add back button to login page steps 2,3
 - [ ] Hide bottom and top bars 
-- [ ] Possible duplicate file names in login page step 3
+- [X] Possible duplicate file names in login page step 3
 - [ ] Unable to save from embeded browser, file kind guards too tight. Maybe allow classic file picker if program folder picker not active from app login. Apply red styling `danger zone warning as UI deterent`
 - [ ] **Priority before rolling out to adjunct faculty** with high numbers of users folder structure is very vulnerable to overwrite both in and out of app. Based on live user demo, app folder requires all users to have full edit access to critical files such as user.registry.json
 - [ ] allow program engineer to be assigned in role of lead faculty for a course, while still granting full UI interface
 - [X] Add week-17 makeup clinical clustering to force to lowest number of clinical groups required to accomodate makeup needs. (Dashboard Apply; modes + preferred-site conflict transfer; soft-floor + multi-pass thin consolidate — see `PROJECT_IMPLEMENTATION_GUIDE.md` §5.1 and `docs/Design Docs/week17_makeup_clustering_and_sim_soft_floor.md`)
+## Practicum Setup
+- [ ] Split student names in setup to lastname | first name
+- [ ] Add option to hide the domain from email section or automatically apply a set domain
+- [ ] Add apply sim group to all students in clinical group function (similar to current course section drop down)
+- [ ] Increase size of sim faculty text box in setup
+- [ ] Add filters to student view (sim group, clinical group), search by student name
+- [ ] Finalize semester should lock setup. Include toggle to unlock setup
+
+## Theory
+- [ ] Cancel Button not closing new event in theory calendar
+- [ ] Thanksgiving break pulled over in correctly
+- [ ] Remove title, just use topic for events. All events must be entered into topic library
+- [ ] Remove module ref from topic library
+- [ ] Add learning objectives to topic library
+- [ ] Add different lecture times for different days 
 
 
 
