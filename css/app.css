@@ -1081,7 +1081,6 @@ label.filter-check input[type="radio"] {
   margin-bottom: 1rem;
 }
 
-.flag-high { background: #d1fae5 !important; }
 .role-filters {
   align-items: center;
   gap: 0.75rem;
@@ -1111,7 +1110,21 @@ label.filter-check input[type="radio"] {
 html.dark .role-guest-tag {
   color: #fcd34d;
 }
-.flag-weak { background: #fef3c7 !important; }
+.role-cum-cell {
+  text-align: center;
+  white-space: nowrap;
+}
+.role-flag-icon {
+  display: inline-block;
+  margin-left: 0.2rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  vertical-align: middle;
+}
+.role-flag-strong { color: #059669; }
+.role-flag-weaker { color: #d97706; }
+html.dark .role-flag-strong { color: #34d399; }
+html.dark .role-flag-weaker { color: #fbbf24; }
 
 .sim-faculty-banner {
   margin-bottom: 1rem;
@@ -1816,29 +1829,6 @@ html.dark .audit-attested-banner {
   text-overflow: ellipsis;
 }
 
-.setup-cohort-bulk-row {
-  display: none;
-  grid-template-columns: 2.25rem 4.75rem 1.1fr 1.25fr 0.85fr 0.6fr 0.9fr 2.25rem;
-  gap: 0.5rem;
-  align-items: end;
-  padding: 0 0.5rem 0.5rem;
-  margin-bottom: 0.25rem;
-}
-@media (min-width: 900px) {
-  .setup-cohort-bulk-row { display: grid; }
-}
-.setup-cohort-bulk-row .setup-cohort-bulk {
-  min-width: 0;
-}
-.setup-cohort-bulk-row .setup-cohort-section-bulk,
-.setup-cohort-bulk-row .setup-cohort-sim-bulk {
-  width: 100%;
-}
-.setup-cohort-bulk-row select {
-  width: 100%;
-  min-width: 0;
-}
-
 .btn-rebalance-clinical.needs-attention,
 .btn-rebalance-sim.needs-attention {
   border-color: #d97706;
@@ -1880,22 +1870,24 @@ html.dark #rebalanceStudentsBtn.needs-attention {
 
 .setup-group { background: var(--bg); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1rem; margin-bottom: 1rem; }
 .setup-group-header {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem 1rem;
-  margin-bottom: 0.65rem;
-  padding-bottom: 0;
+  margin-bottom: 0.5rem;
+  padding: 0 0.5rem;
   border-bottom: none;
 }
 .setup-group-header-main {
-  flex: 1 1 220px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 0.75rem;
   min-width: 0;
+}
+.setup-group-header-info {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 0.75rem;
+  flex: 1 1 220px;
+  min-width: 0;
 }
 .setup-group-header h4 {
   margin: 0;
@@ -1939,19 +1931,23 @@ html.dark .setup-group-day { background: rgba(96, 165, 250, 0.18); color: #93c5f
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 0.75rem;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
 }
 .setup-group-sections {
   font-size: 0.75rem;
   font-weight: 600;
   margin: 0;
 }
-.setup-cohort-section-bulk {
+.setup-cohort-bulk {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
   margin: 0;
-  min-width: 7rem;
+  min-width: 0;
+}
+.setup-cohort-section-bulk,
+.setup-cohort-sim-bulk {
+  min-width: 6.5rem;
 }
 .setup-cohort-section-label {
   font-size: 0.65rem;
@@ -1961,10 +1957,39 @@ html.dark .setup-group-day { background: rgba(96, 165, 250, 0.18); color: #93c5f
   color: var(--text-muted);
   line-height: 1.2;
 }
-.setup-cohort-section-bulk select {
+.setup-cohort-bulk select {
   min-height: 36px;
   font-size: 0.8125rem;
-  min-width: 7rem;
+  width: 100%;
+  min-width: 0;
+}
+@media (min-width: 900px) {
+  .setup-group-header-main {
+    display: grid;
+    grid-template-columns: 2.25rem 4.75rem 1.1fr 1.25fr 0.85fr 0.6fr 0.9fr 2.25rem;
+    gap: 0.5rem;
+    align-items: end;
+  }
+  .setup-group-header-info {
+    grid-column: 1 / 5;
+    flex: none;
+    align-self: center;
+  }
+  .setup-group-header-main .setup-cohort-section-bulk {
+    grid-column: 5;
+    width: 100%;
+    min-width: 0;
+  }
+  .setup-group-header-main .setup-cohort-sim-bulk {
+    grid-column: 6;
+    width: 100%;
+    min-width: 0;
+  }
+  .setup-group-header-actions {
+    grid-column: 7 / 9;
+    justify-self: end;
+    align-self: center;
+  }
 }
 
 .setup-student-row {

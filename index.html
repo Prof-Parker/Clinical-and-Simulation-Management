@@ -423,19 +423,26 @@
                 <h3 class="section-title">Makeup Day Finder</h3>
                 <p class="section-sub">Find makeup slots by joining existing sessions only. For a missed clinical, select which clinical week was missed, then apply a join at the student&apos;s oriented facility (Week 18 last resort). For a missed simulation, choose Simulation 1–5 (labels include the student&apos;s originally scheduled week), then apply a join where another student already has that Sim (weeks 1–17; Week 18 last resort). Sim-on-clinical-week conflicts prioritize simulation — the clinical is marked missed, then search for clinical makeup (facility join first). Overload slots are makeup-only when a session is at normal capacity.</p>
                 <div class="filters">
-                    <select id="makeupStudentSelect"><option value="">Select student...</option></select>
-                    <select id="makeupTypeSelect">
+                    <select id="makeupClinicalGroupFilter" class="select-control" aria-label="Filter by clinical group">
+                        <option value="all">All clinical groups</option>
+                    </select>
+                    <select id="makeupSimGroupFilter" class="select-control" aria-label="Filter by simulation group">
+                        <option value="all">All sim groups</option>
+                    </select>
+                    <input type="search" id="makeupNameSearch" class="select-control" placeholder="Search student name" aria-label="Search student name" autocomplete="off">
+                    <select id="makeupStudentSelect" class="select-control" aria-label="Select student"><option value="">Select student...</option></select>
+                    <select id="makeupTypeSelect" class="select-control" aria-label="Missed type">
                         <option value="clinical">Missed Clinical</option>
                         <option value="sim">Missed Simulation</option>
                     </select>
-                    <select id="makeupSimSelect" class="hidden" aria-label="Missed simulation">
+                    <select id="makeupSimSelect" class="select-control hidden" aria-label="Missed simulation">
                         <option value="1">Simulation 1</option>
                         <option value="2">Simulation 2</option>
                         <option value="3">Simulation 3</option>
                         <option value="4">Simulation 4</option>
                         <option value="5">Simulation 5</option>
                     </select>
-                    <select id="makeupMissedClinicalSelect" class="hidden" aria-label="Missed clinical week">
+                    <select id="makeupMissedClinicalSelect" class="select-control hidden" aria-label="Missed clinical week">
                         <option value="">Select missed clinical…</option>
                     </select>
                 </div>

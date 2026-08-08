@@ -17,7 +17,8 @@ import {
   cohortSectionSummaryText,
   applyCohortSection,
   applyCohortSimGroup,
-  cohortBulkControlsRowHtml
+  cohortSectionBulkSelectHtml,
+  cohortSimBulkSelectHtml
 } from './roster-cohort-bulk.js';
 
 var dragStudentId = null;
@@ -228,17 +229,19 @@ function renderRoster(data) {
     groupDiv.innerHTML =
       '<div class="setup-group-header">' +
       '<div class="setup-group-header-main">' +
+      '<div class="setup-group-header-info">' +
       '<h4>' + g + ' Cohort</h4>' +
       '<span class="setup-group-day">' + clinDay + ' clinical</span>' +
       '<span class="setup-group-count">' + cohort.length + ' / ' + maxPer + ' students</span>' +
       (sectionSummary ? '<span class="setup-group-sections section-sub" title="Registrar sections in this cohort">' +
         escHtml(sectionSummary) + '</span>' : '') +
       '</div>' +
+      cohortSectionBulkSelectHtml(data, g, cohort) +
+      cohortSimBulkSelectHtml(data, g, cohort) +
       '<div class="setup-group-header-actions">' +
       '<button type="button" class="btn btn-sm add-student-btn" data-clinical-group="' + g + '">Add student</button>' +
-      '</div></div>' +
-      columnHeadersHtml +
-      cohortBulkControlsRowHtml(data, g, cohort);
+      '</div></div></div>' +
+      columnHeadersHtml;
     var inner = document.createElement('div');
     inner.className = 'setup-group-dropzone';
     inner.setAttribute('data-drop-group', g);

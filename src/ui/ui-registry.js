@@ -49,7 +49,10 @@ export var UI_TABS = [
   {
     id: 'makeup',
     shell: 'clinical',
-    anchors: ['makeupStudentSelect', 'makeupTypeSelect', 'makeupSimSelect', 'makeupMissedClinicalSelect', 'makeupResults']
+    anchors: [
+      'makeupClinicalGroupFilter', 'makeupSimGroupFilter', 'makeupNameSearch',
+      'makeupStudentSelect', 'makeupTypeSelect', 'makeupSimSelect', 'makeupMissedClinicalSelect', 'makeupResults'
+    ]
   },
   {
     id: 'audit',

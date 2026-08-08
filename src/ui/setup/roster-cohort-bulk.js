@@ -87,12 +87,3 @@ export function applyCohortSimGroup(data, clinicalGroup, simGroup) {
     if (s.clinicalGroup === clinicalGroup) s.simGroup = simGroup;
   });
 }
-
-export function cohortBulkControlsRowHtml(data, clinicalGroup, cohort) {
-  return '<div class="setup-cohort-bulk-row" aria-label="Bulk assign section and sim for ' + clinicalGroup + '">' +
-    '<span></span><span></span><span></span><span></span>' +
-    cohortSectionBulkSelectHtml(data, clinicalGroup, cohort) +
-    cohortSimBulkSelectHtml(data, clinicalGroup, cohort) +
-    '<span></span><span></span>' +
-    '</div>';
-}
