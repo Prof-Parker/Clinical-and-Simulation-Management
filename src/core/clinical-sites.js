@@ -117,7 +117,7 @@ function getGroupFacilities(data, group) {
   function getStudentFacilityAtWeek(data, student, weekIndex) {
     if (!student || weekIndex == null || weekIndex < 0) return null;
     var cell = student.schedule && student.schedule[weekIndex];
-    if (cell.facilityId) {
+    if (cell && cell.facilityId) {
       return DataModel.getCanonicalFacilityId(data, cell.facilityId);
     }
     var resolved = resolveFacilityForWeek(data, student.clinicalGroup, weekIndex, 0);

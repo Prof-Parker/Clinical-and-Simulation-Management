@@ -2,7 +2,6 @@
  * Semester file persistence and IndexedDB cache.
  */
 
-import * as CalendarEngine from '../core/calendar-engine.js';
 import * as DataModel from '../core/data-model/index.js';
 import * as FileKind from '../core/file-kind.js';
 import * as Proposals from '../proposals/proposals.js';
@@ -11,6 +10,11 @@ import * as SimFacultyData from '../auth/sim-faculty-data.js';
 import * as SimFacultyStorage from './sim-faculty-storage.js';
 import * as Theme from '../ui/theme.js';
 import { assertKindOrThrow, guardedWrite, writeTextToHandle } from './guarded-write.js';
+import {
+  resolveActiveSemester,
+  migrateLoadedRoot,
+  prepareActiveSemester
+} from './semester-hydrate.js';
 import { hybridSave, ensureReadwritePermission, isCancelError } from './hybrid-save.js';
 import { readHandleText } from './fs-handle.js';
 import * as ProgramData from './program-data.js';
@@ -54,11 +58,8 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
     }).then(function () {
       clearLegacyLocalStorage();
       var fileRoot = DataModel.createDefaultFile();
-      var sem = fileRoot.semesters.find(function (s) {
-        return s.id === fileRoot.meta.activeSemesterId;
-      }) || fileRoot.semesters[0];
-      CalendarEngine.rebuildWeeks(sem);
-      if (Scheduler) Scheduler.regenerateAll(sem);
+      var sem = resolveActiveSemester(fileRoot);
+      prepareActiveSemester(sem, Scheduler);
       state.fileHandle = null;
       state.fileName = null;
       state.programSemesterDirHandle = null;
@@ -213,7 +214,10 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
   }
   function readFromHandle(handle) {
     return readHandleText(handle, 'readwrite').then(function (text) {
-      return DataModel.migrateFile(JSON.parse(text));
+      var raw = JSON.parse(text);
+      // Kind-check raw JSON before migrateFile so non-semester roots cannot be laundered.
+      assertProgramRoot(raw, handle.name);
+      return DataModel.migrateFile(raw);
     });
   }
   function openFilePicker() {
@@ -225,7 +229,6 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
     }).then(function (handles) {
       var handle = handles[0];
       return readFromHandle(handle).then(function (fileRoot) {
-        assertProgramRoot(fileRoot, handle.name);
         state.fileHandle = handle;
         state.fileName = handle.name;
         state.semesterFileConnected = true;
@@ -378,8 +381,9 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
       var reader = new FileReader();
       reader.onload = function () {
         try {
-          var data = DataModel.migrateFile(JSON.parse(reader.result));
-          assertProgramRoot(data, file && file.name);
+          var raw = JSON.parse(reader.result);
+          assertProgramRoot(raw, file && file.name);
+          var data = DataModel.migrateFile(raw);
           state.fileHandle = null;
           resolve(data);
         } catch (e) { reject(e); }
@@ -455,15 +459,11 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
       } else {
         loadedFromFile = true;
       }
-      var fileRoot = raw ? DataModel.migrateFile(raw) : DataModel.createDefaultFile();
+      var hydrated = migrateLoadedRoot(raw, loadedFromFile);
+      var fileRoot = hydrated.fileRoot;
+      loadedFromFile = hydrated.loadedFromFile;
       if (loadedFromFile) fileRoot = applyLoadedFileRoot(fileRoot);
-      var sem = fileRoot.semesters.find(function (s) {
-        return s.id === fileRoot.meta.activeSemesterId;
-      }) || fileRoot.semesters[0];
-      CalendarEngine.rebuildWeeks(sem);
-      if (needsRegeneration(sem) && Scheduler) {
-        Scheduler.regenerateAll(sem);
-      }
+      prepareActiveSemester(hydrated.semester, Scheduler);
       setFileRoot(fileRoot);
       markClean();
       state.semesterFileConnected = loadedFromFile;
@@ -483,26 +483,14 @@ var PROGRAM_KIND = FileKind.FILE_KINDS.PROGRAM_SEMESTER;
     return !!(state.fileHandle || state.semesterFileConnected);
   }
   function activateFileRoot(fileRoot, fileName) {
-    var sem = fileRoot.semesters.find(function (s) {
-      return s.id === fileRoot.meta.activeSemesterId;
-    }) || fileRoot.semesters[0];
-    CalendarEngine.rebuildWeeks(sem);
-    if (needsRegeneration(sem) && Scheduler) {
-      Scheduler.regenerateAll(sem);
-    }
+    var sem = resolveActiveSemester(fileRoot);
+    if (!sem) throw new Error('Invalid semester file: no semesters found');
+    prepareActiveSemester(sem, Scheduler);
     setFileRoot(fileRoot);
     state.semesterFileConnected = true;
     if (fileName != null) state.fileName = fileName;
     markClean();
     updateStatusUI();
     return sem;
-  }
-  function needsRegeneration(semester) {
-    if (!semester || !semester.students || !semester.students.length) return false;
-    return semester.students.every(function (s) {
-      return s.schedule.every(function (c) {
-        return !c.clinical && !c.sim && !c.makeupClinical && !c.inactive;
-      });
-    });
   }
 export { supportsFS, init, saveCurrent, scheduleAutoSave, openFilePicker, createFilePicker, saveWithChooser, importFromFile, exportDownload, updateStatusUI, flashStatus, cacheData, shouldShowOnedriveBanner, configureImportInput, isIOSDevice, semesterFileToken, suggestedSemesterFileName, suggestedDownloadName, clearAndRestoreDefaults, applyLoadedFileRoot, writeFileRootToHandle, readFromHandle, writeToHandle, serialize, semesterFileTokenFromMeta, supportsDirectoryPicker, isSemesterFileConnected, activateFileRoot, loadFromProgramData, isCancelError, idbGet as _idbGet, idbSet as _idbSet, HANDLE_KEY as _HANDLE_KEY, DIR_HANDLE_KEY as _DIR_HANDLE_KEY };

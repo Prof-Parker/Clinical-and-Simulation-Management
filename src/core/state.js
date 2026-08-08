@@ -64,6 +64,7 @@ export function setFileRoot(fileRoot) {
     state.data = null;
     return;
   }
+  if (!fileRoot.meta || typeof fileRoot.meta !== 'object') fileRoot.meta = {};
   var activeId = fileRoot.meta.activeSemesterId;
   var sem = fileRoot.semesters.find(function (s) { return s.id === activeId; });
   state.data = sem || fileRoot.semesters[0];

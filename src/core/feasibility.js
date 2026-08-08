@@ -89,6 +89,7 @@ var BLOCKING_IDS = {
     if (Setup && Setup.needsRebalance) {
       return Setup.needsRebalance(data);
     }
+    if (!data || !data.students) return true;
     var groups = DataModel.getClinicalGroups(data.config);
     var maxStudents = data.config.maxStudents || 30;
     var maxPer = data.config.maxPerClinicalGroup || 6;
@@ -129,6 +130,7 @@ var BLOCKING_IDS = {
 
   function collectIssues(data, severityFilter) {
     if (!data || !data.config) return [];
+    if (!Array.isArray(data.students)) data.students = [];
     var cfg = data.config;
     var issues = [];
     var maxStudents = cfg.maxStudents || 30;

@@ -16,9 +16,14 @@ import { resolveDisplayedSimGuestGroup } from './guest-group.js';
 import { syncScheduleTallyScroll, syncScheduleTallyLayout, bindScheduleScrollSync } from './schedule-tally.js';
 import * as ScheduleHolidayLabel from '../../core/schedule-holiday-label.js';
 import * as Week17MakeupUi from './week17-makeup-ui.js';
+import { renderConflictsPanel as renderConflictsPanelHtml } from './conflicts-panel.js';
 
 var scheduleFullscreenActive = false;
 var scheduleSearchDebounce = null;
+
+function renderConflictsPanel(el, validation) {
+  renderConflictsPanelHtml(el, validation, escapeHtml);
+}
 
 function clinicalGroupHoverTitle(data, group) {
   var facId = ClinicalSites.getPrimaryGroupFacility(data, group);
@@ -254,25 +259,7 @@ function render(data, options) {
     document.getElementById('reqClinLabel').textContent = cfg.clinicalDaysRequired;
     document.getElementById('reqSimLabel').textContent = cfg.simDaysRequired;
 
-    var conflictsEl = document.getElementById('conflictsPanel');
-    var msgs = [];
-    validation.groupErrors.forEach(function (e) { msgs.push(e); });
-    validation.simSessions.forEach(function (v) { msgs.push(v.message); });
-    (validation.clinicalSessions || []).forEach(function (v) { msgs.push(v.message); });
-    (validation.doubleBooking || []).forEach(function (v) { msgs.push(v.message); });
-    (validation.orientationConflicts || []).forEach(function (v) { msgs.push(v.message); });
-    (validation.simClinicalConflicts || []).forEach(function (v) { msgs.push(v.message); });
-    (validation.simGroupExceptions || []).forEach(function (v) { msgs.push(v.message); });
-    (validation.simWeekOrder || []).forEach(function (v) { msgs.push(v.message); });
-    (validation.programSimWeeks || []).forEach(function (v) { msgs.push(v.message); });
-    (validation.studentSimParticipation || []).forEach(function (v) { msgs.push(v.message); });
-    (validation.simBlockNoRepeat || []).forEach(function (v) { msgs.push(v.message); });
-    if (msgs.length) {
-      conflictsEl.classList.remove('hidden');
-      conflictsEl.innerHTML = '<strong>Scheduling conflicts:</strong><ul><li>' + msgs.join('</li><li>') + '</li></ul>';
-    } else {
-      conflictsEl.classList.add('hidden');
-    }
+    renderConflictsPanel(document.getElementById('conflictsPanel'), validation);
 
     var scheduleHead = document.getElementById('scheduleHeadRow');
     var headHtml = '<th class="sticky-col schedule-sticky-corner">Name</th><th class="sticky-col-grp schedule-sticky-corner">Grp</th>';
@@ -412,8 +399,8 @@ function renderSimTable(data, students) {
             var guestGroup = resolveDisplayedSimGuestGroup(student, cell, wi, data);
             if (guestGroup) {
               tdClass = 'sim-prog-cell-guest';
-              content += ' · ' + guestGroup;
-              title = 'Guest in ' + guestGroup + ' (primary: ' + student.simGroup + ')';
+              content += ' · ' + escapeHtml(guestGroup);
+              title = 'Guest in ' + guestGroup + ' (primary: ' + (student.simGroup || '') + ')';
             }
           }
         });
@@ -423,8 +410,8 @@ function renderSimTable(data, students) {
       var tr = document.createElement('tr');
       tr.innerHTML =
         '<td class="sticky-col"><strong>' + escapeHtml(student.name) + '</strong></td>' +
-        '<td>' + student.clinicalGroup + '</td>' +
-        '<td>' + student.simGroup + '</td>' + simCols;
+        '<td>' + escapeHtml(student.clinicalGroup) + '</td>' +
+        '<td>' + escapeHtml(student.simGroup) + '</td>' + simCols;
       tbody.appendChild(tr);
     });
   }
@@ -440,7 +427,9 @@ function renderSimRoster(data) {
     data.students.forEach(function (s) {
       var cell = s.schedule[weekIdx];
       if (!cell || !cell.sim) return;
-      var li = '<li><span><strong>' + escapeHtml(s.name) + '</strong> <small>' + s.clinicalGroup + '</small></span><span class="stat-pill stat-sim">Sim ' + cell.sim + '</span></li>';
+      var li = '<li><span><strong>' + escapeHtml(s.name) + '</strong> <small>' +
+        escapeHtml(s.clinicalGroup) + '</small></span><span class="stat-pill stat-sim">Sim ' +
+        escapeHtml(String(cell.sim)) + '</span></li>';
       if (cell.simDay === 'Tue') { tueList.innerHTML += li; tueCount++; }
       else { monList.innerHTML += li; monCount++; }
     });

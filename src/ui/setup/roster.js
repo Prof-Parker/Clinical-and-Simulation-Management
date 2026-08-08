@@ -72,9 +72,17 @@ function applyGroupFacility(data, clinicalGroup, facilityId) {
 
 function cohortFacilitySelectHtml(data, clinicalGroup, selectedId) {
     selectedId = DataModel.getCanonicalFacilityId(data, selectedId);
-    return DataModel.getUniqueFacilitiesForSelect(data).map(function (f) {
-      return '<option value="' + f.id + '"' + (selectedId === f.id ? ' selected' : '') + '>' + escAttr(f.name) + '</option>';
+    var facilities = DataModel.getUniqueFacilitiesForSelect(data);
+    var html = facilities.map(function (f) {
+      return '<option value="' + escAttr(f.id) + '"' +
+        (selectedId === f.id ? ' selected' : '') + '>' + escAttr(f.name) + '</option>';
     }).join('');
+    if (selectedId && !facilities.some(function (f) { return f.id === selectedId; })) {
+      html = '<option value="' + escAttr(selectedId) + '" selected>' +
+        escAttr(selectedId) + ' (missing)</option>' + html;
+    }
+    if (!html) html = '<option value="">No sites available</option>';
+    return html;
   }
 
 function predominantSection(cohort) {

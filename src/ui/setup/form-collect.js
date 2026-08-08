@@ -48,7 +48,7 @@ export function collectFromFormInto(data, opts) {
       f.siteId = site.id;
       f.name = site.name;
       f.shortName = site.shortName;
-      f.contentTags = site.contentTags.slice();
+      f.contentTags = (site.contentTags || []).slice();
     }
   });
   setupQueryAll('setupFacilities', '[data-fac="start"]').forEach(function (el) {

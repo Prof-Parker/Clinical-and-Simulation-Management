@@ -154,11 +154,12 @@ function createEmptyLibrary(courseId) {
 }
 
 function migrateLibrary(raw) {
-  if (!raw || !raw.topics) return createEmptyLibrary();
-  if (!raw.meta) raw.meta = { version: 2 };
+  if (!raw || !Array.isArray(raw.topics)) return createEmptyLibrary();
+  if (!raw.meta || typeof raw.meta !== 'object') raw.meta = { version: 2 };
   if (!raw.meta.courseId) raw.meta.courseId = 'REGN15';
   if (raw.meta.version == null || raw.meta.version < 2) raw.meta.version = 2;
   raw.meta.curriculumMeta = normalizeCurriculumMeta(raw.meta.curriculumMeta);
+  raw.topics = raw.topics.filter(function (t) { return t && typeof t === 'object'; });
 
   // One-time extract: legacy topic.defaultSkills → skills bank, then detach from topics.
   var extracted = buildSkillsFromTopics(raw.topics, raw.meta.courseId);

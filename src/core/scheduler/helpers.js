@@ -34,9 +34,10 @@ export function getClinicalCaps(cfg) {
 }
 
 export function findClinicalMakeupRecord(student, weekIndex) {
+  if (!student || !student.makeups || !student.makeups.length) return null;
   for (var i = student.makeups.length - 1; i >= 0; i--) {
     var m = student.makeups[i];
-    if (m.weekIndex === weekIndex && m.type === 'clinical') return m;
+    if (m && m.weekIndex === weekIndex && m.type === 'clinical') return m;
   }
   return null;
 }
@@ -201,6 +202,7 @@ export function getStudentClinicalDay(student, cfg) {
 }
 
 export function wouldSimClinicalConflict(cell, student, cfg, simDay) {
+  if (!cell) return false;
   return cell.clinical && !cell.clinicalMissed && getStudentClinicalDay(student, cfg) === simDay;
 }
 
@@ -209,6 +211,7 @@ export function clinicalSimWeekdaysOverlap(student, cfg) {
 }
 
 export function wouldSameWeekClinicalConflict(student, data, weekIndex, simDay, cfg) {
+  if (!student || !student.schedule) return false;
   var cell = student.schedule[weekIndex];
   return wouldSimClinicalConflict(cell, student, cfg, simDay);
 }
@@ -220,8 +223,10 @@ export function weekHasDoubleBooking(cell, student, cfg) {
 }
 
 export function findSimWeek(student, simNum) {
+  if (!student || !student.schedule) return -1;
   for (var w = 0; w < 18; w++) {
-    if (student.schedule[w].sim === simNum) return w;
+    var cell = student.schedule[w];
+    if (cell && cell.sim === simNum) return w;
   }
   return -1;
 }

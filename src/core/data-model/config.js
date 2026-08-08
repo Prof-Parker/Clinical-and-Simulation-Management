@@ -65,8 +65,14 @@ export function backfillSimGroupConfig(cfg) {
   });
 }
 
+function coerceWeekNumber(value, fallback) {
+  var n = parseInt(value, 10);
+  if (isNaN(n) || n < 1 || n > 18) return fallback;
+  return n;
+}
+
 export function normalizeConfig(cfg) {
-  if (!cfg) cfg = defaultConfig();
+  if (!cfg || typeof cfg !== 'object') cfg = defaultConfig();
   if (!cfg.clinicalGroupDays) cfg.clinicalGroupDays = {};
   if (!cfg.clinicalGroups || !cfg.clinicalGroups.length) {
     cfg.clinicalGroups = Object.keys(cfg.clinicalGroupDays);
@@ -146,6 +152,12 @@ export function normalizeConfig(cfg) {
   }
   if (!cfg.week17MakeupTargetDay) cfg.week17MakeupTargetDay = 'Mon';
   if (cfg.week17MakeupPreferredSiteId === undefined) cfg.week17MakeupPreferredSiteId = null;
+  cfg.clinicalStartWeek = coerceWeekNumber(cfg.clinicalStartWeek, 5);
+  cfg.simStartWeek = coerceWeekNumber(cfg.simStartWeek, 5);
+  var clinDays = parseInt(cfg.clinicalDaysRequired, 10);
+  cfg.clinicalDaysRequired = (isNaN(clinDays) || clinDays < 1) ? 10 : clinDays;
+  var simDaysReq = parseInt(cfg.simDaysRequired, 10);
+  cfg.simDaysRequired = (isNaN(simDaysReq) || simDaysReq < 1) ? 5 : simDaysReq;
   return cfg;
 }
 
