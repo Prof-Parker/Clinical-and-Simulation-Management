@@ -360,6 +360,13 @@
         <div id="view-student" class="view-panel">
             <section class="card no-print" style="padding:1.25rem;margin-bottom:1rem">
                 <div class="filters">
+                    <select id="studentClinicalGroupFilter" class="select-control" aria-label="Filter by clinical group">
+                        <option value="all">All clinical groups</option>
+                    </select>
+                    <select id="studentSimGroupFilter" class="select-control" aria-label="Filter by simulation group">
+                        <option value="all">All sim groups</option>
+                    </select>
+                    <input type="search" id="studentNameSearch" class="select-control" placeholder="Search student name" aria-label="Search student name" autocomplete="off">
                     <select id="studentViewSelect" class="select-control" aria-label="Select student"><option value="">Select student...</option></select>
                     <select id="studentCalendarType" class="select-control" aria-label="Calendar view">
                         <option value="summary">Clinical and Sim Summary</option>
@@ -500,6 +507,9 @@
                         <label>Clinical makeup target week<input type="number" id="cfgClinMakeupPrimary" min="1" max="18" placeholder="Auto" title="Leave blank to use second-to-last active week"></label>
                         <label>Clinical makeup last resort week<input type="number" id="cfgClinMakeupFallback" min="1" max="18" placeholder="Auto" title="Leave blank to use last active week"></label>
                         <label>Sim makeup last resort week<input type="number" id="cfgSimMakeupLastResort" min="1" max="18" placeholder="Auto" title="Leave blank to use last active week"></label>
+                        <label>Default student email domain
+                            <input type="text" id="cfgStudentEmailDomain" placeholder="@students.example.edu" title="Applied to student email local-parts when the domain is hidden on the roster (e.g. @students.example.edu)">
+                        </label>
                     </div>
                     <p class="section-sub">Makeup week fields left blank use the last active semester weeks (after holidays/breaks).</p>
                     <div class="setup-config-divider"></div>
@@ -591,9 +601,14 @@
                 <div class="setup-roster-header">
                     <div>
                         <h3 class="section-title" style="margin:0">Student Roster</h3>
-                        <p class="section-sub" style="margin:0.35rem 0 0">Drag students between cohorts. Set each student&rsquo;s registrar section individually, or use the cohort Section control to assign all at once (you can still split students across sections afterward).</p>
+                        <p class="section-sub" style="margin:0.35rem 0 0">Drag students between cohorts. Set each student&rsquo;s registrar section individually, or use the cohort Section / Sim controls to assign all at once (you can still split students afterward).</p>
+                        <label class="filter-check filter-check-compact" style="margin-top:0.5rem">
+                            <input type="checkbox" id="showStudentEmailDomain" checked>
+                            Show email domain
+                        </label>
                     </div>
                     <div class="setup-roster-actions">
+                        <button id="sortRosterAzBtn" class="btn btn-sm" type="button" title="Sort students A–Z by last name within each clinical cohort">Sort A–Z</button>
                         <button id="rebalanceStudentsBtn" class="btn btn-sm btn-rebalance-clinical" type="button" title="Evenly distribute students across clinical groups">Rebalance clinical groups</button>
                         <button id="rebalanceSimGroupsBtn" class="btn btn-sm btn-rebalance-sim" type="button" title="Balance sim groups to session cap and regenerate until guest soft cap is met">Rebalance simulation groups</button>
                     </div>

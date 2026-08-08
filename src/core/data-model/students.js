@@ -24,25 +24,82 @@ export function defaultStudentName(index) {
   return 'Student ' + (index + 1);
 }
 
+export function parseLegacyStudentName(name) {
+  var raw = String(name || '').trim();
+  if (!raw) return { lastName: '', firstName: '' };
+  var pipe = raw.indexOf('|');
+  if (pipe >= 0) {
+    return {
+      lastName: raw.slice(0, pipe).trim(),
+      firstName: raw.slice(pipe + 1).trim()
+    };
+  }
+  return { lastName: raw, firstName: '' };
+}
+
+export function syncStudentDisplayName(student) {
+  if (!student) return student;
+  var last = String(student.lastName != null ? student.lastName : '').trim();
+  var first = String(student.firstName != null ? student.firstName : '').trim();
+  if (last || first) {
+    student.name = [first, last].filter(Boolean).join(' ');
+  } else if (student.name == null) {
+    student.name = '';
+  }
+  return student;
+}
+
+export function ensureStudentNameParts(student) {
+  if (!student) return student;
+  if (student.lastName == null && student.firstName == null) {
+    var parsed = parseLegacyStudentName(student.name);
+    student.lastName = parsed.lastName;
+    student.firstName = parsed.firstName;
+  } else {
+    if (student.lastName == null) student.lastName = '';
+    if (student.firstName == null) student.firstName = '';
+  }
+  syncStudentDisplayName(student);
+  return student;
+}
+
+export function compareStudentsByName(a, b) {
+  var la = String((a && a.lastName) || '').toLowerCase();
+  var lb = String((b && b.lastName) || '').toLowerCase();
+  if (la !== lb) return la < lb ? -1 : 1;
+  var fa = String((a && a.firstName) || '').toLowerCase();
+  var fb = String((b && b.firstName) || '').toLowerCase();
+  if (fa !== fb) return fa < fb ? -1 : 1;
+  return String((a && a.name) || '').toLowerCase().localeCompare(String((b && b.name) || '').toLowerCase());
+}
+
 export function assignDefaultStudentNames(students) {
   students.forEach(function (s, i) {
-    s.name = defaultStudentName(i);
+    s.lastName = defaultStudentName(i);
+    s.firstName = '';
+    syncStudentDisplayName(s);
   });
 }
 
 export function nextDefaultStudentName(students) {
   var max = 0;
   students.forEach(function (s) {
-    var m = String(s.name || '').match(/^Student (\d+)$/);
-    if (m) max = Math.max(max, parseInt(m[1], 10));
+    var candidates = [s.name, s.lastName, s.firstName];
+    candidates.forEach(function (c) {
+      var m = String(c || '').match(/^Student (\d+)$/);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    });
   });
   return defaultStudentName(max > 0 ? max : students.length);
 }
 
 export function createStudent(name, clinicalGroup, simGroup, facilityId, section) {
-  return {
+  var parsed = parseLegacyStudentName(name == null ? 'Student' : name);
+  var student = {
     id: uid(),
-    name: name == null ? 'Student' : name,
+    lastName: parsed.lastName,
+    firstName: parsed.firstName,
+    name: '',
     email: '',
     clinicalGroup: clinicalGroup,
     simGroup: simGroup || 'SG1',
@@ -52,6 +109,8 @@ export function createStudent(name, clinicalGroup, simGroup, facilityId, section
     absences: [],
     makeups: []
   };
+  syncStudentDisplayName(student);
+  return student;
 }
 
 export function cellToLegacyString(cell, student) {

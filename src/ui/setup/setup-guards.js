@@ -24,6 +24,11 @@ export function guardSetupEdit() {
     }
     return true;
   }
+  var data = getData();
+  if (data && data.meta && data.meta.finalized) {
+    showAlert('Setup locked', 'This semester is finalized. Use Unlock Setup to make changes.');
+    return false;
+  }
   if (isValidated()) {
     if (!canAction('setup.edit') &&
         !canAction('setup.saveDraft') &&
@@ -78,6 +83,11 @@ export function updateReadOnlyButtons(data) {
 export function markSetupDraft(data) {
   if (getSetupScope().isPlayground) return;
   if (!data || !data.meta || !data.meta.finalized) return;
+  // When finalized, setup is locked — do not auto-clear finalize on incidental input.
+  if (document.getElementById('view-setup') &&
+      document.getElementById('view-setup').classList.contains('setup-finalized-locked')) {
+    return;
+  }
   data.meta.finalized = false;
   updateFinalizeButtonState(data);
   updateSemesterDisplay();

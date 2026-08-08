@@ -32,6 +32,12 @@ export function readFormIntoConfig(cfg, data) {
   cfg.clinicalMakeupPrimaryWeek = readOptionalWeekInput('cfgClinMakeupPrimary');
   cfg.clinicalMakeupFallbackWeek = readOptionalWeekInput('cfgClinMakeupFallback');
   cfg.simMakeupLastResortWeek = readOptionalWeekInput('cfgSimMakeupLastResort');
+  var domainEl = setupEl('cfgStudentEmailDomain');
+  if (domainEl) {
+    var domain = String(domainEl.value || '').trim();
+    if (domain && domain.charAt(0) !== '@') domain = '@' + domain;
+    cfg.studentEmailDomain = domain;
+  }
 
   cfg.clinicalGroups = [];
   cfg.clinicalGroupDays = {};
@@ -106,4 +112,5 @@ export function renderAdvancedFields(cfg) {
   set('cfgClinMakeupPrimary', cfg.clinicalMakeupPrimaryWeek != null ? cfg.clinicalMakeupPrimaryWeek : '');
   set('cfgClinMakeupFallback', cfg.clinicalMakeupFallbackWeek != null ? cfg.clinicalMakeupFallbackWeek : '');
   set('cfgSimMakeupLastResort', cfg.simMakeupLastResortWeek != null ? cfg.simMakeupLastResortWeek : '');
+  set('cfgStudentEmailDomain', cfg.studentEmailDomain || '');
 }

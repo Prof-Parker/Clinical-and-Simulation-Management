@@ -29,7 +29,7 @@ export function defaultSections() {
 export function defaultFaculty(groups) {
   var list = groups || CLINICAL_GROUPS;
   return list.map(function (g) {
-    return { id: uid(), name: '', clinicalGroup: g };
+    return { id: uid(), name: '', clinicalGroup: g, needed: false };
   });
 }
 
@@ -132,6 +132,7 @@ export function createDefaultSemester() {
       semesterName: buildSemesterName(season, year),
       finalized: false,
       configCustomized: false,
+      showStudentEmailDomain: true,
       lastModified: new Date().toISOString()
     }),
     config: cfg,

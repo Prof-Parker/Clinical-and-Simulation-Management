@@ -11,6 +11,10 @@ import { isReady as isRegistryReady } from '../../storage/users-registry-storage
 import { escAttr, escHtml, configListAddRow } from './dom-utils.js';
 import { guardSetupEdit, resolveSetupData, setupAfterChange, collectFromForm, markSetupDraft } from './index.js';
 import { getSetupScope, setupEl } from './scope.js';
+import {
+  clinicalFacultyRowHtml,
+  simInstructorRowHtml
+} from './faculty-slots.js';
 
 function renderSections(data) {
     var container = setupEl('setupSections');
@@ -95,12 +99,7 @@ function renderFaculty(data) {
     var listId = getSetupScope().prefix + 'setupAdjunctFacultyList';
     container.innerHTML = '';
     data.faculty.forEach(function (f, i) {
-      container.innerHTML +=
-        '<div class="setup-faculty-row">' +
-        '<span class="setup-faculty-group">' + f.clinicalGroup + '</span>' +
-        '<input type="text" data-faculty="name" data-idx="' + i + '" list="' + listId + '" ' +
-        'value="' + escAttr(f.name) + '" placeholder="Search adjunct faculty name" autocomplete="off">' +
-        '</div>';
+      container.innerHTML += clinicalFacultyRowHtml(f, i, listId);
     });
   }
 
@@ -112,14 +111,7 @@ function renderSimInstructors(data) {
     var listId = getSetupScope().prefix + 'setupAdjunctFacultyList';
     container.innerHTML = '';
     data.simInstructors.forEach(function (f, i) {
-      container.innerHTML +=
-        '<div class="config-list-row setup-faculty-row">' +
-        '<input type="text" data-sim-instructor="name" data-idx="' + i + '" list="' + listId + '" ' +
-        'value="' + escAttr(f.name || '') + '" placeholder="Simulation instructor name" autocomplete="off" ' +
-        'aria-label="Simulation instructor name">' +
-        '<button type="button" class="btn btn-icon-remove remove-sim-instructor" data-idx="' + i + '" ' +
-        'aria-label="Remove simulation instructor" title="Remove simulation instructor">&times;</button>' +
-        '</div>';
+      container.innerHTML += simInstructorRowHtml(f, i, listId);
     });
     container.innerHTML += configListAddRow('add-sim-instructor', 'Add simulation instructor');
   }
@@ -130,7 +122,7 @@ function handleSimInstructorClick(e) {
     if (e.target.closest('.add-sim-instructor')) {
       collectFromForm(data);
       if (!data.simInstructors) data.simInstructors = [];
-      data.simInstructors.push({ id: DataModel.uid(), name: '' });
+      data.simInstructors.push({ id: DataModel.uid(), name: '', needed: false });
       markSetupDraft(data);
       setupAfterChange(data);
       return;
@@ -142,6 +134,27 @@ function handleSimInstructorClick(e) {
       if (!isNaN(idx)) data.simInstructors.splice(idx, 1);
       markSetupDraft(data);
       setupAfterChange(data);
+    }
+  }
+
+function handleFacultySlotChange(e) {
+    var slotSel = e.target.closest('[data-faculty="slot"], [data-sim-instructor="slot"]');
+    if (!slotSel) return;
+    if (!guardSetupEdit()) return;
+    var wrap = slotSel.closest('.setup-faculty-slot');
+    var nameInput = wrap && wrap.querySelector('input[data-faculty="name"], input[data-sim-instructor="name"]');
+    if (slotSel.value === '__needed__') {
+      if (nameInput) {
+        nameInput.value = '';
+        nameInput.disabled = true;
+        nameInput.classList.add('setup-autofill-field');
+      }
+    } else {
+      if (nameInput) {
+        nameInput.disabled = false;
+        nameInput.classList.remove('setup-autofill-field');
+        if (slotSel.value === '__named__') nameInput.focus();
+      }
     }
   }
 
@@ -305,6 +318,7 @@ export {
   renderFaculty,
   renderSimInstructors,
   handleSimInstructorClick,
+  handleFacultySlotChange,
   renderLeadFaculty,
   applyGroupFacilitiesFromConfig,
   removeFacility,

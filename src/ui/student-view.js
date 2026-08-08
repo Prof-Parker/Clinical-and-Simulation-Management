@@ -4,6 +4,8 @@
 
 import { getData } from '../core/state.js';
 import { refresh } from './chrome.js';
+import * as DataModel from '../core/data-model/index.js';
+import * as ClinicalSites from '../core/clinical-sites.js';
 import { buildCalendarHtml } from '../export/student-calendar-html.js';
 import { promptBatchExport } from '../export/student-calendar-batch.js';
 import { exportStudentIcs } from '../export/student-calendar-ics.js';
@@ -18,6 +20,65 @@ function selectedStudent(data) {
   var select = document.getElementById('studentViewSelect');
   if (!select || !select.value || !data || !data.students) return null;
   return data.students.find(function (s) { return s.id === select.value; }) || null;
+}
+
+function clinicalGroupFilterLabel(data, group) {
+  var day = DataModel.getClinicalDayForGroup(group, data.config);
+  var siteLabel = '';
+  var facId = ClinicalSites.getPrimaryGroupFacility(data, group);
+  if (facId) {
+    var fac = DataModel.findFacilityById(data, facId);
+    if (fac) siteLabel = fac.shortName || fac.name || '';
+  }
+  return [group, day, siteLabel].filter(Boolean).join(' ');
+}
+
+function populateStudentFilters(data) {
+  var clinEl = document.getElementById('studentClinicalGroupFilter');
+  var simEl = document.getElementById('studentSimGroupFilter');
+  if (clinEl) {
+    var prevClin = clinEl.value || 'all';
+    clinEl.innerHTML = '<option value="all">All clinical groups</option>';
+    DataModel.getClinicalGroups(data.config).forEach(function (g) {
+      clinEl.innerHTML += '<option value="' + g + '">' + clinicalGroupFilterLabel(data, g) + '</option>';
+    });
+    if (prevClin && (prevClin === 'all' || DataModel.getClinicalGroups(data.config).indexOf(prevClin) >= 0)) {
+      clinEl.value = prevClin;
+    }
+  }
+  if (simEl) {
+    var prevSim = simEl.value || 'all';
+    simEl.innerHTML = '<option value="all">All sim groups</option>';
+    DataModel.getSimGroups(data.config).forEach(function (sg) {
+      simEl.innerHTML += '<option value="' + sg + '">' + sg + '</option>';
+    });
+    if (prevSim && (prevSim === 'all' || DataModel.getSimGroups(data.config).indexOf(prevSim) >= 0)) {
+      simEl.value = prevSim;
+    }
+  }
+}
+
+function filteredStudents(data) {
+  var clinEl = document.getElementById('studentClinicalGroupFilter');
+  var simEl = document.getElementById('studentSimGroupFilter');
+  var searchEl = document.getElementById('studentNameSearch');
+  var clin = clinEl ? clinEl.value : 'all';
+  var sim = simEl ? simEl.value : 'all';
+  var q = searchEl ? String(searchEl.value || '').trim().toLowerCase() : '';
+  return (data.students || []).filter(function (s) {
+    if (clin && clin !== 'all' && s.clinicalGroup !== clin) return false;
+    if (sim && sim !== 'all' && s.simGroup !== sim) return false;
+    if (q) {
+      var hay = [
+        s.name,
+        s.lastName,
+        s.firstName,
+        [s.lastName, s.firstName].filter(Boolean).join(' ')
+      ].join(' ').toLowerCase();
+      if (hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
 }
 
 function syncActionButtons(hasStudent) {
@@ -42,12 +103,16 @@ function render(data) {
   var container = document.getElementById('studentCalendarPrint');
   if (!select || !container) return;
 
+  populateStudentFilters(data);
+
   var prev = select.value;
+  var list = filteredStudents(data);
   select.innerHTML = '<option value="">Select student...</option>';
-  data.students.forEach(function (s) {
+  list.forEach(function (s) {
     select.innerHTML += '<option value="' + s.id + '">' + s.name + ' (' + s.clinicalGroup + ')</option>';
   });
-  if (prev && data.students.some(function (s) { return s.id === prev; })) select.value = prev;
+  if (prev && list.some(function (s) { return s.id === prev; })) select.value = prev;
+  else select.value = '';
 
   var student = selectedStudent(data);
   syncActionButtons(!!student);
@@ -66,6 +131,14 @@ function render(data) {
 function init() {
   var select = document.getElementById('studentViewSelect');
   if (select) select.addEventListener('change', function () { refresh(); });
+  ['studentClinicalGroupFilter', 'studentSimGroupFilter'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('change', function () { refresh(); });
+  });
+  var search = document.getElementById('studentNameSearch');
+  if (search) {
+    search.addEventListener('input', function () { refresh(); });
+  }
   var markup = document.getElementById('showMarkupToggle');
   if (markup) markup.addEventListener('change', function () { refresh(); });
   var typeEl = document.getElementById('studentCalendarType');

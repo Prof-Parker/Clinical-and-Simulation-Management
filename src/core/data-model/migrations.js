@@ -2,7 +2,7 @@
  * Semester and file migration, audit meta backfill, and legacy import.
  */
 
-import { uid, emptySchedule } from './students.js';
+import { uid, emptySchedule, ensureStudentNameParts } from './students.js';
 import {
   defaultConfig,
   normalizeConfig,
@@ -93,6 +93,18 @@ export function migrateSemester(semester) {
   if (!semester.faculty) semester.faculty = defaultFaculty(getClinicalGroups(semester.config));
   syncSemesterFaculty(semester);
   if (!semester.simInstructors) semester.simInstructors = [];
+  semester.simInstructors.forEach(function (f) {
+    if (f.needed === undefined) {
+      f.needed = f.name === 'Faculty Needed';
+    }
+    if (f.needed) f.name = 'Faculty Needed';
+  });
+  (semester.faculty || []).forEach(function (f) {
+    if (f.needed === undefined) {
+      f.needed = f.name === 'Faculty Needed';
+    }
+    if (f.needed) f.name = 'Faculty Needed';
+  });
   if (!semester.students) semester.students = [];
   if (!semester.sections || !semester.sections.length) {
     var seen = {};
@@ -109,6 +121,7 @@ export function migrateSemester(semester) {
     if (!s.schedule || s.schedule.length !== 18) s.schedule = emptySchedule();
     if (!s.id) s.id = uid();
     if (s.email === undefined) s.email = '';
+    ensureStudentNameParts(s);
     if (!s.absences) s.absences = [];
     if (!s.makeups) s.makeups = [];
     s.makeups.forEach(function (m) {
@@ -134,6 +147,7 @@ export function migrateSemester(semester) {
   semester.meta.version = VERSION;
   if (semester.meta.configCustomized === undefined) semester.meta.configCustomized = false;
   if (semester.meta.finalized === undefined) semester.meta.finalized = false;
+  if (semester.meta.showStudentEmailDomain === undefined) semester.meta.showStudentEmailDomain = true;
   ensureAuditMeta(semester.meta);
   var parsed = parseSemesterDisplay(semester);
   if (!semester.meta.semesterSeason && parsed.season) {

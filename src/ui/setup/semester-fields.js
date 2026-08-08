@@ -1,11 +1,13 @@
 /** Semester season/year/start-date fields on the setup tab. */
 
-import { getData } from '../../core/state.js';
 import { startDateForSeason, buildSemesterName } from '../../core/data-model/index.js';
 import { init as initDateInputs } from '../date-inputs.js';
 import * as ScheduleStatus from '../../core/schedule-status.js';
 import { escHtml } from './dom-utils.js';
 import { resolveScopeData, getSetupScope, scopeRootEl, setupEl } from './scope.js';
+import { updateFinalizeButtonState } from './setup-lock.js';
+
+export { updateFinalizeButtonState };
 
 export function populateYearSelect(selectedYear) {
   var yearSelect = setupEl('semesterYearSelect');
@@ -20,13 +22,6 @@ export function populateYearSelect(selectedYear) {
     }
   }
   yearSelect.value = String(selectedYear || curYear);
-}
-
-export function updateFinalizeButtonState(data) {
-  var finalizeBtn = setupEl('finalizeSemesterBtn');
-  if (!finalizeBtn) return;
-  finalizeBtn.disabled = !!(data && data.meta && data.meta.finalized);
-  finalizeBtn.title = finalizeBtn.disabled ? 'This semester has been finalized' : '';
 }
 
 export function updateStartDateFromSeasonYear() {

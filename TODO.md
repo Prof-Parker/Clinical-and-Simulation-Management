@@ -136,13 +136,17 @@ TODO.md
 - [ ] **Priority before rolling out to adjunct faculty** with high numbers of users folder structure is very vulnerable to overwrite both in and out of app. Based on live user demo, app folder requires all users to have full edit access to critical files such as user.registry.json
 - [ ] allow program engineer to be assigned in role of lead faculty for a course, while still granting full UI interface
 - [X] Add week-17 makeup clinical clustering to force to lowest number of clinical groups required to accomodate makeup needs. (Dashboard Apply; modes + preferred-site conflict transfer; soft-floor + multi-pass thin consolidate — see `PROJECT_IMPLEMENTATION_GUIDE.md` §5.1 and `docs/Design Docs/week17_makeup_clustering_and_sim_soft_floor.md`)
+
+## Side Bar Navigation
+- [ ] Sid bar to nav to sections on each page only appear on mouse over
+
 ## Practicum Setup
-- [ ] Split student names in setup to lastname | first name
-- [ ] Add option to hide the domain from email section or automatically apply a set domain
-- [ ] Add apply sim group to all students in clinical group function (similar to current course section drop down)
-- [ ] Increase size of sim faculty text box in setup
-- [ ] Add filters to student view (sim group, clinical group), search by student name
-- [ ] Finalize semester should lock setup. Include toggle to unlock setup
+- [X] Split student names in setup to lastname | first name
+- [X] Add option to hide the domain from email section or automatically apply a set domain
+- [X] Add apply sim group to all students in clinical group function (similar to current course section drop down)
+- [X] Increase size of sim faculty text box in setup
+- [X] Add filters to student view (sim group, clinical group), search by student name
+- [X] Finalize semester should lock setup. Include toggle to unlock setup
 
 ## Theory
 - [ ] Cancel Button not closing new event in theory calendar
