@@ -9,6 +9,18 @@ import { getData, state } from '../core/state.js';
 import { guardEditable } from '../auth/permissions.js';
 import { escapeHtml, showAlert } from './dialogs.js';
 import { refresh, switchTab } from './chrome.js';
+import {
+  populateRosterFilters,
+  filterStudentsByRosterControls,
+  resetRosterFilters,
+  bindRosterFilterListeners
+} from './student-roster-filters.js';
+
+var FILTER_IDS = {
+  clinicalId: 'makeupClinicalGroupFilter',
+  simId: 'makeupSimGroupFilter',
+  searchId: 'makeupNameSearch'
+};
 
 var pendingClinicalHint = null;
 var requiredClinicalMakeup = null;
@@ -18,6 +30,7 @@ var lastApplyMessage = null;
 function requestClinicalMakeup(studentId) {
   requiredClinicalMakeup = { studentId: studentId };
   lastApplyMessage = null;
+  resetRosterFilters(FILTER_IDS);
   var studentSelect = document.getElementById('makeupStudentSelect');
   var typeSelect = document.getElementById('makeupTypeSelect');
   if (studentSelect) studentSelect.value = studentId;
@@ -117,25 +130,38 @@ function populateSimSelect(data, student) {
 function render(data) {
   toggleTypeSelects();
 
+  populateRosterFilters(data, FILTER_IDS);
+
   var select = document.getElementById('makeupStudentSelect');
   var prev = select.value;
+  var forceId = requiredClinicalMakeup && requiredClinicalMakeup.studentId
+    ? requiredClinicalMakeup.studentId
+    : '';
+  var list = filterStudentsByRosterControls(data, FILTER_IDS);
+  if (forceId && !list.some(function (s) { return s.id === forceId; })) {
+    var forced = data.students.find(function (s) { return s.id === forceId; });
+    if (forced) list = [forced].concat(list);
+  }
+
   select.innerHTML = '';
   var placeholder = document.createElement('option');
   placeholder.value = '';
   placeholder.textContent = 'Select student...';
   select.appendChild(placeholder);
-  data.students.forEach(function (s) {
+  list.forEach(function (s) {
     var opt = document.createElement('option');
     opt.value = s.id;
-    opt.textContent = s.name;
+    opt.textContent = s.name + ' (' + s.clinicalGroup + ')';
     select.appendChild(opt);
   });
 
-  if (requiredClinicalMakeup && requiredClinicalMakeup.studentId) {
-    select.value = requiredClinicalMakeup.studentId;
+  if (forceId) {
+    select.value = forceId;
     document.getElementById('makeupTypeSelect').value = 'clinical';
-  } else if (prev) {
+  } else if (prev && list.some(function (s) { return s.id === prev; })) {
     select.value = prev;
+  } else {
+    select.value = '';
   }
 
   var results = document.getElementById('makeupResults');
@@ -276,6 +302,10 @@ function buildSimApplyMessage(data, applyResult, slot) {
 function init() {
   document.getElementById('makeupStudentSelect').addEventListener('change', function () {
     if (requiredClinicalMakeup) requiredClinicalMakeup = null;
+    clearApplyMessage();
+    refresh();
+  });
+  bindRosterFilterListeners(FILTER_IDS, function () {
     clearApplyMessage();
     refresh();
   });

@@ -50,8 +50,9 @@ function _bindDialogPrimary(onPrimary) {
   var newSave = saveBtn.cloneNode(true);
   saveBtn.parentNode.replaceChild(newSave, saveBtn);
   newSave.addEventListener('click', function () {
+    var result = onPrimary ? onPrimary() : undefined;
+    if (result === false) return;
     closeDialog();
-    if (onPrimary) onPrimary();
   });
   return newSave;
 }

@@ -258,8 +258,16 @@ function refreshDynamicLists(data) {
     if (simOverrides) simOverrides.innerHTML = renderSimTimeOverrides(cfg);
     var startEl = setupEl('cfgSimDefaultStart');
     var endEl = setupEl('cfgSimDefaultEnd');
+    var lunchEl = setupEl('cfgSimLunchBreakMinutes');
     if (startEl) startEl.value = ScheduleHours.hhmmToTimeInput(cfg.simDefaultStart);
     if (endEl) endEl.value = ScheduleHours.hhmmToTimeInput(cfg.simDefaultEnd);
+    if (lunchEl) {
+      lunchEl.value = String(
+        cfg.simLunchBreakMinutes != null
+          ? cfg.simLunchBreakMinutes
+          : ScheduleHours.DEFAULT_SIM_LUNCH_BREAK_MINUTES
+      );
+    }
     updateAllWeekRangeHints(data);
   }
 

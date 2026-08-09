@@ -7,10 +7,11 @@ import * as TheoryLibrary from '../../storage/theory-library-storage.js';
 import * as ScheduleHours from '../../core/schedule-hours.js';
 import { uid } from '../../core/data-model/students.js';
 import { notifyChange } from '../../core/state.js';
-import { showDialog } from '../dialogs.js';
+import { showDialog, showAlert } from '../dialogs.js';
 import { refresh } from '../chrome.js';
 import * as Permissions from '../../auth/permissions.js';
-import { requireLibraryUnlock, isLibraryUnlocked } from './content-library.js';
+import { sessionForWeekday } from './master-setup-sessions.js';
+import { openNewTopicFlow, openNewSkillFlow } from './event-editor-library.js';
 import {
   esc,
   escAttr,
@@ -39,7 +40,7 @@ export function openEventEditor(data, date, eventId) {
     '<hr><div id="theoryEvForm" class="theory-ev-form"></div>';
 
   showDialog(editingEventId ? 'Edit event — ' + date : 'Edit day — ' + date, body, function () {
-    saveFormToEvent(data, day);
+    if (!saveFormToEvent(data, day)) return false;
     TheoryData.renumberWeekModules(theory, day.weekLabel);
     TheoryData.refreshFacultyNeeded(theory);
     notifyChange();
@@ -54,12 +55,12 @@ export function openEventEditor(data, date, eventId) {
   var addBtn = document.getElementById('theoryAddEventBtn');
   if (addBtn) {
     addBtn.onclick = function () {
-      saveFormToEvent(data, day);
+      saveFormToEvent(data, day, { soft: true });
       var settings = theory.settings || {};
       var track = 'theory';
       var trackEl = document.getElementById('theoryEvTrack');
       if (trackEl) track = trackEl.value;
-      var ev = blankEvent(track, settings);
+      var ev = blankEvent(track, settings, day.weekday);
       TheoryData.insertEventOnDay(day, ev);
       editingEventId = ev.id;
       TheoryData.renumberWeekModules(theory, day.weekLabel);
@@ -70,7 +71,7 @@ export function openEventEditor(data, date, eventId) {
   }
 }
 
-function blankEvent(track, settings) {
+function blankEvent(track, settings, weekday) {
   var isSkills = track === 'skills';
   var required = isSkills
     ? (settings.defaultSkillsFacultyRequired != null ? settings.defaultSkillsFacultyRequired : 2)
@@ -82,17 +83,19 @@ function blankEvent(track, settings) {
       role: isSkills ? 'skills' : 'lecturer'
     }));
   }
+  var session = sessionForWeekday(settings, isSkills ? 'skills' : 'lecture', weekday);
   return {
     id: uid(),
     track: track,
-    title: '',
+    title: isSkills ? 'Skills lab' : '',
     description: '',
+    notes: '',
     moduleCode: null,
     moduleRef: null,
     moduleRefs: [],
     skillRefs: [],
-    timeStart: isSkills ? (settings.defaultSkillsStart || '1200') : (settings.defaultLectureStart || '0800'),
-    timeEnd: isSkills ? (settings.defaultSkillsEnd || '1550') : (settings.defaultLectureEnd || '1050'),
+    timeStart: session.start,
+    timeEnd: session.end,
     faculty: faculty,
     facultyRequired: isSkills ? required : null,
     contentArea: track === 'assignment' ? 'theory' : null,
@@ -125,10 +128,13 @@ function renderEventList(theory, day) {
       : (ev.allDay ? 'all day' : '');
     var hoursLabel = hours > 0 ? hours.toFixed(2) + ' h' : '';
     var fac = (ev.faculty || []).map(TheoryData.facultyDisplayName).filter(Boolean).join(', ');
+    var displayTitle = ev.track === 'skills'
+      ? 'Skills lab'
+      : (TheoryData.stripModuleTitlePrefix(ev.title) || ev.title || ev.track);
     var meta = [ev.moduleCode || '', ev.track, timeLabel, hoursLabel, fac].filter(Boolean).join(' · ');
     var active = ev.id === editingEventId ? ' theory-ev-row-active' : '';
     return '<div class="theory-ev-row config-list-row' + active + '" data-edit-id="' + escAttr(ev.id) + '">' +
-      '<div class="theory-ev-row-main">' + esc(TheoryData.stripModuleTitlePrefix(ev.title) || ev.title || ev.track) +
+      '<div class="theory-ev-row-main">' + esc(displayTitle) +
       (meta ? ' <span class="text-muted">(' + esc(meta) + ')</span>' : '') +
       '</div>' +
       '<button type="button" class="btn btn-icon-remove remove-theory-event" data-rm-id="' + escAttr(ev.id) + '" ' +
@@ -155,7 +161,7 @@ function wireListClicks(data, day) {
     }
     var row = e.target.closest('[data-edit-id]');
     if (row) {
-      saveFormToEvent(data, day);
+      saveFormToEvent(data, day, { soft: true });
       editingEventId = row.getAttribute('data-edit-id');
       guestExpanded = false;
       renderEventList(data.theory, day);
@@ -197,49 +203,74 @@ function renderForm(data, day) {
       escAttr(ev.title || '') + '" aria-label="Holiday title"></label>';
     html += '<p class="section-sub">Setup holidays sync automatically; manual holiday titles can override display.</p>';
   } else if (ev.track === 'theory') {
-    html += '<div class="theory-ev-title-row">' +
-      '<label>Title <input type="text" id="theoryEvTitle" class="select-control" value="' +
-      escAttr(TheoryData.stripModuleTitlePrefix(ev.title) || ev.title || '') +
-      '" aria-label="Topic title"></label>' +
-      '<label class="filter-check filter-check-compact theory-ev-add-library">' +
-      '<input type="checkbox" id="theoryEvAddToLibrary"> Add free-text title to topic library</label>' +
-      '</div>';
     html += '<label>Topic library <select id="theoryEvModuleRef" class="select-control"><option value="">—</option>' +
       topicOptionsHtml(ev.moduleRef) + '</select></label>';
-    html += timeFields(ev, settings, false);
+    html += '<p class="section-sub">Choose a topic from the content library. Use New Topic to add one.</p>';
+    html += timeFields(ev, settings, false, day.weekday);
     html += lecturerFields(ev, settings, guestExpanded);
   } else if (ev.track === 'skills') {
-    html += '<label>Title <input type="text" id="theoryEvTitle" class="select-control" value="' +
-      escAttr(ev.title || '') + '" aria-label="Skills lab title"></label>';
+    html += '<p class="section-sub"><strong>Skills lab</strong> — pick one or more skill activities from the library.</p>';
     html += '<div id="theoryEvSkillsTopics" class="theory-skills-topics"></div>';
     html += '<button type="button" class="btn btn-sm" id="theoryEvAddTopicBtn">Add skill</button>';
-    html += timeFields(ev, settings, true);
+    html += timeFields(ev, settings, true, day.weekday);
+    html += '<label>Skills lab note <input type="text" id="theoryEvNotes" class="select-control" value="' +
+      escAttr(ev.notes || '') + '" aria-label="Skills lab note" placeholder="e.g. Bring skills kit"></label>';
     html += skillsFacultyFields(ev, settings);
   } else {
     html += '<label>Title <input type="text" id="theoryEvTitle" class="select-control" value="' +
       escAttr(ev.title || '') + '" aria-label="Event title"></label>';
-    html += timeFields(ev, settings, false);
+    html += timeFields(ev, settings, false, day.weekday);
   }
 
   html += '<span id="theoryEvHoursHint" class="theory-ev-hours-hint text-muted" aria-live="polite"></span>';
   form.innerHTML = html;
   updateHoursHint();
   wireFormHandlers(data, day, ev);
-  if (ev.track === 'skills') renderSkillsTopics(ev);
+  if (ev.track === 'skills') {
+    renderSkillsTopics(ev);
+    wireSkillSelectHandlers(data, day);
+  }
+}
+
+function openNewTopicFromForm(data, day) {
+  openNewTopicFlow(data, day, editingEventId, function (d, dy) {
+    saveFormToEvent(d, dy, { soft: true });
+  }, openEventEditor);
+}
+
+function openNewSkillFromForm(data, day, skillIdx) {
+  openNewSkillFlow(data, day, skillIdx, editingEventId, function (d, dy) {
+    saveFormToEvent(d, dy, { soft: true });
+  }, openEventEditor);
+}
+
+function wireSkillSelectHandlers(data, day) {
+  document.querySelectorAll('.theory-skills-topic').forEach(function (sel) {
+    sel.addEventListener('change', function () {
+      if (sel.value === '__new__') {
+        var idx = parseInt(sel.getAttribute('data-skill-idx'), 10) || 0;
+        sel.value = '';
+        openNewSkillFromForm(data, day, idx);
+      }
+    });
+  });
 }
 
 function wireFormHandlers(data, day, ev) {
   var trackEl = document.getElementById('theoryEvTrack');
   if (trackEl) {
     trackEl.addEventListener('change', function () {
-      saveFormToEvent(data, day);
+      saveFormToEvent(data, day, { soft: true });
       ev.track = trackEl.value;
       ev.categories = categoriesForTrack(ev.track);
       if (ev.track === 'assignment' && !ev.contentArea) ev.contentArea = 'theory';
-      if (ev.track === 'skills' && ev.facultyRequired == null) {
-        ev.facultyRequired = (data.theory.settings && data.theory.settings.defaultSkillsFacultyRequired) || 2;
+      if (ev.track === 'skills') {
+        ev.title = 'Skills lab';
+        if (ev.facultyRequired == null) {
+          ev.facultyRequired = (data.theory.settings && data.theory.settings.defaultSkillsFacultyRequired) || 2;
+        }
       }
-      applyTrackTimeDefaults(ev, data.theory.settings || {});
+      applyTrackTimeDefaults(ev, data.theory.settings || {}, day.weekday);
       renderForm(data, day);
       renderEventList(data.theory, day);
     });
@@ -249,18 +280,27 @@ function wireFormHandlers(data, day, ev) {
   if (startEl) startEl.addEventListener('input', updateHoursHint);
   if (endEl) endEl.addEventListener('input', updateHoursHint);
   var refEl = document.getElementById('theoryEvModuleRef');
-  var titleEl = document.getElementById('theoryEvTitle');
-  if (refEl && titleEl) {
+  if (refEl) {
     refEl.addEventListener('change', function () {
-      if (!refEl.value || titleEl.value.trim()) return;
+      if (refEl.value === '__new__') {
+        refEl.value = ev.moduleRef || '';
+        openNewTopicFromForm(data, day);
+        return;
+      }
+      if (!refEl.value) return;
       var topic = TheoryLibrary.getTopicById(refEl.value);
-      if (topic) titleEl.value = topic.title;
+      if (topic) {
+        ev.moduleRef = topic.id;
+        ev.moduleRefs = [topic.id];
+        ev.title = topic.title;
+        renderEventList(data.theory, day);
+      }
     });
   }
   var guestBtn = document.getElementById('theoryEvGuestBtn');
   if (guestBtn) {
     guestBtn.onclick = function () {
-      saveFormToEvent(data, day);
+      saveFormToEvent(data, day, { soft: true });
       guestExpanded = !guestExpanded;
       renderForm(data, day);
     };
@@ -276,7 +316,7 @@ function wireFormHandlers(data, day, ev) {
   var clearSkills = document.getElementById('theoryEvClearSkillsFacultyBtn');
   if (clearSkills) {
     clearSkills.onclick = function () {
-      saveFormToEvent(data, day);
+      saveFormToEvent(data, day, { soft: true });
       (ev.faculty || []).forEach(TheoryData.clearFacultySlot);
       renderForm(data, day);
       renderEventList(data.theory, day);
@@ -285,7 +325,7 @@ function wireFormHandlers(data, day, ev) {
   var reqEl = document.getElementById('theoryEvFacultyRequired');
   if (reqEl) {
     reqEl.addEventListener('change', function () {
-      saveFormToEvent(data, day);
+      saveFormToEvent(data, day, { soft: true });
       var n = parseInt(reqEl.value, 10) || 0;
       ev.facultyRequired = n;
       while (ev.faculty.length < n) {
@@ -298,32 +338,24 @@ function wireFormHandlers(data, day, ev) {
   var addTopicBtn = document.getElementById('theoryEvAddTopicBtn');
   if (addTopicBtn) {
     addTopicBtn.onclick = function () {
-      saveFormToEvent(data, day);
+      saveFormToEvent(data, day, { soft: true });
       if (!ev.skillRefs) ev.skillRefs = [];
       ev.skillRefs.push('');
       renderSkillsTopics(ev);
+      wireSkillSelectHandlers(data, day);
     };
-  }
-  var addLibCb = document.getElementById('theoryEvAddToLibrary');
-  if (addLibCb) {
-    addLibCb.addEventListener('change', function () {
-      if (!addLibCb.checked || isLibraryUnlocked()) return;
-      addLibCb.checked = false;
-      requireLibraryUnlock(function () {
-        var el = document.getElementById('theoryEvAddToLibrary');
-        if (el) el.checked = true;
-      });
-    });
   }
 }
 
-function applyTrackTimeDefaults(ev, settings) {
-  if (ev.track === 'skills') {
-    ev.timeStart = settings.defaultSkillsStart || '1200';
-    ev.timeEnd = settings.defaultSkillsEnd || '1550';
-  } else if (ev.track === 'theory' || ev.track === 'exam') {
-    ev.timeStart = settings.defaultLectureStart || '0800';
-    ev.timeEnd = settings.defaultLectureEnd || '1050';
+function applyTrackTimeDefaults(ev, settings, weekday) {
+  var session = sessionForWeekday(
+    settings,
+    ev.track === 'skills' ? 'skills' : 'lecture',
+    weekday
+  );
+  if (ev.track === 'skills' || ev.track === 'theory' || ev.track === 'exam') {
+    ev.timeStart = session.start;
+    ev.timeEnd = session.end;
   }
 }
 
@@ -337,48 +369,71 @@ function updateHoursHint() {
   }
   var start = ScheduleHours.timeInputToHhmm(startEl.value, '');
   var end = ScheduleHours.timeInputToHhmm(endEl.value, '');
-  var hours = TheoryData.hoursFromTimes(start, end);
+  var hours = TheoryData.instructionalHoursFromTimes(start, end);
   hint.textContent = hours > 0 ? hours.toFixed(2) + ' h' : '';
 }
 
-function saveFormToEvent(data, day) {
+/**
+ * @param {{ soft?: boolean }} options soft=true skips required-field alerts (used when switching rows)
+ * @returns {boolean} false when strict validation fails
+ */
+function saveFormToEvent(data, day, options) {
+  options = options || {};
   var ev = currentEvent(day);
-  if (!ev) return;
+  if (!ev) return true;
   var trackEl = document.getElementById('theoryEvTrack');
   if (trackEl) ev.track = trackEl.value;
   var titleEl = document.getElementById('theoryEvTitle');
   if (titleEl) ev.title = titleEl.value.trim() || ev.track;
   var areaEl = document.getElementById('theoryEvContentArea');
   if (areaEl) ev.contentArea = areaEl.value;
+  var notesEl = document.getElementById('theoryEvNotes');
+  if (notesEl) ev.notes = notesEl.value.trim();
   var startEl = document.getElementById('theoryEvStart');
   var endEl = document.getElementById('theoryEvEnd');
   var settings = (data.theory && data.theory.settings) || {};
+  var session = sessionForWeekday(
+    settings,
+    ev.track === 'skills' ? 'skills' : 'lecture',
+    day.weekday
+  );
   if (startEl) {
-    ev.timeStart = ScheduleHours.timeInputToHhmm(
-      startEl.value,
-      ev.track === 'skills' ? (settings.defaultSkillsStart || '1200') : (settings.defaultLectureStart || '0800')
-    );
+    ev.timeStart = ScheduleHours.timeInputToHhmm(startEl.value, session.start);
   }
   if (endEl) {
-    ev.timeEnd = ScheduleHours.timeInputToHhmm(
-      endEl.value,
-      ev.track === 'skills' ? (settings.defaultSkillsEnd || '1550') : (settings.defaultLectureEnd || '1050')
-    );
+    ev.timeEnd = ScheduleHours.timeInputToHhmm(endEl.value, session.end);
   }
   var refEl = document.getElementById('theoryEvModuleRef');
-  if (refEl) {
+  if (refEl && refEl.value !== '__new__') {
     ev.moduleRef = refEl.value || null;
     ev.moduleRefs = ev.moduleRef ? [ev.moduleRef] : [];
+    if (ev.moduleRef) {
+      var topic = TheoryLibrary.getTopicById(ev.moduleRef);
+      if (topic) ev.title = topic.title;
+    }
   }
   var topicSelects = document.querySelectorAll('.theory-skills-topic');
   if (topicSelects.length) {
     ev.skillRefs = Array.prototype.map.call(topicSelects, function (sel) {
-      return sel.value || '';
+      return sel.value === '__new__' ? '' : (sel.value || '');
     }).filter(Boolean);
     ev.description = ev.skillRefs.map(function (id) {
       var skill = TheoryLibrary.getSkillById(id);
       return skill ? skill.title : '';
     }).filter(Boolean).join('; ');
+  }
+  if (ev.track === 'skills') {
+    ev.title = 'Skills lab';
+  }
+  if (!options.soft) {
+    if (ev.track === 'theory' && !ev.moduleRef) {
+      showAlert('Topic required', 'Select a topic from the content library, or choose New Topic.');
+      return false;
+    }
+    if (ev.track === 'skills' && !(ev.skillRefs && ev.skillRefs.length)) {
+      showAlert('Skill required', 'Select at least one skill activity from the library.');
+      return false;
+    }
   }
   var lect = document.getElementById('theoryEvLecturer');
   if (lect) {
@@ -405,18 +460,5 @@ function saveFormToEvent(data, day) {
   }
   ev.categories = categoriesForTrack(ev.track);
   if (ev.track === 'holiday') ev.allDay = true;
-
-  var addLib = document.getElementById('theoryEvAddToLibrary');
-  if (addLib && addLib.checked && ev.title && TheoryLibrary.isReady()) {
-    var applyTopic = function () {
-      TheoryLibrary.addTopic(ev.title).then(function (topic) {
-        if (topic && topic.id) {
-          ev.moduleRef = topic.id;
-          ev.moduleRefs = [topic.id];
-        }
-      });
-    };
-    if (isLibraryUnlocked()) applyTopic();
-    else requireLibraryUnlock(applyTopic);
-  }
+  return true;
 }

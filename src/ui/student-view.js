@@ -8,6 +8,17 @@ import { buildCalendarHtml } from '../export/student-calendar-html.js';
 import { promptBatchExport } from '../export/student-calendar-batch.js';
 import { exportStudentIcs } from '../export/student-calendar-ics.js';
 import { showAlert } from './dialogs.js';
+import {
+  populateRosterFilters,
+  filterStudentsByRosterControls,
+  bindRosterFilterListeners
+} from './student-roster-filters.js';
+
+var FILTER_IDS = {
+  clinicalId: 'studentClinicalGroupFilter',
+  simId: 'studentSimGroupFilter',
+  searchId: 'studentNameSearch'
+};
 
 function selectedCalendarType() {
   var el = document.getElementById('studentCalendarType');
@@ -42,12 +53,16 @@ function render(data) {
   var container = document.getElementById('studentCalendarPrint');
   if (!select || !container) return;
 
+  populateRosterFilters(data, FILTER_IDS);
+
   var prev = select.value;
+  var list = filterStudentsByRosterControls(data, FILTER_IDS);
   select.innerHTML = '<option value="">Select student...</option>';
-  data.students.forEach(function (s) {
+  list.forEach(function (s) {
     select.innerHTML += '<option value="' + s.id + '">' + s.name + ' (' + s.clinicalGroup + ')</option>';
   });
-  if (prev && data.students.some(function (s) { return s.id === prev; })) select.value = prev;
+  if (prev && list.some(function (s) { return s.id === prev; })) select.value = prev;
+  else select.value = '';
 
   var student = selectedStudent(data);
   syncActionButtons(!!student);
@@ -66,6 +81,7 @@ function render(data) {
 function init() {
   var select = document.getElementById('studentViewSelect');
   if (select) select.addEventListener('change', function () { refresh(); });
+  bindRosterFilterListeners(FILTER_IDS, function () { refresh(); });
   var markup = document.getElementById('showMarkupToggle');
   if (markup) markup.addEventListener('change', function () { refresh(); });
   var typeEl = document.getElementById('studentCalendarType');

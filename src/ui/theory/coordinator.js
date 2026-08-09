@@ -14,7 +14,9 @@ function esc(s) {
 }
 
 function formatHour(n) {
-  return (Math.round((n || 0) * 100) / 100).toFixed(2);
+  var rounded = Math.round((n || 0) * 100) / 100;
+  if (Math.abs(rounded - Math.round(rounded)) < 0.001) return String(Math.round(rounded));
+  return String(rounded);
 }
 
 function weekTotalsHtml(summary) {
@@ -33,6 +35,20 @@ function semesterTotalsHtml(totals) {
     formatHour(totals.practicum) + '</div>';
 }
 
+function courseStatusChipHtml(v) {
+  var code = esc(v.courseCode || 'Course');
+  var line;
+  if (v.target == null) {
+    line = 'Scheduled: ' + formatHour(v.scheduled) + ' h (no target set)';
+  } else {
+    line = 'Scheduled: ' + formatHour(v.scheduled) + ' h / Target: ' + formatHour(v.target) + ' h';
+  }
+  return '<div class="theory-coordinator-chip theory-chip-' + (v.status || 'unknown') + '">' +
+    '<div class="theory-coord-chip-code">' + code + '</div>' +
+    '<div class="theory-coord-chip-line">' + line + '</div>' +
+    '</div>';
+}
+
 export function render(data) {
   var chip = document.getElementById('theoryCoordinatorStatusChip');
   var grid = document.getElementById('theoryCoordinatorGrid');
@@ -41,18 +57,10 @@ export function render(data) {
 
   var theory = data.theory;
   var practicumCode = TheoryData.practicumCourseCode(theory);
-  var validation = TheoryData.contactHourValidation(theory, data, practicumCode);
   if (chip) {
-    if (validation.target == null) {
-      chip.textContent = 'Scheduled: ' + validation.scheduled + ' h (no target set)';
-    } else {
-      var statusLabel = validation.status === 'on_target' ? 'on target'
-        : validation.status === 'under' ? validation.delta + ' h under'
-          : validation.delta + ' h over';
-      chip.textContent = 'Scheduled: ' + validation.scheduled + ' h / Target: ' + validation.target +
-        ' h — ' + statusLabel;
-      chip.className = 'theory-coordinator-chip theory-chip-' + validation.status;
-    }
+    var validations = TheoryData.contactHourValidations(theory, data);
+    chip.className = 'theory-coordinator-status';
+    chip.innerHTML = validations.map(courseStatusChipHtml).join('');
   }
 
   var html = '<div class="theory-coordinator-wrap custom-scrollbar"><table class="data-table theory-coordinator-table">' +
@@ -75,7 +83,8 @@ export function render(data) {
   }
 
   var semesterTotals = TheoryData.semesterHourTotals(theory, data, practicumCode);
-  html += '<tr class="theory-coord-semester-totals"><td><strong>Semester</strong></td>' +
+  html += '<tr class="theory-coord-semester-totals">' +
+    '<td class="theory-week-label theory-coord-semester-label"><strong>Semester</strong></td>' +
     '<td colspan="' + WEEK_COLS.length + '"></td>' +
     '<td class="theory-coord-week-totals">' + semesterTotalsHtml(semesterTotals) + '</td></tr>';
 

@@ -4,12 +4,15 @@
 
 import { uid } from './data-model/students.js';
 import { parseDate, getWeekIndexForDate } from './calendar-engine.js';
+import { reindexTheoryDay, reindexTheoryDays } from './theory-day-index.js';
 import {
   WEEKDAYS,
   isLectureTopicEvent,
   stripModuleTitlePrefix,
   renumberWeekModules
 } from './theory-modules.js';
+
+export { reindexTheoryDay, reindexTheoryDays } from './theory-day-index.js';
 
 export var FACULTY_NEEDED_NAME = 'Faculty Needed';
 
@@ -111,6 +114,7 @@ export function syncHolidaysFromSemester(semester) {
   if (!semester || !semester.theory) return semester;
   var theory = semester.theory;
   var weeks = (semester.calendar && semester.calendar.weeks) || [];
+  reindexTheoryDays(semester);
 
   (theory.days || []).forEach(function (day) {
     day.events = (day.events || []).filter(function (ev) {
@@ -240,7 +244,10 @@ export function findDay(theory, date) {
 
 export function ensureDay(theory, semester, date) {
   var day = findDay(theory, date);
-  if (day) return day;
+  if (day) {
+    reindexTheoryDay(semester, day);
+    return day;
+  }
   var weekIndex = getWeekIndexForDate(semester, date);
   var d = parseDate(date);
   var weekday = WEEKDAYS[d ? d.getDay() : 0];
@@ -253,6 +260,7 @@ export function ensureDay(theory, semester, date) {
     isBreak: false,
     events: []
   };
+  if (!theory.days) theory.days = [];
   theory.days.push(day);
   theory.days.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
   return day;

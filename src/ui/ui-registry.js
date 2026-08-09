@@ -36,6 +36,7 @@ export var UI_TABS = [
     id: 'student',
     shell: 'clinical',
     anchors: [
+      'studentClinicalGroupFilter', 'studentSimGroupFilter', 'studentNameSearch',
       'studentViewSelect', 'studentCalendarType', 'showMarkupToggle',
       'printStudentBtn', 'exportStudentIcsBtn', 'batchExportStudentCalBtn', 'studentCalendarPrint'
     ]
@@ -48,7 +49,10 @@ export var UI_TABS = [
   {
     id: 'makeup',
     shell: 'clinical',
-    anchors: ['makeupStudentSelect', 'makeupTypeSelect', 'makeupSimSelect', 'makeupMissedClinicalSelect', 'makeupResults']
+    anchors: [
+      'makeupClinicalGroupFilter', 'makeupSimGroupFilter', 'makeupNameSearch',
+      'makeupStudentSelect', 'makeupTypeSelect', 'makeupSimSelect', 'makeupMissedClinicalSelect', 'makeupResults'
+    ]
   },
   {
     id: 'audit',
@@ -61,8 +65,9 @@ export var UI_TABS = [
     anchors: [
       'saveSetupBtn', 'regenerateSchedulesBtn', 'setupAdvancedConfigBtn', 'finalizeSemesterBtn',
       'setupSections', 'setupFaculty', 'setupSimInstructors', 'setupFacilities', 'setupHolidays', 'setupRoster',
+      'sortRosterAzBtn', 'showStudentEmailDomain', 'cfgStudentEmailDomain',
       'cfgClinicalGroupsList', 'cfgSimGroupsList', 'cfgSimDaysList', 'cfgSimDefaultStart',
-      'cfgSimDefaultEnd', 'cfgSimTimeOverrides', 'setupAdvancedPanel'
+      'cfgSimDefaultEnd', 'cfgSimLunchBreakMinutes', 'cfgSimTimeOverrides', 'setupAdvancedPanel'
     ]
   },
   {
@@ -88,9 +93,8 @@ export var UI_TABS = [
       'theoryMasterGrid', 'theoryTopicLibraryPanel', 'theoryTopicLibraryList', 'theorySkillsLibraryList',
       'theoryLibraryConnectPrompt', 'theoryLibraryConnectBtn', 'theoryLibraryCreateBtn', 'theoryLibraryStatus',
       'theoryLibrarySections', 'theoryLibraryUnlockBtn', 'theoryLibraryLockBtn', 'theoryLibraryUnlockedBanner',
-      'theoryMasterSetup', 'theorySaveSetupBtn', 'theoryAdvancedConfigBtn',
-      'theoryLectureWeekdays', 'theoryDefaultLectureStart', 'theoryDefaultLectureEnd',
-      'theoryDefaultSkillsStart', 'theoryDefaultSkillsEnd', 'theoryDefaultSkillsFacultyRequired',
+      'theoryMasterSetup', 'theorySaveSetupBtn', 'theoryResyncPracticumBtn', 'theoryAdvancedConfigBtn',
+      'theoryLectureSessions', 'theorySkillsSessions', 'theoryDefaultSkillsFacultyRequired',
       'theoryFacultyRoster', 'theorySkillsFacultyRoster', 'theoryModuleSeedBlank', 'theoryModuleSeedPull',
       'theoryModuleSeedSemester', 'theoryModuleSeedApplyBtn', 'theoryMasterToolbar',
       'theoryShowLecturers', 'theoryShowPracticumFaculty', 'theoryShowSkillsLabContent'

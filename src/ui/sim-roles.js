@@ -275,7 +275,6 @@ function render(data) {
     if (!sRoles[simNum]) sRoles[simNum] = {};
     var flagPri = (sRoles.flags && sRoles.flags.primary) || '';
     var flagSec = (sRoles.flags && sRoles.flags.secondary) || '';
-    var rowCls = flagPri === 'high' || flagSec === 'high' ? 'flag-high' : (flagPri === 'weak' || flagSec === 'weak' ? 'flag-weak' : '');
     var isGuest = isGuestSimStudent(student, cell, weekIdx, data, hostGroup);
     var guestHost = cell.simGuestGroup || hostGroup;
     var stickyCls = 'sticky-col' + (isGuest ? ' sim-prog-cell-guest' : '');
@@ -287,11 +286,10 @@ function render(data) {
       : '';
 
     var tr = document.createElement('tr');
-    if (rowCls) tr.className = rowCls;
     var html = '<td class="' + stickyCls + '"' + guestTitle + '><strong>' + esc(student.name) + '</strong>' +
       guestNote + '<br><small>' + esc(student.clinicalGroup) + ' · ' + esc(student.simGroup) + '</small></td>' +
-      '<td style="text-align:center">' + counts.Primary + '</td>' +
-      '<td style="text-align:center">' + counts.Secondary + '</td>' +
+      cumCountCellHtml(counts.Primary, flagPri) +
+      cumCountCellHtml(counts.Secondary, flagSec) +
       '<td style="text-align:center">' + counts.Evaluator + '</td>' +
       '<td style="text-align:center">' + counts.Scribe + '</td>';
 
@@ -319,6 +317,16 @@ function flagOptions(cur) {
     var label = v === 'high' ? 'Strong' : v === 'weak' ? 'Weaker' : 'None';
     return '<option value="' + v + '"' + (v === cur ? ' selected' : '') + '>' + label + '</option>';
   }).join('');
+}
+
+function cumCountCellHtml(count, flag) {
+  var icon = '';
+  if (flag === 'high') {
+    icon = '<span class="role-flag-icon role-flag-strong" title="Strong" aria-label="Strong">⚑</span>';
+  } else if (flag === 'weak') {
+    icon = '<span class="role-flag-icon role-flag-weaker" title="Weaker" aria-label="Weaker">⚑</span>';
+  }
+  return '<td class="role-cum-cell">' + count + icon + '</td>';
 }
 
 function esc(s) {

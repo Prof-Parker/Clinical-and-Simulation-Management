@@ -11,6 +11,8 @@ import * as SetupConfig from '../setup-config/index.js';
 import * as ScheduleHours from '../../core/schedule-hours.js';
 import { markSetupDraft } from './index.js';
 import { getSetupScope, setupEl, setupQueryAll } from './scope.js';
+import { applyRosterFieldToStudent } from './roster-names.js';
+import { applyFacultySlotValue, FACULTY_NEEDED_NAME } from './faculty-slots.js';
 
 export function collectFromFormInto(data, opts) {
   opts = opts || {};
@@ -24,11 +26,19 @@ export function collectFromFormInto(data, opts) {
     if (oldName !== sec.name) sectionRenames[oldName] = sec.name;
   });
 
+  var showDomainEl = setupEl('showStudentEmailDomain');
+  if (showDomainEl && data.meta) {
+    data.meta.showStudentEmailDomain = !!showDomainEl.checked;
+  }
+
   setupQueryAll('setupRoster', '[data-id]').forEach(function (el) {
     var s = data.students.find(function (st) { return st.id === el.dataset.id; });
     if (!s) return;
     if (el.dataset.field === 'facilityId') return;
-    s[el.dataset.field] = el.value;
+    applyRosterFieldToStudent(s, el.dataset.field, el.value, data);
+  });
+  (data.students || []).forEach(function (s) {
+    DataModel.syncStudentDisplayName(s);
   });
 
   applyGroupFacilitiesFromConfig(data);
@@ -62,14 +72,45 @@ export function collectFromFormInto(data, opts) {
     f.clinicalEnd = ScheduleHours.timeInputToHhmm(el.value, ScheduleHours.DEFAULT_CLINICAL_END);
   });
   (data.facilities || []).forEach(ScheduleHours.ensureFacilityTimes);
-  setupQueryAll('setupFaculty', '[data-faculty]').forEach(function (el) {
+  setupQueryAll('setupFaculty', '[data-faculty="slot"]').forEach(function (el) {
     var f = data.faculty[parseInt(el.dataset.idx, 10)];
-    if (f) f.name = el.value;
+    if (!f) return;
+    if (el.value === '__needed__') applyFacultySlotValue(f, '__needed__');
+    else f.needed = false;
+  });
+  setupQueryAll('setupFaculty', '[data-faculty="name"]').forEach(function (el) {
+    var f = data.faculty[parseInt(el.dataset.idx, 10)];
+    if (!f || f.needed) return;
+    var slotEl = el.closest('.setup-faculty-slot');
+    var modeEl = slotEl && slotEl.querySelector('[data-faculty="slot"]');
+    var mode = modeEl ? modeEl.value : '';
+    if (mode === '__needed__') return;
+    var name = el.value.trim();
+    if (name === FACULTY_NEEDED_NAME) applyFacultySlotValue(f, '__needed__');
+    else if (mode === '' && !name) {
+      f.needed = false;
+      f.name = '';
+    } else {
+      f.needed = false;
+      f.name = name;
+    }
   });
   if (!data.simInstructors) data.simInstructors = [];
-  setupQueryAll('setupSimInstructors', '[data-sim-instructor]').forEach(function (el) {
+  setupQueryAll('setupSimInstructors', '[data-sim-instructor="slot"]').forEach(function (el) {
     var f = data.simInstructors[parseInt(el.dataset.idx, 10)];
-    if (f) f.name = el.value.trim();
+    if (!f) return;
+    if (el.value === '__needed__') applyFacultySlotValue(f, '__needed__');
+    else f.needed = false;
+  });
+  setupQueryAll('setupSimInstructors', '[data-sim-instructor="name"]').forEach(function (el) {
+    var f = data.simInstructors[parseInt(el.dataset.idx, 10)];
+    if (!f || f.needed) return;
+    var name = el.value.trim();
+    if (name === FACULTY_NEEDED_NAME) applyFacultySlotValue(f, '__needed__');
+    else {
+      f.needed = false;
+      f.name = name;
+    }
   });
   if (!data.meta.leadFaculty) data.meta.leadFaculty = { name: '', email: '' };
   var leadSel = setupEl('leadFacultySelect');

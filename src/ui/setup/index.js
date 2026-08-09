@@ -19,6 +19,7 @@ import {
 } from './semester-fields.js';
 import {
   renderSections, renderFacilities, renderFaculty, renderSimInstructors, handleSimInstructorClick,
+  handleFacultySlotChange,
   renderLeadFaculty, removeFacility, removeSection,
   syncLeadFacultyEmailFromSelect
 } from './facilities-faculty.js';
@@ -30,7 +31,7 @@ import {
 import * as TheoryData from '../../core/theory-data.js';
 import {
   renderRoster, initRosterDragDrop, needsRebalance, rebalanceStudents, rebalanceSimGroups, getCohortFacilityIdForGroup,
-  cohortFacilitySelectHtml
+  cohortFacilitySelectHtml, sortRosterAlphabetically
 } from './roster.js';
 import { collectFromForm, collectFromFormInto } from './form-collect.js';
 import {
@@ -49,6 +50,7 @@ import {
   markSetupDraft,
   handleSetupDraftInput
 } from './setup-guards.js';
+import { applySetupFinalizedLock, isSetupFinalizedLocked } from './setup-lock.js';
 
 function setupAfterChange(data, opts) {
     if (getSetupScope().isPlayground) {
@@ -91,6 +93,7 @@ function render(data) {
         updateAllHolidayWeekHints(renderData);
         updateAllOrientationWeekHints(renderData);
         updateReadOnlyButtons(renderData);
+        applySetupFinalizedLock(renderData);
         if (!paintScope.isPlayground) renderSetupProposalsPanel();
         if (SetupConfig.applyRoleMode) SetupConfig.applyRoleMode();
       } finally {
@@ -193,15 +196,44 @@ function init() {
     });
 
     bindScoped('finalizeSemesterBtn', 'click', function () {
-      if (!guardSetupEdit()) return;
       var data = getData();
+      if (isSetupFinalizedLocked(data)) {
+        if (!guardEditable('setup')) return;
+        showConfirm(
+          'Unlock setup',
+          'Unlocking will allow changes to the active semester. Proceed with caution',
+          function () {
+            data.meta.finalized = false;
+            notifyChange();
+            refresh();
+          },
+          { confirmLabel: 'Unlock' }
+        );
+        return;
+      }
+      if (!guardSetupEdit()) return;
       collectFromForm(data);
       data.meta.finalized = true;
       notifyChange();
       refresh();
-      showAlert('Finalized', 'Semester finalized.');
+      showAlert('Finalized', 'Semester finalized. Setup is locked until you unlock it.');
     });
 
+    bindScoped('sortRosterAzBtn', 'click', function () {
+      if (!guardSetupEdit()) return;
+      sortRosterAlphabetically(resolveSetupData());
+    });
+
+    bindScoped('showStudentEmailDomain', 'change', function () {
+      if (!guardSetupEdit()) return;
+      if (isSetupFinalizedLocked(resolveSetupData())) return;
+      var data = resolveSetupData();
+      collectFromForm(data);
+      setupAfterChange(data);
+    });
+
+    bindScopedContainer('setupFaculty', 'change', handleFacultySlotChange);
+    bindScopedContainer('setupSimInstructors', 'change', handleFacultySlotChange);
     bindScoped('regenerateSchedulesBtn', 'click', function () {
       runRegenerateSchedules();
     });

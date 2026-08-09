@@ -2,7 +2,7 @@
  * Semester and file migration, audit meta backfill, and legacy import.
  */
 
-import { uid, emptySchedule, emptyCell } from './students.js';
+import { uid, emptySchedule, emptyCell, ensureStudentNameParts } from './students.js';
 import {
   defaultConfig,
   normalizeConfig,
@@ -138,6 +138,18 @@ export function migrateSemester(semester) {
     semester.faculty = semester.faculty.filter(function (f) { return f && typeof f === 'object'; });
   }
   syncSemesterFaculty(semester);
+  semester.simInstructors.forEach(function (f) {
+    if (f.needed === undefined) {
+      f.needed = f.name === 'Faculty Needed';
+    }
+    if (f.needed) f.name = 'Faculty Needed';
+  });
+  (semester.faculty || []).forEach(function (f) {
+    if (f.needed === undefined) {
+      f.needed = f.name === 'Faculty Needed';
+    }
+    if (f.needed) f.name = 'Faculty Needed';
+  });
   if (!Array.isArray(semester.sections) || !semester.sections.length) {
     var seen = {};
     semester.sections = [];
@@ -159,6 +171,7 @@ export function migrateSemester(semester) {
     if (!s.id || seenStudentIds[s.id]) s.id = uid();
     seenStudentIds[s.id] = true;
     if (s.email === undefined) s.email = '';
+    ensureStudentNameParts(s);
     if (!Array.isArray(s.absences)) s.absences = [];
     if (!Array.isArray(s.makeups)) s.makeups = [];
     s.makeups = s.makeups.filter(function (m) { return m && typeof m === 'object'; });
@@ -185,6 +198,7 @@ export function migrateSemester(semester) {
   semester.meta.version = VERSION;
   if (semester.meta.configCustomized === undefined) semester.meta.configCustomized = false;
   if (semester.meta.finalized === undefined) semester.meta.finalized = false;
+  if (semester.meta.showStudentEmailDomain === undefined) semester.meta.showStudentEmailDomain = true;
   ensureAuditMeta(semester.meta);
   var parsed = parseSemesterDisplay(semester);
   if (!semester.meta.semesterSeason && parsed.season) {

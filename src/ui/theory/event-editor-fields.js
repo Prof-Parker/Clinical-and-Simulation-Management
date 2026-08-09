@@ -6,6 +6,7 @@ import * as TheoryData from '../../core/theory-data.js';
 import * as TheoryLibrary from '../../storage/theory-library-storage.js';
 import * as ScheduleHours from '../../core/schedule-hours.js';
 import * as UserDirectory from '../../storage/user-directory.js';
+import { sessionForWeekday } from './master-setup-sessions.js';
 
 export function esc(s) {
   var d = document.createElement('div');
@@ -21,19 +22,23 @@ export function escAttr(s) {
 }
 
 export function topicOptionsHtml(selectedId) {
-  return TheoryLibrary.listTopics().map(function (t) {
+  var html = TheoryLibrary.listTopics().map(function (t) {
     var sel = t.id === selectedId ? ' selected' : '';
     return '<option value="' + escAttr(t.id) + '"' + sel + '>' + esc(t.title) + '</option>';
   }).join('');
+  html += '<option value="__new__">New Topic</option>';
+  return html;
 }
 
 export function skillOptionsHtml(selectedId) {
-  return TheoryLibrary.listSkills().map(function (s) {
+  var html = TheoryLibrary.listSkills().map(function (s) {
     var kinds = (s.kinds || []).map(TheoryLibrary.skillKindLabel).filter(Boolean).join(', ');
     var label = s.title + (kinds ? ' (' + kinds + ')' : '');
     var sel = s.id === selectedId ? ' selected' : '';
     return '<option value="' + escAttr(s.id) + '"' + sel + '>' + esc(label) + '</option>';
   }).join('');
+  html += '<option value="__new__">New skill activity</option>';
+  return html;
 }
 
 export function rosterOptions(roster, selectedName, includeNeeded, includeAllFaculty) {
@@ -45,7 +50,7 @@ export function rosterOptions(roster, selectedName, includeNeeded, includeAllFac
   }
   var seen = {};
   (roster || []).forEach(function (f) {
-    if (!f.name || seen[f.name]) return;
+    if (!f.name || f.needed || f.name === TheoryData.FACULTY_NEEDED_NAME || seen[f.name]) return;
     seen[f.name] = true;
     html += '<option value="' + escAttr(f.name) + '"' +
       (f.name === selectedName ? ' selected' : '') + '>' + esc(f.name) + '</option>';
@@ -64,9 +69,10 @@ export function rosterOptions(roster, selectedName, includeNeeded, includeAllFac
   return html;
 }
 
-export function timeFields(ev, settings, skills) {
-  var defStart = skills ? (settings.defaultSkillsStart || '1200') : (settings.defaultLectureStart || '0800');
-  var defEnd = skills ? (settings.defaultSkillsEnd || '1550') : (settings.defaultLectureEnd || '1050');
+export function timeFields(ev, settings, skills, weekday) {
+  var session = sessionForWeekday(settings, skills ? 'skills' : 'lecture', weekday);
+  var defStart = session.start;
+  var defEnd = session.end;
   return '<div class="theory-ev-time-row">' +
     '<label>Start <input type="time" id="theoryEvStart" class="select-control" value="' +
     escAttr(ScheduleHours.hhmmToTimeInput(ev.timeStart || defStart)) +

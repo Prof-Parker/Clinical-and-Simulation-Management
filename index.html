@@ -360,6 +360,13 @@
         <div id="view-student" class="view-panel">
             <section class="card no-print" style="padding:1.25rem;margin-bottom:1rem">
                 <div class="filters">
+                    <select id="studentClinicalGroupFilter" class="select-control" aria-label="Filter by clinical group">
+                        <option value="all">All clinical groups</option>
+                    </select>
+                    <select id="studentSimGroupFilter" class="select-control" aria-label="Filter by simulation group">
+                        <option value="all">All sim groups</option>
+                    </select>
+                    <input type="search" id="studentNameSearch" class="select-control" placeholder="Search student name" aria-label="Search student name" autocomplete="off">
                     <select id="studentViewSelect" class="select-control" aria-label="Select student"><option value="">Select student...</option></select>
                     <select id="studentCalendarType" class="select-control" aria-label="Calendar view">
                         <option value="summary">Clinical and Sim Summary</option>
@@ -416,19 +423,26 @@
                 <h3 class="section-title">Makeup Day Finder</h3>
                 <p class="section-sub">Find makeup slots by joining existing sessions only. For a missed clinical, select which clinical week was missed, then apply a join at the student&apos;s oriented facility (Week 18 last resort). For a missed simulation, choose Simulation 1–5 (labels include the student&apos;s originally scheduled week), then apply a join where another student already has that Sim (weeks 1–17; Week 18 last resort). Sim-on-clinical-week conflicts prioritize simulation — the clinical is marked missed, then search for clinical makeup (facility join first). Overload slots are makeup-only when a session is at normal capacity.</p>
                 <div class="filters">
-                    <select id="makeupStudentSelect"><option value="">Select student...</option></select>
-                    <select id="makeupTypeSelect">
+                    <select id="makeupClinicalGroupFilter" class="select-control" aria-label="Filter by clinical group">
+                        <option value="all">All clinical groups</option>
+                    </select>
+                    <select id="makeupSimGroupFilter" class="select-control" aria-label="Filter by simulation group">
+                        <option value="all">All sim groups</option>
+                    </select>
+                    <input type="search" id="makeupNameSearch" class="select-control" placeholder="Search student name" aria-label="Search student name" autocomplete="off">
+                    <select id="makeupStudentSelect" class="select-control" aria-label="Select student"><option value="">Select student...</option></select>
+                    <select id="makeupTypeSelect" class="select-control" aria-label="Missed type">
                         <option value="clinical">Missed Clinical</option>
                         <option value="sim">Missed Simulation</option>
                     </select>
-                    <select id="makeupSimSelect" class="hidden" aria-label="Missed simulation">
+                    <select id="makeupSimSelect" class="select-control hidden" aria-label="Missed simulation">
                         <option value="1">Simulation 1</option>
                         <option value="2">Simulation 2</option>
                         <option value="3">Simulation 3</option>
                         <option value="4">Simulation 4</option>
                         <option value="5">Simulation 5</option>
                     </select>
-                    <select id="makeupMissedClinicalSelect" class="hidden" aria-label="Missed clinical week">
+                    <select id="makeupMissedClinicalSelect" class="select-control hidden" aria-label="Missed clinical week">
                         <option value="">Select missed clinical…</option>
                     </select>
                 </div>
@@ -500,6 +514,9 @@
                         <label>Clinical makeup target week<input type="number" id="cfgClinMakeupPrimary" min="1" max="18" placeholder="Auto" title="Leave blank to use second-to-last active week"></label>
                         <label>Clinical makeup last resort week<input type="number" id="cfgClinMakeupFallback" min="1" max="18" placeholder="Auto" title="Leave blank to use last active week"></label>
                         <label>Sim makeup last resort week<input type="number" id="cfgSimMakeupLastResort" min="1" max="18" placeholder="Auto" title="Leave blank to use last active week"></label>
+                        <label>Default student email domain
+                            <input type="text" id="cfgStudentEmailDomain" placeholder="@students.example.edu" title="Applied to student email local-parts when the domain is hidden on the roster (e.g. @students.example.edu)">
+                        </label>
                     </div>
                     <p class="section-sub">Makeup week fields left blank use the last active semester weeks (after holidays/breaks).</p>
                     <div class="setup-config-divider"></div>
@@ -564,13 +581,16 @@
                             <div id="cfgSimGroupsList" class="config-list"></div>
                             <div class="setup-sim-times-block">
                                 <h4 style="margin:0">Simulation times</h4>
-                                <p class="section-sub">Default session window for calendars and audit hours. Optional overrides per sim number.</p>
+                                <p class="section-sub">Default session window for calendars and audit hours. Optional overrides per sim number. Lunch break is deducted only from Coordinator contact-hour totals (student calendars still show full start–end).</p>
                                 <div class="setup-sim-times-grid">
                                     <label>Default start
                                         <input type="time" id="cfgSimDefaultStart" aria-label="Default simulation start time">
                                     </label>
                                     <label>Default end
                                         <input type="time" id="cfgSimDefaultEnd" aria-label="Default simulation end time">
+                                    </label>
+                                    <label>Lunch break (minutes)
+                                        <input type="number" id="cfgSimLunchBreakMinutes" class="select-control" min="0" max="240" step="5" value="30" aria-label="Simulation lunch break minutes for contact hours">
                                     </label>
                                 </div>
                                 <div id="cfgSimTimeOverrides" class="config-list" style="margin-top:0.65rem"></div>
@@ -591,9 +611,14 @@
                 <div class="setup-roster-header">
                     <div>
                         <h3 class="section-title" style="margin:0">Student Roster</h3>
-                        <p class="section-sub" style="margin:0.35rem 0 0">Drag students between cohorts. Set each student&rsquo;s registrar section individually, or use the cohort Section control to assign all at once (you can still split students across sections afterward).</p>
+                        <p class="section-sub" style="margin:0.35rem 0 0">Drag students between cohorts. Set each student&rsquo;s registrar section individually, or use the cohort Section / Sim controls to assign all at once (you can still split students afterward).</p>
+                        <label class="filter-check filter-check-compact" style="margin-top:0.5rem">
+                            <input type="checkbox" id="showStudentEmailDomain" checked>
+                            Show email domain
+                        </label>
                     </div>
                     <div class="setup-roster-actions">
+                        <button id="sortRosterAzBtn" class="btn btn-sm" type="button" title="Sort students A–Z by last name within each clinical cohort">Sort A–Z</button>
                         <button id="rebalanceStudentsBtn" class="btn btn-sm btn-rebalance-clinical" type="button" title="Evenly distribute students across clinical groups">Rebalance clinical groups</button>
                         <button id="rebalanceSimGroupsBtn" class="btn btn-sm btn-rebalance-sim" type="button" title="Balance sim groups to session cap and regenerate until guest soft cap is met">Rebalance simulation groups</button>
                     </div>
@@ -715,6 +740,7 @@
             <div class="setup-actions-sticky card no-print">
                 <div class="setup-actions">
                     <button id="theorySaveSetupBtn" class="btn btn-primary" type="button">Save Setup</button>
+                    <button id="theoryResyncPracticumBtn" class="btn" type="button">Resync with practicum calendar</button>
                     <button id="theoryAdvancedConfigBtn" class="btn" type="button" aria-expanded="false">Advanced Configuration</button>
                 </div>
             </div>
@@ -724,25 +750,17 @@
                 <div id="theoryMasterSetup" class="theory-master-setup setup-advanced-panel hidden">
                     <div class="theory-master-setup-body">
                         <div class="theory-master-setup-grid">
-                            <fieldset class="theory-master-setup-fieldset">
+                            <fieldset class="theory-master-setup-fieldset theory-master-setup-sessions">
                                 <legend>Lecture days &amp; times</legend>
-                                <div id="theoryLectureWeekdays" class="theory-weekday-checks" role="group" aria-label="Default lecture weekdays"></div>
-                                <label>Lecture start
-                                    <input type="time" id="theoryDefaultLectureStart" class="select-control" aria-label="Default lecture start">
-                                </label>
-                                <label>Lecture end
-                                    <input type="time" id="theoryDefaultLectureEnd" class="select-control" aria-label="Default lecture end">
-                                </label>
-                                <label>Skills lab start
-                                    <input type="time" id="theoryDefaultSkillsStart" class="select-control" aria-label="Default skills start">
-                                </label>
-                                <label>Skills lab end
-                                    <input type="time" id="theoryDefaultSkillsEnd" class="select-control" aria-label="Default skills end">
-                                </label>
+                                <div id="theoryLectureSessions" class="config-list" role="group" aria-label="Lecture days and times"></div>
                             </fieldset>
                             <fieldset class="theory-master-setup-fieldset">
                                 <legend>Theory faculty roster</legend>
                                 <div id="theoryFacultyRoster" class="config-list"></div>
+                            </fieldset>
+                            <fieldset class="theory-master-setup-fieldset theory-master-setup-sessions">
+                                <legend>Skills lab days &amp; times</legend>
+                                <div id="theorySkillsSessions" class="config-list" role="group" aria-label="Skills lab days and times"></div>
                             </fieldset>
                             <fieldset class="theory-master-setup-fieldset">
                                 <legend>Skills lab faculty roster</legend>
@@ -751,7 +769,7 @@
                                 </label>
                                 <div id="theorySkillsFacultyRoster" class="config-list"></div>
                             </fieldset>
-                            <fieldset class="theory-master-setup-fieldset">
+                            <fieldset class="theory-master-setup-fieldset theory-master-setup-span">
                                 <legend>Module topics</legend>
                                 <label class="filter-check filter-check-compact">
                                     <input type="radio" name="theoryModuleSeedMode" id="theoryModuleSeedBlank" value="blank" checked>
@@ -839,7 +857,7 @@
             <section class="card" style="padding:1.25rem">
                 <div class="theory-coordinator-header">
                     <h3 class="section-title">Coordinator</h3>
-                    <span id="theoryCoordinatorStatusChip" class="theory-coordinator-chip"></span>
+                    <div id="theoryCoordinatorStatusChip" class="theory-coordinator-status"></div>
                     <button id="theoryHourSettingsBtn" class="btn btn-sm" type="button">Hour settings</button>
                 </div>
                 <div id="theorySimWarnBanner" class="closeout-banner hidden" role="status"></div>

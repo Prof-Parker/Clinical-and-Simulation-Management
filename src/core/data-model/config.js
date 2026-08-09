@@ -33,13 +33,17 @@ export function defaultConfig() {
     simDays: ['Mon', 'Tue'],
     simDefaultStart: '0900',
     simDefaultEnd: '1500',
+    /** Minutes deducted from sim wall-clock for Coordinator contact-hour rollups. */
+    simLunchBreakMinutes: 30,
     simTimeOverrides: [],
     /** When true, a holiday date blocks the entire instructional week for algo sim/clinical. */
     holidayBlocksFullWeek: true,
     /** Week 17 (makeup primary) clinical clustering — applied only via explicit dashboard Apply. */
     week17MakeupMode: 'current',
     week17MakeupTargetDay: 'Mon',
-    week17MakeupPreferredSiteId: null
+    week17MakeupPreferredSiteId: null,
+    /** Default domain appended to student email local-parts (e.g. @students.example.edu). */
+    studentEmailDomain: ''
   };
 }
 
@@ -140,6 +144,10 @@ export function normalizeConfig(cfg) {
   cfg.maxGuestSimsPerStudent = guestSoft;
   if (!cfg.simDefaultStart) cfg.simDefaultStart = '0900';
   if (!cfg.simDefaultEnd) cfg.simDefaultEnd = '1500';
+  var lunchMins = parseInt(cfg.simLunchBreakMinutes, 10);
+  if (isNaN(lunchMins) || lunchMins < 0) lunchMins = 30;
+  if (lunchMins > 240) lunchMins = 240;
+  cfg.simLunchBreakMinutes = lunchMins;
   if (!Array.isArray(cfg.simTimeOverrides)) cfg.simTimeOverrides = [];
   if (cfg.holidayBlocksFullWeek === undefined || cfg.holidayBlocksFullWeek === null) {
     cfg.holidayBlocksFullWeek = true;
@@ -158,6 +166,12 @@ export function normalizeConfig(cfg) {
   cfg.clinicalDaysRequired = (isNaN(clinDays) || clinDays < 1) ? 10 : clinDays;
   var simDaysReq = parseInt(cfg.simDaysRequired, 10);
   cfg.simDaysRequired = (isNaN(simDaysReq) || simDaysReq < 1) ? 5 : simDaysReq;
+  if (cfg.studentEmailDomain == null) cfg.studentEmailDomain = '';
+  else {
+    var domain = String(cfg.studentEmailDomain).trim();
+    if (domain && domain.charAt(0) !== '@') domain = '@' + domain;
+    cfg.studentEmailDomain = domain;
+  }
   return cfg;
 }
 
@@ -215,8 +229,13 @@ export function syncSemesterFaculty(semester) {
     byGroup[f.clinicalGroup] = f;
   });
   semester.faculty = groups.map(function (g) {
-    if (byGroup[g]) return byGroup[g];
-    return { id: uid(), name: '', clinicalGroup: g };
+    if (byGroup[g]) {
+      var existing = byGroup[g];
+      if (existing.needed === undefined) existing.needed = false;
+      if (existing.needed) existing.name = 'Faculty Needed';
+      return existing;
+    }
+    return { id: uid(), name: '', clinicalGroup: g, needed: false };
   });
 }
 
