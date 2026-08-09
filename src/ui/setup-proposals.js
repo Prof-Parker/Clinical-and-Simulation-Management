@@ -11,7 +11,8 @@ import * as SetupConfig from './setup-config/index.js';
 import * as SetupDraft from '../proposals/setup-draft.js';
 import * as UserSession from '../auth/user-session.js';
 import { getData, notifyChange } from '../core/state.js';
-import { showAlert } from './dialogs.js';
+import { showAlert, escapeHtml } from './dialogs.js';
+import { escAttr } from './setup/dom-utils.js';
 
 var delegationBound = false;
 
@@ -128,13 +129,14 @@ var delegationBound = false;
       : { before: String(p.currentValue), after: String(p.proposedValue) };
     var actions = '';
     if (canReview) {
-      actions = '<button type="button" class="btn btn-sm proposal-approve" data-prop-id="' + p.id + '">✔</button>' +
-        '<button type="button" class="btn btn-sm proposal-deny" data-prop-id="' + p.id + '">✕</button>';
+      actions = '<button type="button" class="btn btn-sm proposal-approve" data-prop-id="' + escAttr(p.id) + '">✔</button>' +
+        '<button type="button" class="btn btn-sm proposal-deny" data-prop-id="' + escAttr(p.id) + '">✕</button>';
     }
+    var byName = p.proposedBy ? p.proposedBy.name : '';
     return '<div class="proposal-row proposal-pending">' +
-      '<span class="proposal-path">' + label + '</span>: ' +
-      change.before + ' → ' + change.after + staleTag +
-      ' <span class="proposal-by">by ' + (p.proposedBy ? p.proposedBy.name : '') + '</span> ' +
+      '<span class="proposal-path">' + escapeHtml(label) + '</span>: ' +
+      escapeHtml(change.before) + ' → ' + escapeHtml(change.after) + staleTag +
+      ' <span class="proposal-by">by ' + escapeHtml(byName) + '</span> ' +
       actions + '</div>';
   }
 

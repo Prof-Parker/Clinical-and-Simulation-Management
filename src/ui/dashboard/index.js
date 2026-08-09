@@ -142,14 +142,17 @@ function renderCellHtml(cell, student, data, weekIndex) {
     var hasMakeupClin = cell.makeupClinical;
     var hasSim = cell.sim;
     var isOrientWeek = Orientation && Orientation.isOrientationWeek(data, student, weekIndex);
+    var orientLabel = isOrientWeek
+      ? Orientation.getOrientationLabel(data, student, weekIndex)
+      : '';
     var orientHtml = isOrientWeek
-      ? '<span class="badge-orient">' + Orientation.getOrientationLabel(data, student, weekIndex) + '</span>'
+      ? '<span class="badge-orient">' + escapeHtml(orientLabel) + '</span>'
       : '';
     var holidayLabel = ScheduleHolidayLabel.formatHolidayIndicator(
       ScheduleHolidayLabel.holidayIndicatorDays(data, student, weekIndex)
     );
     var holidayHtml = holidayLabel
-      ? '<span class="badge-holiday">' + holidayLabel + '</span>'
+      ? '<span class="badge-holiday">' + escapeHtml(holidayLabel) + '</span>'
       : '';
 
     if (hasMakeupClin && !hasScheduledClin && !hasSim && !isOrientWeek) {
@@ -164,7 +167,7 @@ function renderCellHtml(cell, student, data, weekIndex) {
         return '<div class="flex-col">' + orientHtml + holidayHtml + '</div>';
       }
       if (isOrientWeek) return '<div class="flex-col">' + orientHtml + '</div>';
-      if (holidayLabel) return '<div class="cell-holiday">' + holidayLabel + '</div>';
+      if (holidayLabel) return '<div class="cell-holiday">' + escapeHtml(holidayLabel) + '</div>';
       return '<div class="cell-empty">-</div>';
     }
 
@@ -176,14 +179,14 @@ function renderCellHtml(cell, student, data, weekIndex) {
       var siteSuffix = ClinicalSites
         ? ClinicalSites.facilityInitialsForCell(data, student, weekIndex)
         : '';
-      var siteText = siteSuffix ? ' ' + siteSuffix : '';
-      html += '<span class="' + cls + '">CLIN (' + cDay.toUpperCase() + ')' + siteText + '</span>';
+      var siteText = siteSuffix ? ' ' + escapeHtml(siteSuffix) : '';
+      html += '<span class="' + cls + '">CLIN (' + escapeHtml(String(cDay || '').toUpperCase()) + ')' + siteText + '</span>';
     }
     if (hasMakeupClin && (hasScheduledClin || hasSim)) {
       var mTier = MakeupDisplay.getClinicalMakeupTier(cell, student, weekIndex);
       var star = clinMeta && clinMeta.overload ? '*' : '';
-      var day = clinMeta && clinMeta.joinedDay ? clinMeta.joinedDay.toUpperCase() : cDay.toUpperCase();
-      html += '<span class="badge-clin badge-clin-makeup ' + MakeupDisplay.tierClass(mTier) + '">MAKEUP (' + day + ')' + star + '</span>';
+      var day = clinMeta && clinMeta.joinedDay ? clinMeta.joinedDay.toUpperCase() : String(cDay || '').toUpperCase();
+      html += '<span class="badge-clin badge-clin-makeup ' + MakeupDisplay.tierClass(mTier) + '">MAKEUP (' + escapeHtml(day) + ')' + star + '</span>';
     }
     if (hasSim) {
       var simTier = cell.simMakeup ? MakeupDisplay.getSimMakeupTier(cell, student, weekIndex) : null;
@@ -196,13 +199,13 @@ function renderCellHtml(cell, student, data, weekIndex) {
       var simStar = cell.simMakeup && cell.simOverload ? '*' : '';
       var guestGroup = resolveDisplayedSimGuestGroup(student, cell, weekIndex, data);
       var guestNote = guestGroup
-        ? ' (' + guestGroup + '*)'
+        ? ' (' + escapeHtml(guestGroup) + '*)'
         : '';
       var guestTitle = guestGroup
-        ? ' title="Primary: ' + student.simGroup + ' · Guest: ' + guestGroup + '"'
+        ? ' title="Primary: ' + escapeHtml(student.simGroup) + ' · Guest: ' + escapeHtml(guestGroup) + '"'
         : '';
-      html += '<span class="' + simCls + '"' + guestTitle + '>SIM ' + cell.sim + guestNote +
-        ' (' + (cell.simDay || 'Mon').toUpperCase() + ')' + simStar + '</span>';
+      html += '<span class="' + simCls + '"' + guestTitle + '>SIM ' + escapeHtml(String(cell.sim)) + guestNote +
+        ' (' + escapeHtml(String(cell.simDay || 'Mon').toUpperCase()) + ')' + simStar + '</span>';
     }
     html += '</div>';
     return html;
@@ -286,7 +289,7 @@ function render(data, options) {
         if (Orientation && Orientation.weekHasOrientationConflict(data, student, wi)) {
           tdClass += ' cell-orientation-conflict';
         }
-        cells += '<td class="' + tdClass + '" data-student="' + student.id + '" data-week="' + wi + '">' +
+        cells += '<td class="' + tdClass + '" data-student="' + escapeHtml(student.id) + '" data-week="' + wi + '">' +
           renderCellHtml(cell, student, data, wi) + '</td>';
       });
       cells += scheduleRightColsHtml(vr);

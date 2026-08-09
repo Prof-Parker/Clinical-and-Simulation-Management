@@ -32,6 +32,7 @@ import {
   renderCourseDropdown
 } from './course-selector.js';
 import { showAlert } from './dialogs.js';
+import { escAttr } from './setup/dom-utils.js';
 import * as Permissions from '../auth/permissions.js';
 import * as UserTemplate from '../auth/user-template.js';
 import * as UserSession from '../auth/user-session.js';
@@ -109,7 +110,7 @@ export function refreshSemesterSwitchMenu() {
     var parts = DataModel.parseSemesterDisplay(sem);
     var label = buildSemesterLabelHtml(parts);
     return '<button type="button" class="menu-item menu-item-nested" role="menuitem" data-semester-id="' +
-      sem.id + '"' + (sem.id === activeId ? ' aria-current="true"' : '') + '>' + label + '</button>';
+      escAttr(sem.id) + '"' + (sem.id === activeId ? ' aria-current="true"' : '') + '>' + label + '</button>';
   }).join('');
 }
 

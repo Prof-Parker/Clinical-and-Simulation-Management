@@ -70,21 +70,22 @@ function siteWeekRangeRow(data, group, range, rangeIndex, canRemove) {
     var facId = range.facilityId || getGroupFacilityIds(data, group)[0];
     var start = range.startWeekIndex != null ? range.startWeekIndex : defaultRangeStart(data);
     var end = range.endWeekIndex != null ? range.endWeekIndex : Math.min(17, start + 2);
-    return '<div class="clin-site-range-row" data-clin-site-range-row="' + group + '" data-clin-range-index="' + rangeIndex + '">' +
-      '<select data-clin-site-range-facility data-clin-group="' + group + '" aria-label="' + group + ' range facility">' +
+    var gAttr = escAttr(group);
+    return '<div class="clin-site-range-row" data-clin-site-range-row="' + gAttr + '" data-clin-range-index="' + rangeIndex + '">' +
+      '<select data-clin-site-range-facility data-clin-group="' + gAttr + '" aria-label="' + gAttr + ' range facility">' +
       groupFacilitySelectHtml(data, group, facId) + '</select>' +
       '<div class="clin-site-range-week-field">' +
-      '<select data-clin-site-range-start data-clin-group="' + group + '" aria-label="From week">' +
+      '<select data-clin-site-range-start data-clin-group="' + gAttr + '" aria-label="From week">' +
       weekSelectForGroup(data, start) + '</select>' +
-      '<span class="clin-site-range-week-hint" data-clin-range-start-hint>' + weekHintText(data, start) + '</span>' +
+      '<span class="clin-site-range-week-hint" data-clin-range-start-hint>' + escHtml(weekHintText(data, start)) + '</span>' +
       '</div>' +
       '<div class="clin-site-range-week-field">' +
-      '<select data-clin-site-range-end data-clin-group="' + group + '" aria-label="To week">' +
+      '<select data-clin-site-range-end data-clin-group="' + gAttr + '" aria-label="To week">' +
       weekSelectForGroup(data, end) + '</select>' +
-      '<span class="clin-site-range-week-hint" data-clin-range-end-hint>' + weekHintText(data, end) + '</span>' +
+      '<span class="clin-site-range-week-hint" data-clin-range-end-hint>' + escHtml(weekHintText(data, end)) + '</span>' +
       '</div>' +
       (canRemove
-        ? '<button type="button" class="btn btn-icon-remove remove-clin-site-range" data-clin-group="' + group + '" aria-label="Remove week range">&times;</button>'
+        ? '<button type="button" class="btn btn-icon-remove remove-clin-site-range" data-clin-group="' + gAttr + '" aria-label="Remove week range">&times;</button>'
         : '<span class="section-sub" style="font-size:0.75rem">Min. 1</span>') +
       '</div>';
   }
@@ -105,9 +106,10 @@ function renderGroupWeekPlan(data, group) {
     ranges.forEach(function (r, idx) {
       rowsHtml += siteWeekRangeRow(data, group, r, idx, ranges.length > 1 || usesRanges);
     });
-    return '<div class="clin-group-week-plan" data-clin-group-week-plan="' + group + '">' +
-      '<label class="filter-check clin-week-ranges-toggle" for="clinWeekRanges-' + group + '">' +
-      '<input type="checkbox" id="clinWeekRanges-' + group + '" data-clin-week-ranges-toggle data-clin-group="' + group + '"' +
+    var gAttr = escAttr(group);
+    return '<div class="clin-group-week-plan" data-clin-group-week-plan="' + gAttr + '">' +
+      '<label class="filter-check clin-week-ranges-toggle" for="clinWeekRanges-' + gAttr + '">' +
+      '<input type="checkbox" id="clinWeekRanges-' + gAttr + '" data-clin-week-ranges-toggle data-clin-group="' + gAttr + '"' +
       (usesRanges ? ' checked' : '') + '> Use week ranges</label>' +
       '<p class="section-sub clin-week-ranges-hint">Assign each site to semester weeks (e.g. Cal Vet Wk 4–6, SRMC Wk 7–15). ' +
       'Weeks outside ranges use the primary site.</p>' +
@@ -115,41 +117,43 @@ function renderGroupWeekPlan(data, group) {
       '<div class="clin-site-ranges-head" aria-hidden="true">' +
       '<span>Facility</span><span>From</span><span>To</span><span></span></div>' +
       rowsHtml +
-      '<button type="button" class="btn btn-sm add-clin-site-range" data-clin-group="' + group + '">Add range</button>' +
+      '<button type="button" class="btn btn-sm add-clin-site-range" data-clin-group="' + gAttr + '">Add range</button>' +
       '</div></div>';
   }
 
 function clinicalSiteRow(data, group, day, siteIndex, facId, canRemoveGroup, canRemoveSite) {
     var isPrimary = siteIndex === 0;
     var facilityHtml = cohortFacilitySelectHtml(data, group, facId);
+    var gAttr = escAttr(group);
+    var gHtml = escHtml(group);
     var labelHtml = isPrimary
-      ? '<span class="config-group-label">' + group + '</span>'
+      ? '<span class="config-group-label">' + gHtml + '</span>'
       : '<span class="config-group-label config-group-label-empty" aria-hidden="true"></span>';
     var dayHtml = isPrimary
-      ? '<select data-clin="day" class="clin-day-select" aria-label="' + group + ' clinical day">' +
+      ? '<select data-clin="day" class="clin-day-select" aria-label="' + gAttr + ' clinical day">' +
         daySelectHtml(day) + '</select>'
       : '<span class="clin-day-spacer" aria-hidden="true"></span>';
     var removeHtml = '';
     var addSiteHtml = '<span class="clin-row-add-site-spacer" aria-hidden="true"></span>';
     if (isPrimary) {
-      addSiteHtml = '<button type="button" class="btn btn-sm add-clin-group-site clin-row-add-site" data-clin-group="' + group + '" ' +
-        'aria-label="Add site for ' + group + '">Add site</button>';
+      addSiteHtml = '<button type="button" class="btn btn-sm add-clin-group-site clin-row-add-site" data-clin-group="' + gAttr + '" ' +
+        'aria-label="Add site for ' + gAttr + '">Add site</button>';
       removeHtml = canRemoveGroup
         ? '<button type="button" class="btn btn-icon-remove remove-clin-group" aria-label="Remove clinical group" title="Remove clinical group">&times;</button>'
         : '<span class="section-sub" style="font-size:0.75rem">Min. 1</span>';
     } else if (canRemoveSite) {
       removeHtml = '<button type="button" class="btn btn-icon-remove remove-clin-site" ' +
-        'data-clin-group="' + group + '" data-clin-site-index="' + siteIndex + '" ' +
-        'aria-label="Remove site for ' + group + '" title="Remove site">&times;</button>';
+        'data-clin-group="' + gAttr + '" data-clin-site-index="' + siteIndex + '" ' +
+        'aria-label="Remove site for ' + gAttr + '" title="Remove site">&times;</button>';
     } else {
       removeHtml = '<span class="section-sub" style="font-size:0.75rem">Min. 1</span>';
     }
     var rowClass = 'config-list-row' + (isPrimary ? '' : ' clin-site-continuation');
-    return '<div class="' + rowClass + '" data-clin-group-row="' + group + '" data-clin-site-index="' + siteIndex + '">' +
+    return '<div class="' + rowClass + '" data-clin-group-row="' + gAttr + '" data-clin-site-index="' + siteIndex + '">' +
       labelHtml +
       dayHtml +
-      '<select data-clin-site-facility data-clin-group="' + group + '" data-clin-site-index="' + siteIndex + '" ' +
-      'aria-label="' + group + ' clinical site ' + (siteIndex + 1) + '">' + facilityHtml + '</select>' +
+      '<select data-clin-site-facility data-clin-group="' + gAttr + '" data-clin-site-index="' + siteIndex + '" ' +
+      'aria-label="' + gAttr + ' clinical site ' + (siteIndex + 1) + '">' + facilityHtml + '</select>' +
       addSiteHtml +
       removeHtml +
       '</div>';
@@ -164,7 +168,7 @@ function renderClinicalGroupsList(data) {
       var day = cfg.clinicalGroupDays[g] || 'Mon';
       var facIds = getGroupFacilityIds(data, g);
       if (!facIds.length) facIds = [''];
-      html += '<div class="clin-group-block" data-clin-group-block="' + g + '">';
+      html += '<div class="clin-group-block" data-clin-group-block="' + escAttr(g) + '">';
       facIds.forEach(function (facId, siteIndex) {
         html += clinicalSiteRow(
           data, g, day, siteIndex, facId,

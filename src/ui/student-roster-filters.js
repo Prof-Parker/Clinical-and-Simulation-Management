@@ -26,9 +26,16 @@ export function populateRosterFilters(data, ids) {
   var simEl = document.getElementById(ids.simId || '');
   if (clinEl) {
     var prevClin = clinEl.value || 'all';
-    clinEl.innerHTML = '<option value="all">All clinical groups</option>';
+    clinEl.innerHTML = '';
+    var allClin = document.createElement('option');
+    allClin.value = 'all';
+    allClin.textContent = 'All clinical groups';
+    clinEl.appendChild(allClin);
     DataModel.getClinicalGroups(data.config).forEach(function (g) {
-      clinEl.innerHTML += '<option value="' + g + '">' + clinicalGroupFilterLabel(data, g) + '</option>';
+      var opt = document.createElement('option');
+      opt.value = g;
+      opt.textContent = clinicalGroupFilterLabel(data, g);
+      clinEl.appendChild(opt);
     });
     if (prevClin && (prevClin === 'all' || DataModel.getClinicalGroups(data.config).indexOf(prevClin) >= 0)) {
       clinEl.value = prevClin;
@@ -36,9 +43,16 @@ export function populateRosterFilters(data, ids) {
   }
   if (simEl) {
     var prevSim = simEl.value || 'all';
-    simEl.innerHTML = '<option value="all">All sim groups</option>';
+    simEl.innerHTML = '';
+    var allSim = document.createElement('option');
+    allSim.value = 'all';
+    allSim.textContent = 'All sim groups';
+    simEl.appendChild(allSim);
     DataModel.getSimGroups(data.config).forEach(function (sg) {
-      simEl.innerHTML += '<option value="' + sg + '">' + sg + '</option>';
+      var opt = document.createElement('option');
+      opt.value = sg;
+      opt.textContent = sg;
+      simEl.appendChild(opt);
     });
     if (prevSim && (prevSim === 'all' || DataModel.getSimGroups(data.config).indexOf(prevSim) >= 0)) {
       simEl.value = prevSim;

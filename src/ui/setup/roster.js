@@ -113,26 +113,27 @@ function moveCohortSelectHtml(data, student) {
   var html = '<option value="">Move…</option>';
   DataModel.getClinicalGroups(data.config).forEach(function (g) {
     if (g === student.clinicalGroup) return;
-    html += '<option value="' + g + '">' + g + '</option>';
+    html += '<option value="' + escAttr(g) + '">' + escHtml(g) + '</option>';
   });
   return html;
 }
 
 function studentRowHtml(data, student) {
-  return '<div class="setup-student-row" data-student-id="' + student.id + '">' +
+  var sid = escAttr(student.id);
+  return '<div class="setup-student-row" data-student-id="' + sid + '">' +
     '<button type="button" class="drag-handle" draggable="true" aria-label="Drag to move ' + escAttr(student.name || 'student') + ' to another cohort" title="Drag to another cohort">⠿</button>' +
-    '<select class="move-cohort-select" data-student-id="' + student.id + '" aria-label="Move to clinical group" title="Move to clinical group">' +
+    '<select class="move-cohort-select" data-student-id="' + sid + '" aria-label="Move to clinical group" title="Move to clinical group">' +
     moveCohortSelectHtml(data, student) + '</select>' +
     studentNameInputsHtml(student, escAttr) +
     studentEmailInputHtml(student, data, escAttr) +
-    '<select data-field="section" data-id="' + student.id + '" aria-label="Section">' + sectionSelectHtml(data, student) + '</select>' +
-    '<select data-field="simGroup" data-id="' + student.id + '" aria-label="Simulation group">' +
+    '<select data-field="section" data-id="' + sid + '" aria-label="Section">' + sectionSelectHtml(data, student) + '</select>' +
+    '<select data-field="simGroup" data-id="' + sid + '" aria-label="Simulation group">' +
     DataModel.getSimGroups(data.config).map(function (sg) {
-      return '<option value="' + sg + '"' + (student.simGroup === sg ? ' selected' : '') + '>' + sg + '</option>';
+      return '<option value="' + escAttr(sg) + '"' + (student.simGroup === sg ? ' selected' : '') + '>' + escHtml(sg) + '</option>';
     }).join('') +
     '</select>' +
-    '<span class="setup-facility-readonly" title="Set via Clinical groups in Facilities &amp; Clinical Groups">' + escAttr(facilityName(data, student.facilityId)) + '</span>' +
-    '<button type="button" class="btn btn-icon-remove remove-student-btn" data-student-id="' + student.id + '" aria-label="Remove student" title="Remove student">&times;</button>' +
+    '<span class="setup-facility-readonly" title="Set via Clinical groups in Facilities &amp; Clinical Groups">' + escHtml(facilityName(data, student.facilityId)) + '</span>' +
+    '<button type="button" class="btn btn-icon-remove remove-student-btn" data-student-id="' + sid + '" aria-label="Remove student" title="Remove student">&times;</button>' +
     '</div>';
 }
 
@@ -238,8 +239,8 @@ function renderRoster(data) {
       '<div class="setup-group-header">' +
       '<div class="setup-group-header-main">' +
       '<div class="setup-group-header-info">' +
-      '<h4>' + g + ' Cohort</h4>' +
-      '<span class="setup-group-day">' + clinDay + ' clinical</span>' +
+      '<h4>' + escHtml(g) + ' Cohort</h4>' +
+      '<span class="setup-group-day">' + escHtml(clinDay) + ' clinical</span>' +
       '<span class="setup-group-count">' + cohort.length + ' / ' + maxPer + ' students</span>' +
       (sectionSummary ? '<span class="setup-group-sections section-sub" title="Registrar sections in this cohort">' +
         escHtml(sectionSummary) + '</span>' : '') +
@@ -247,18 +248,19 @@ function renderRoster(data) {
       cohortSectionBulkSelectHtml(data, g, cohort) +
       cohortSimBulkSelectHtml(data, g, cohort) +
       '<div class="setup-group-header-actions">' +
-      '<button type="button" class="btn btn-sm add-student-btn" data-clinical-group="' + g + '">Add student</button>' +
+      '<button type="button" class="btn btn-sm add-student-btn" data-clinical-group="' + escAttr(g) + '">Add student</button>' +
       '</div></div></div>' +
       columnHeadersHtml;
     var inner = document.createElement('div');
     inner.className = 'setup-group-dropzone';
     inner.setAttribute('data-drop-group', g);
-    cohort.forEach(function (s) {
-      inner.innerHTML += studentRowHtml(data, s);
-    });
+    var rowsHtml = cohort.map(function (s) {
+      return studentRowHtml(data, s);
+    }).join('');
     if (!cohort.length) {
-      inner.innerHTML += '<p class="section-sub setup-drop-hint" style="margin:0.5rem;text-align:center">Drop students here or add one</p>';
+      rowsHtml = '<p class="section-sub setup-drop-hint" style="margin:0.5rem;text-align:center">Drop students here or add one</p>';
     }
+    inner.innerHTML = rowsHtml;
     groupDiv.appendChild(inner);
     container.appendChild(groupDiv);
   });

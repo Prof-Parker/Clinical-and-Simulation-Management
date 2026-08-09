@@ -74,13 +74,13 @@ function updateAllHolidayWeekHints(data, containerId) {
 function renderHolidays(data, containerId) {
     var container = containerId ? document.getElementById(containerId) : setupEl('setupHolidays');
     if (!container) return;
-    container.innerHTML = '';
     if (!data.calendar.weeks || !data.calendar.weeks.length) {
       CalendarEngine.rebuildWeeks(data);
     }
     var holidays = data.holidays || [];
+    var html = '';
     if (holidays.length) {
-      container.innerHTML =
+      html =
         '<div class="setup-holidays-head" aria-hidden="true">' +
         '<span>Type</span><span>Date / week off</span><span>Label</span><span></span>' +
         '</div>';
@@ -103,10 +103,10 @@ function renderHolidays(data, containerId) {
         : '<label class="setup-holiday-field setup-holiday-when">' +
           '<span class="setup-holiday-field-label">Date</span>' +
           '<div class="setup-holiday-when-row">' +
-          '<input type="date" class="date-input" data-hol="date" data-idx="' + i + '" value="' + (h.date || '') + '">' +
+          '<input type="date" class="date-input" data-hol="date" data-idx="' + i + '" value="' + escAttr(h.date || '') + '">' +
           '<span class="setup-holiday-week-hint" data-hol-week-hint data-idx="' + i + '">' +
           escHtml(semesterWeekHintText(data, h.date || '')) + '</span></div></label>';
-      container.innerHTML +=
+      html +=
         '<div class="setup-holiday-row" data-hol-idx="' + i + '">' +
         '<label class="setup-holiday-field setup-holiday-type">' +
         '<span class="setup-holiday-field-label">Type</span>' +
@@ -127,9 +127,10 @@ function renderHolidays(data, containerId) {
         '</div>';
     });
     if (!holidays.length) {
-      container.innerHTML = '<p class="section-sub setup-list-empty-hint">No holidays or breaks defined.</p>';
+      html = '<p class="section-sub setup-list-empty-hint">No holidays or breaks defined.</p>';
     }
-    container.innerHTML += configListAddRow('add-holiday', 'Add');
+    html += configListAddRow('add-holiday', 'Add');
+    container.innerHTML = html;
   }
 
 function collectHolidaysFromDom(data, containerId) {
@@ -288,13 +289,13 @@ function nextOrientationDefault(data) {
 function renderOrientations(data) {
     var container = setupEl('setupOrientations');
     if (!container) return;
-    container.innerHTML = '';
     if (!data.calendar.weeks || !data.calendar.weeks.length) {
       CalendarEngine.rebuildWeeks(data);
     }
     var orientations = data.orientations || [];
+    var html = '';
     if (orientations.length) {
-      container.innerHTML =
+      html =
         '<div class="setup-orientations-head" aria-hidden="true">' +
         '<span>Clinical group</span><span>Orientation date</span><span>Facility</span>' +
         '<span>Start</span><span>End</span><span></span>' +
@@ -304,11 +305,11 @@ function renderOrientations(data) {
     orientations.forEach(function (o, i) {
       ScheduleHours.ensureOrientationTimes(o);
       var groupOptions = clinicalGroups.map(function (g) {
-        return '<option value="' + g + '"' + (o.clinicalGroup === g ? ' selected' : '') + '>' + g + '</option>';
+        return '<option value="' + escAttr(g) + '"' + (o.clinicalGroup === g ? ' selected' : '') + '>' + escHtml(g) + '</option>';
       }).join('');
       var defaultFacId = DataModel.getDefaultFacilityIdForClinicalGroup(o.clinicalGroup, data.facilities || []);
       var facId = o.facilityId || defaultFacId;
-      container.innerHTML +=
+      html +=
         '<div class="setup-orientation-row" data-orient-idx="' + i + '">' +
         '<label class="setup-orientation-field setup-orientation-group">' +
         '<span class="setup-orientation-field-label">Clinical group</span>' +
@@ -316,7 +317,7 @@ function renderOrientations(data) {
         '<label class="setup-orientation-field setup-orientation-date">' +
         '<span class="setup-orientation-field-label">Orientation date</span>' +
         '<div class="setup-orientation-date-row">' +
-        '<input type="date" class="date-input" data-orient="date" data-idx="' + i + '" value="' + (o.date || '') + '">' +
+        '<input type="date" class="date-input" data-orient="date" data-idx="' + i + '" value="' + escAttr(o.date || '') + '">' +
         '<span class="setup-orientation-week-hint" data-orient-week-hint data-idx="' + i + '">' +
         escHtml(orientationWeekHintText(data, o.date || '')) + '</span></div></label>' +
         '<label class="setup-orientation-field setup-orientation-facility">' +
@@ -334,9 +335,10 @@ function renderOrientations(data) {
         '</div>';
     });
     if (!orientations.length) {
-      container.innerHTML = '<p class="section-sub setup-list-empty-hint">No orientation days defined.</p>';
+      html = '<p class="section-sub setup-list-empty-hint">No orientation days defined.</p>';
     }
-    container.innerHTML += configListAddRow('add-orientation', 'Add');
+    html += configListAddRow('add-orientation', 'Add');
+    container.innerHTML = html;
   }
 
 export {

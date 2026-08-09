@@ -18,18 +18,19 @@ import {
 
 function renderSections(data) {
     var container = setupEl('setupSections');
-    container.innerHTML = '';
+    var html = '';
     (data.sections || []).forEach(function (sec) {
-      container.innerHTML +=
+      html +=
         '<div class="setup-item-row">' +
-        '<input type="text" class="setup-section-code" data-sec="name" data-sec-id="' + sec.id + '" value="' + escAttr(sec.name) + '" placeholder="F6011" maxlength="12">' +
-        '<button class="btn btn-icon-remove remove-section" type="button" data-sec-id="' + sec.id + '" aria-label="Remove section" title="Remove section">&times;</button>' +
+        '<input type="text" class="setup-section-code" data-sec="name" data-sec-id="' + escAttr(sec.id) + '" value="' + escAttr(sec.name) + '" placeholder="F6011" maxlength="12">' +
+        '<button class="btn btn-icon-remove remove-section" type="button" data-sec-id="' + escAttr(sec.id) + '" aria-label="Remove section" title="Remove section">&times;</button>' +
         '</div>';
     });
     if (!data.sections.length) {
-      container.innerHTML = '<p class="section-sub setup-list-empty-hint">No sections defined.</p>';
+      html = '<p class="section-sub setup-list-empty-hint">No sections defined.</p>';
     }
-    container.innerHTML += configListAddRow('add-section', 'Add');
+    html += configListAddRow('add-section', 'Add');
+    container.innerHTML = html;
   }
 
 function facilitySiteSelectHtml(data, facility) {
@@ -45,10 +46,10 @@ function facilitySiteSelectHtml(data, facility) {
       var sel = s.id === selectedSiteId;
       if (sel) listed = true;
       var label = s.name + (s.shortName ? ' (' + s.shortName + ')' : '');
-      html += '<option value="' + s.id + '"' + (sel ? ' selected' : '') + '>' + escAttr(label) + '</option>';
+      html += '<option value="' + escAttr(s.id) + '"' + (sel ? ' selected' : '') + '>' + escHtml(label) + '</option>';
     });
     if (!listed) {
-      html = '<option value="" selected>' + escAttr(facility.name) + ' (unlisted)</option>' + html;
+      html = '<option value="" selected>' + escHtml(facility.name) + ' (unlisted)</option>' + html;
     }
     return html;
   }
@@ -62,45 +63,46 @@ function facilityTagsHtml(facility) {
 
 function renderFacilities(data) {
     var container = setupEl('setupFacilities');
-    container.innerHTML = '';
+    var html = '';
     DataModel.getUniqueFacilitiesForSelect(data).forEach(function (f) {
       ScheduleHours.ensureFacilityTimes(f);
       var canRemove = data.facilities.length > 1;
       var hours = ScheduleHours.roundHours(
         ScheduleHours.resolveClinicalDayHours(data, f.id)
       );
-      container.innerHTML +=
+      var fid = escAttr(f.id);
+      html +=
         '<div class="config-list-row setup-facility-row setup-facility-row-times">' +
-        '<select data-fac="site" data-fac-id="' + f.id + '" aria-label="Clinical site">' +
+        '<select data-fac="site" data-fac-id="' + fid + '" aria-label="Clinical site">' +
         facilitySiteSelectHtml(data, f) + '</select>' +
         facilityTagsHtml(f) +
         '<label class="setup-facility-time">' +
         '<span class="setup-facility-time-label">Start</span>' +
-        '<input type="time" data-fac="start" data-fac-id="' + f.id + '" value="' +
+        '<input type="time" data-fac="start" data-fac-id="' + fid + '" value="' +
         escAttr(ScheduleHours.hhmmToTimeInput(f.clinicalStart)) + '" aria-label="Clinical start time">' +
         '</label>' +
         '<label class="setup-facility-time">' +
         '<span class="setup-facility-time-label">End</span>' +
-        '<input type="time" data-fac="end" data-fac-id="' + f.id + '" value="' +
+        '<input type="time" data-fac="end" data-fac-id="' + fid + '" value="' +
         escAttr(ScheduleHours.hhmmToTimeInput(f.clinicalEnd)) + '" aria-label="Clinical end time">' +
         '</label>' +
         '<span class="section-sub setup-facility-hours" title="Hours per clinical day">' + hours + ' h</span>' +
         (canRemove
-          ? '<button class="btn btn-icon-remove remove-facility" type="button" data-fac-id="' + f.id + '" aria-label="Remove facility" title="Remove facility">&times;</button>'
+          ? '<button class="btn btn-icon-remove remove-facility" type="button" data-fac-id="' + fid + '" aria-label="Remove facility" title="Remove facility">&times;</button>'
           : '<span class="section-sub" style="font-size:0.75rem;white-space:nowrap">Min. 1</span>') +
         '</div>';
     });
-    container.innerHTML += configListAddRow('add-facility', 'Add facility');
+    html += configListAddRow('add-facility', 'Add facility');
+    container.innerHTML = html;
   }
 
 function renderFaculty(data) {
     updateAdjunctFacultyDatalist();
     var container = setupEl('setupFaculty');
     var listId = getSetupScope().prefix + 'setupAdjunctFacultyList';
-    container.innerHTML = '';
-    data.faculty.forEach(function (f, i) {
-      container.innerHTML += clinicalFacultyRowHtml(f, i, listId);
-    });
+    container.innerHTML = data.faculty.map(function (f, i) {
+      return clinicalFacultyRowHtml(f, i, listId);
+    }).join('');
   }
 
 function renderSimInstructors(data) {
@@ -109,11 +111,11 @@ function renderSimInstructors(data) {
     if (!container) return;
     if (!data.simInstructors) data.simInstructors = [];
     var listId = getSetupScope().prefix + 'setupAdjunctFacultyList';
-    container.innerHTML = '';
-    data.simInstructors.forEach(function (f, i) {
-      container.innerHTML += simInstructorRowHtml(f, i, listId);
-    });
-    container.innerHTML += configListAddRow('add-sim-instructor', 'Add simulation instructor');
+    var html = data.simInstructors.map(function (f, i) {
+      return simInstructorRowHtml(f, i, listId);
+    }).join('');
+    html += configListAddRow('add-sim-instructor', 'Add simulation instructor');
+    container.innerHTML = html;
   }
 
 function handleSimInstructorClick(e) {

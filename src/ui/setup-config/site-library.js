@@ -21,8 +21,8 @@ function siteLibraryRow(site, referenced) {
     }).join('');
     var removeHtml = referenced
       ? '<span class="section-sub site-lib-in-use" title="Referenced by a semester facility list">In use</span>'
-      : '<button type="button" class="btn btn-icon-remove remove-site-lib" data-site-id="' + site.id + '" aria-label="Remove site" title="Remove site">&times;</button>';
-    return '<div class="site-lib-row" data-site-lib-row data-site-id="' + site.id + '">' +
+      : '<button type="button" class="btn btn-icon-remove remove-site-lib" data-site-id="' + escAttrLocal(site.id) + '" aria-label="Remove site" title="Remove site">&times;</button>';
+    return '<div class="site-lib-row" data-site-lib-row data-site-id="' + escAttrLocal(site.id) + '">' +
       '<input type="text" data-site-lib="name" value="' + escAttrLocal(site.name) + '" placeholder="Site name" aria-label="Site name">' +
       '<input type="text" data-site-lib="short" value="' + escAttrLocal(site.shortName) + '" placeholder="Short" maxlength="10" aria-label="Short name">' +
       '<span class="site-lib-tags">' + tagsHtml + '</span>' +

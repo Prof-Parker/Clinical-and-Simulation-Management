@@ -62,7 +62,7 @@ var groupFilter = '';
     var filterHtml = '<label class="audit-group-filter">Clinical group ' +
       '<select id="auditGroupFilter"><option value="">All groups</option>' +
       groups.map(function (g) {
-        return '<option value="' + g + '"' + (g === groupFilter ? ' selected' : '') + '>' + g + '</option>';
+        return '<option value="' + esc(g) + '"' + (g === groupFilter ? ' selected' : '') + '>' + esc(g) + '</option>';
       }).join('') + '</select></label>';
 
     if (!rows.length) {

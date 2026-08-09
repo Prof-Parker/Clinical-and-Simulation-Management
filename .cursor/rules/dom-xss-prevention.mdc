@@ -1,0 +1,43 @@
+---
+description: Prevent DOM XSS when building UI HTML from semester/registry JSON
+alwaysApply: true
+---
+
+# DOM XSS Prevention
+
+Semester files, user registries, theory libraries, and site libraries are **untrusted stored input**. Treat every dynamic string from JSON as potentially hostile.
+
+## Required when writing or changing UI
+
+1. **Never** put dynamic data into `innerHTML`, `insertAdjacentHTML`, or `showDialog(..., bodyHtml)` without escaping.
+2. Use project helpers — do not invent quote-only escapes:
+   - Text: `escapeHtml` from [`src/ui/dialogs.js`](src/ui/dialogs.js) or `escHtml` from [`src/ui/setup/dom-utils.js`](src/ui/setup/dom-utils.js)
+   - Attributes: `escAttr` from `src/ui/setup/dom-utils.js` (escapes `& < > "`)
+3. Prefer safe DOM APIs for text-only UI: `textContent`, `createElement('option')` + `.value` / `.textContent`.
+4. **No `innerHTML +=` rebuild loops.** Build a string (or DOM nodes), then assign once. `innerHTML +=` re-parses existing DOM text as HTML and triggers CodeQL `js/xss-through-dom`.
+5. When reviewing diffs, grep for `innerHTML` and confirm every interpolated value is escaped.
+
+## Examples
+
+Bad:
+
+```javascript
+select.innerHTML += '<option value="' + s.id + '">' + s.name + '</option>';
+el.innerHTML = '<span title="' + group + '">' + label + '</span>';
+```
+
+Good:
+
+```javascript
+var opt = document.createElement('option');
+opt.value = s.id;
+opt.textContent = s.name;
+select.appendChild(opt);
+
+// or, when HTML strings are required:
+el.innerHTML = '<span title="' + escAttr(group) + '">' + escapeHtml(label) + '</span>';
+```
+
+## Scope note
+
+Static literals and intentional trusted HTML (e.g. calendar week headers from `getWeekDisplay(..., false)`) are fine. Student names, group ids, facility names, proposal text, file names, and course codes are not trusted.

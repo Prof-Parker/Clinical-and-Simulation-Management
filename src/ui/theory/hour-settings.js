@@ -3,7 +3,7 @@
  */
 
 import { getData, notifyChange } from '../../core/state.js';
-import { showDialog } from '../dialogs.js';
+import { showDialog, escapeHtml } from '../dialogs.js';
 import * as Permissions from '../../auth/permissions.js';
 import * as TheoryData from '../../core/theory-data.js';
 import {
@@ -22,7 +22,7 @@ export function init() {
     var targets = data.theory.settings.courseHourTargets || [];
     var weeks = semesterWeekCount(data);
     var body = targets.map(function (t, i) {
-      return '<p><strong>' + t.courseCode + '</strong> ' +
+      return '<p><strong>' + escapeHtml(t.courseCode) + '</strong> ' +
         'Credit <input type="number" step="0.5" data-tgt-credit="' + i + '" value="' + t.creditHours + '"> ' +
         'Contact target <input type="number" step="0.1" data-tgt-contact="' + i + '" value="' + t.contactHoursTarget + '"></p>';
     }).join('') +

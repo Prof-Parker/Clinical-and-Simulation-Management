@@ -111,28 +111,30 @@ function populateFilters(data) {
     var gf = document.getElementById('scheduleGroupFilter');
     var groupVal = gf ? gf.value : 'all';
     if (gf) {
-      gf.innerHTML = '<option value="all">All Clinical Groups</option>';
+      var groupHtml = '<option value="all">All Clinical Groups</option>';
       DataModel.getClinicalGroups(cfg).forEach(function (g) {
         var day = DataModel.getClinicalDayForGroup(g, cfg);
-        gf.innerHTML += '<option value="' + g + '">' + g + ' (' + day + ')</option>';
+        groupHtml += '<option value="' + escapeHtml(g) + '">' + escapeHtml(g) + ' (' + escapeHtml(day) + ')</option>';
       });
+      gf.innerHTML = groupHtml;
       if (groupVal && gf.querySelector('option[value="' + groupVal + '"]')) gf.value = groupVal;
     }
 
     var sgf = document.getElementById('scheduleSimGroupFilter');
     var simVal = sgf ? sgf.value : 'all';
     if (sgf) {
-      sgf.innerHTML = '<option value="all">All Sim Groups</option>';
+      var simHtml = '<option value="all">All Sim Groups</option>';
       DataModel.getSimGroups(cfg).forEach(function (g) {
-        sgf.innerHTML += '<option value="' + g + '">' + g + '</option>';
+        simHtml += '<option value="' + escapeHtml(g) + '">' + escapeHtml(g) + '</option>';
       });
+      sgf.innerHTML = simHtml;
       if (simVal && sgf.querySelector('option[value="' + simVal + '"]')) sgf.value = simVal;
     }
 
     var sf = document.getElementById('scheduleSectionFilter');
     var sectionVal = sf ? sf.value : 'all';
     if (sf) {
-      sf.innerHTML = '<option value="all">All Sections</option>';
+      var sectionHtml = '<option value="all">All Sections</option>';
       var sectionNames = [];
       if (data.sections && data.sections.length) {
         data.sections.forEach(function (sec) {
@@ -144,18 +146,20 @@ function populateFilters(data) {
         });
       }
       sectionNames.sort().forEach(function (sec) {
-        sf.innerHTML += '<option value="' + escapeHtml(sec) + '">' + escapeHtml(sec) + '</option>';
+        sectionHtml += '<option value="' + escapeHtml(sec) + '">' + escapeHtml(sec) + '</option>';
       });
+      sf.innerHTML = sectionHtml;
       if (sectionVal && sf.querySelector('option[value="' + sectionVal + '"]')) sf.value = sectionVal;
     }
 
     var sff = document.getElementById('scheduleFacilityFilter');
     if (sff) {
       var facVal = sff.value;
-      sff.innerHTML = '<option value="all">All Facilities</option>';
+      var facHtml = '<option value="all">All Facilities</option>';
       (DataModel.getUniqueFacilitiesForSelect(data) || []).forEach(function (f) {
-        sff.innerHTML += '<option value="' + f.id + '">' + escapeHtml(f.name) + '</option>';
+        facHtml += '<option value="' + escapeHtml(f.id) + '">' + escapeHtml(f.name) + '</option>';
       });
+      sff.innerHTML = facHtml;
       if (facVal && sff.querySelector('option[value="' + facVal + '"]')) sff.value = facVal;
     }
   }

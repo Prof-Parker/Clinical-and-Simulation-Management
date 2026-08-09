@@ -6,7 +6,8 @@ import { state, getData, getFileRoot, notifyChange } from '../core/state.js';
 import * as DataModel from '../core/data-model/index.js';
 import * as TheoryData from '../core/theory-data.js';
 import * as Audit from '../audit/audit.js';
-import { showConfirm } from './dialogs.js';
+import { showConfirm, escapeHtml } from './dialogs.js';
+import { escAttr } from './setup/dom-utils.js';
 import { buildCourseStatusHtml, courseStatusAriaLabel } from './semester-label.js';
 import { updateSemesterPickerLabel } from './semester-picker.js';
 import { resolveNavShell, isPlaygroundShell, updatePlaygroundStatusLine } from './playground-shell.js';
@@ -69,7 +70,7 @@ export function renderCourseDropdown() {
   var active = getActiveCourseCode();
   menu.innerHTML = options.map(function (opt) {
     return '<button type="button" class="menu-item menu-item-nested course-opt" role="option" data-course="' +
-      opt.code + '"' + (opt.code === active ? ' aria-selected="true"' : '') + '>' + opt.label +
+      escAttr(opt.code) + '"' + (opt.code === active ? ' aria-selected="true"' : '') + '>' + escapeHtml(opt.label) +
       (opt.shell === 'theory' ? ' (theory)' : '') + '</button>';
   }).join('');
 }

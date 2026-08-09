@@ -57,9 +57,16 @@ function render(data) {
 
   var prev = select.value;
   var list = filterStudentsByRosterControls(data, FILTER_IDS);
-  select.innerHTML = '<option value="">Select student...</option>';
+  select.innerHTML = '';
+  var placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = 'Select student...';
+  select.appendChild(placeholder);
   list.forEach(function (s) {
-    select.innerHTML += '<option value="' + s.id + '">' + s.name + ' (' + s.clinicalGroup + ')</option>';
+    var opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name + ' (' + s.clinicalGroup + ')';
+    select.appendChild(opt);
   });
   if (prev && list.some(function (s) { return s.id === prev; })) select.value = prev;
   else select.value = '';

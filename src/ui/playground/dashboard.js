@@ -74,7 +74,7 @@ function renderMasterSchedule(data, validation) {
     if (!vr.valid) tr.className = 'schedule-row-pending';
     else if (vr.warnings && vr.warnings.length) tr.className = 'schedule-row-warning';
     var cells = '<td class="sticky-col"><strong>' + escapeHtml(student.name) + '</strong></td>' +
-      '<td class="sticky-col-grp">' + student.clinicalGroup + '</td>';
+      '<td class="sticky-col-grp">' + escapeHtml(student.clinicalGroup) + '</td>';
     student.schedule.forEach(function (cell, wi) {
       var tdClass = '';
       if (Orientation && Orientation.weekHasOrientationConflict(data, student, wi)) {
@@ -99,10 +99,10 @@ function renderSimTable(data) {
       var tdClass = '';
       student.schedule.forEach(function (cell, wi) {
         if (cell.sim === n) {
-          content = CalendarEngine.getWeekDisplay(data, wi, true) + ' (' + (cell.simDay || 'Mon') + ')';
+          content = CalendarEngine.getWeekDisplay(data, wi, true) + ' (' + escapeHtml(cell.simDay || 'Mon') + ')';
           if (cell.simGuestGroup) {
             tdClass = 'sim-prog-cell-guest';
-            content += ' · ' + cell.simGuestGroup;
+            content += ' · ' + escapeHtml(cell.simGuestGroup);
           }
         }
       });
@@ -111,8 +111,8 @@ function renderSimTable(data) {
     var tr = document.createElement('tr');
     tr.innerHTML =
       '<td class="sticky-col"><strong>' + escapeHtml(student.name) + '</strong></td>' +
-      '<td>' + student.clinicalGroup + '</td>' +
-      '<td>' + student.simGroup + '</td>' + simCols;
+      '<td>' + escapeHtml(student.clinicalGroup) + '</td>' +
+      '<td>' + escapeHtml(student.simGroup) + '</td>' + simCols;
     tbody.appendChild(tr);
   });
 }

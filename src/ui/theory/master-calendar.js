@@ -100,7 +100,7 @@ function renderSkillsLabContent(ev, settings) {
 }
 
 function renderEventChip(data, ev, settings) {
-  var html = '<div class="' + TheoryData.trackCssClass(ev) + '" data-event-id="' + ev.id + '" draggable="true">' +
+  var html = '<div class="' + TheoryData.trackCssClass(ev) + '" data-event-id="' + esc(ev.id) + '" draggable="true">' +
     '<strong>' + esc(ev.title || ev.track) + '</strong>';
   if (ev.timeStart) {
     html += '<div class="theory-ev-time">' + ev.timeStart + '–' + (ev.timeEnd || '') + '</div>';

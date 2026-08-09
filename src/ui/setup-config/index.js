@@ -24,6 +24,7 @@ import {
 import {
   renderSiteLibrary, collectSiteLibraryFromDom, siteLibraryRow
 } from './site-library.js';
+import { escAttr, escHtml } from '../setup/dom-utils.js';
 import { handleSetupClick } from './actions.js';
 import { readFormIntoConfig, draftConfigFromForm, renderAdvancedFields } from './form.js';
 
@@ -75,7 +76,7 @@ function updateSubtitle(data) {
     var parts = DataModel.parseSemesterDisplay(data);
     var subtitle = setupEl('setupConfigSubtitle');
     if (!subtitle) return;
-    subtitle.innerHTML = 'Scheduling settings for <strong>' + parts.name + '</strong> ' +
+    subtitle.innerHTML = 'Scheduling settings for <strong>' + escHtml(parts.name) + '</strong> ' +
       configModeBadge(!!data.meta.configCustomized);
   }
 
@@ -98,8 +99,8 @@ function populateNewSemesterCourseSelect() {
     var data = getData();
     var current = (data && data.meta && data.meta.courseId) || 'REGN15P';
     select.innerHTML = CourseDefaults.list().map(function (c) {
-      return '<option value="' + c.courseId + '"' + (c.courseId === current ? ' selected' : '') + '>' +
-        c.displayName + '</option>';
+      return '<option value="' + escAttr(c.courseId) + '"' + (c.courseId === current ? ' selected' : '') + '>' +
+        escHtml(c.displayName) + '</option>';
     }).join('');
   }
 

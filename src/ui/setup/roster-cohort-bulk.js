@@ -48,7 +48,7 @@ export function cohortSectionBulkSelectHtml(data, clinicalGroup, cohort) {
   });
   var html = '<label class="setup-cohort-bulk setup-cohort-section-bulk">' +
     '<span class="setup-cohort-section-label">Section</span>' +
-    '<select data-cohort-section-bulk="' + escAttr(clinicalGroup) + '" aria-label="Set section for all in ' + clinicalGroup + '">' +
+    '<select data-cohort-section-bulk="' + escAttr(clinicalGroup) + '" aria-label="Set section for all in ' + escAttr(clinicalGroup) + '">' +
     '<option value=""' + (mixed ? ' selected' : '') + '>' + (mixed ? 'Mixed sections' : 'Set all…') + '</option>';
   (data.sections || []).forEach(function (sec) {
     if (!sec.name) return;
@@ -66,7 +66,7 @@ export function cohortSimBulkSelectHtml(data, clinicalGroup, cohort) {
   });
   var html = '<label class="setup-cohort-bulk setup-cohort-sim-bulk">' +
     '<span class="setup-cohort-section-label">Sim</span>' +
-    '<select data-cohort-sim-bulk="' + escAttr(clinicalGroup) + '" aria-label="Set simulation group for all in ' + clinicalGroup + '">' +
+    '<select data-cohort-sim-bulk="' + escAttr(clinicalGroup) + '" aria-label="Set simulation group for all in ' + escAttr(clinicalGroup) + '">' +
     '<option value=""' + (mixed ? ' selected' : '') + '>' + (mixed ? 'Mixed sim groups' : 'Set all…') + '</option>';
   DataModel.getSimGroups(data.config).forEach(function (sg) {
     html += '<option value="' + escAttr(sg) + '"' +

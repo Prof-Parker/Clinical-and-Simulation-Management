@@ -3,12 +3,12 @@
 import * as DataModel from '../../core/data-model/index.js';
 import { WEEKDAY_OPTIONS } from '../../core/data-model/config.js';
 import * as ScheduleHours from '../../core/schedule-hours.js';
-import { escAttr } from '../setup/dom-utils.js';
+import { escAttr, escHtml } from '../setup/dom-utils.js';
 import { setupEl, setupQueryAll } from '../setup/scope.js';
 
 function daySelectHtml(selected) {
     return WEEKDAY_OPTIONS.map(function (d) {
-      return '<option value="' + d + '"' + (d === selected ? ' selected' : '') + '>' + d + '</option>';
+      return '<option value="' + escAttr(d) + '"' + (d === selected ? ' selected' : '') + '>' + escHtml(d) + '</option>';
     }).join('');
   }
 
@@ -39,11 +39,13 @@ function patternSelectHtml(selected) {
   }
 
 function simGroupRow(group, day, pattern, canRemove) {
-    return '<div class="config-list-row" data-sim-group-row="' + group + '">' +
-      '<span class="config-group-label">' + group + '</span>' +
-      '<select data-sim-group="day" class="clin-day-select" aria-label="' + group + ' primary weekday">' +
+    var gAttr = escAttr(group);
+    var gHtml = escHtml(group);
+    return '<div class="config-list-row" data-sim-group-row="' + gAttr + '">' +
+      '<span class="config-group-label">' + gHtml + '</span>' +
+      '<select data-sim-group="day" class="clin-day-select" aria-label="' + gAttr + ' primary weekday">' +
       daySelectHtml(day) + '</select>' +
-      '<select data-sim-group="pattern" aria-label="' + group + ' week pattern">' +
+      '<select data-sim-group="pattern" aria-label="' + gAttr + ' week pattern">' +
       patternSelectHtml(pattern) + '</select>' +
       (canRemove
         ? '<button type="button" class="btn btn-icon-remove remove-sim-group" aria-label="Remove simulation group" title="Remove simulation group">&times;</button>'

@@ -118,13 +118,14 @@ function formatSessionMeta(data, simNum, weekIndex, day) {
   }
   var groupParts = Object.keys(att.groupCounts).sort().map(function (sg) {
     var g = att.groupCounts[sg];
+    var label = esc(sg);
     if (g.guest > 0 && g.guest === g.count) {
-      return sg + ' guest (' + g.count + ')';
+      return label + ' guest (' + g.count + ')';
     }
     if (g.guest > 0) {
-      return sg + ' (' + g.count + ', ' + g.guest + ' guest)';
+      return label + ' (' + g.count + ', ' + g.guest + ' guest)';
     }
-    return sg + ' (' + g.count + ')';
+    return label + ' (' + g.count + ')';
   });
   if (groupParts.length) {
     parts.push('Attending ' + groupParts.join(', '));
@@ -279,12 +280,13 @@ function render(data) {
     var guestHost = cell.simGuestGroup || hostGroup;
     var stickyCls = 'sticky-col' + (isGuest ? ' sim-prog-cell-guest' : '');
     var guestTitle = isGuest
-      ? ' title="Guest in ' + guestHost + ' (primary: ' + student.simGroup + ')"'
+      ? ' title="Guest in ' + esc(guestHost) + ' (primary: ' + esc(student.simGroup) + ')"'
       : '';
     var guestNote = isGuest
       ? '<br><small class="role-guest-tag">Guest · ' + esc(guestHost) + '</small>'
       : '';
 
+    var sid = esc(student.id);
     var tr = document.createElement('tr');
     var html = '<td class="' + stickyCls + '"' + guestTitle + '><strong>' + esc(student.name) + '</strong>' +
       guestNote + '<br><small>' + esc(student.clinicalGroup) + ' · ' + esc(student.simGroup) + '</small></td>' +
@@ -295,16 +297,16 @@ function render(data) {
 
     for (var i = 1; i <= 4; i++) {
       var cur = sRoles[simNum]['iter' + i] || '';
-      html += '<td><select class="role-select" data-student="' + student.id + '" data-sim="' + simNum + '" data-iter="iter' + i + '">';
+      html += '<td><select class="role-select" data-student="' + sid + '" data-sim="' + simNum + '" data-iter="iter' + i + '">';
       DataModel.ROLE_OPTIONS.forEach(function (r) {
         html += '<option value="' + r + '"' + (r === cur ? ' selected' : '') + '>' + (r || '—') + '</option>';
       });
       html += '</select></td>';
     }
 
-    html += '<td><select class="flag-select" data-student="' + student.id + '" data-flag="primary">' +
+    html += '<td><select class="flag-select" data-student="' + sid + '" data-flag="primary">' +
       flagOptions(flagPri) + '</select></td>' +
-      '<td><select class="flag-select" data-student="' + student.id + '" data-flag="secondary">' +
+      '<td><select class="flag-select" data-student="' + sid + '" data-flag="secondary">' +
       flagOptions(flagSec) + '</select></td>';
 
     tr.innerHTML = html;

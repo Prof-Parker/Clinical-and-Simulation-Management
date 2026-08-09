@@ -1,7 +1,11 @@
 /** Shared HTML escaping and list-row helpers for setup UI. */
 
 export function escAttr(s) {
-  return String(s || '').replace(/"/g, '&quot;');
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 export function escHtml(s) {
