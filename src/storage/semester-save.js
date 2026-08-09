@@ -103,6 +103,8 @@ export function saveCurrent(forceOverwrite) {
         });
       }
       if (remote && remote.semesters && fileRoot.semesters) {
+        var localActiveCourseCode = fileRoot.meta && fileRoot.meta.activeCourseCode;
+        var localActiveSemesterId = state.fileRoot.meta.activeSemesterId;
         remote.semesters.forEach(function (remoteSem) {
           var localSem = fileRoot.semesters.find(function (s) { return s.id === remoteSem.id; });
           if (localSem && localSem.proposals && Proposals) {
@@ -116,7 +118,11 @@ export function saveCurrent(forceOverwrite) {
         });
         fileRoot = remote;
         fileRoot.meta = fileRoot.meta || {};
-        fileRoot.meta.activeSemesterId = state.fileRoot.meta.activeSemesterId;
+        fileRoot.meta.activeSemesterId = localActiveSemesterId;
+        // Keep in-session course shell; remote file often still has the previous code.
+        if (localActiveCourseCode) {
+          fileRoot.meta.activeCourseCode = localActiveCourseCode;
+        }
       }
       fileRoot.meta.revision = Math.max(remoteRev, localRev) + 1;
       state.fileLoadedRevision = fileRoot.meta.revision;
