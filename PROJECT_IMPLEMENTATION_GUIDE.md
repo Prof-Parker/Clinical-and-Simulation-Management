@@ -20,9 +20,10 @@ A **browser-only PWA** (no Microsoft API calls) that:
 ## 2. Architecture (Vite + ES modules)
 
 ```
-index.html → src/main.js
+index.html → src/main.js             Thin boot + initUI/main exports
 ├── css/                         UI + print styles (imported by main.js)
 ├── src/
+│   ├── main.js                  Boot chain; initUI → wireAppShell + wireFileMenu
 │   ├── core/state.js            Reactive state, getData/setData, notifyChange
 │   ├── core/data-model/         Schema, defaults, migration, student/semester shapes
 │   ├── core/scheduler/          Clinical + sim generation, makeup slots, Week-17 clustering, thin-sim post-pass
@@ -36,10 +37,14 @@ index.html → src/main.js
 │   ├── core/theory-data.js      Theory calendar schema, projections, contact-hour math
 │   ├── storage/theory-library-storage.js  Theory library persistence + CRUD
 │   ├── storage/theory-library-model.js    Pure theory shapes + migration
-│   ├── storage/semester-storage.js        Semester persistence orchestration
+│   ├── storage/semester-storage.js        Public semester barrel (open/init/activate + re-exports)
+│   ├── storage/semester-file-io.js        Serialize, read/write handles, names/tokens
+│   ├── storage/semester-save.js           Cache, autosave, hybrid save, export, clear
 │   ├── storage/semester-status-ui.js      Semester connection/status UI
 │   ├── storage/storage-idb.js             Shared IndexedDB primitives
 │   ├── auth/permissions.js      Tab/menu/action gating
+│   ├── ui/app-shell-wiring.js   Panel inits, nav tabs, user menu, dialogs
+│   ├── ui/file-menu-wiring.js   Import/save/sync/ProgramData menu
 │   ├── ui/chrome.js             Tab router, menus, semester switch
 │   ├── ui/dialogs.js            Modal alert/confirm/custom dialogs
 │   ├── ui/users-admin.js         Registry user administration
@@ -52,13 +57,13 @@ index.html → src/main.js
 Each `src/**/*.js` module is capped at **500 lines** and starts with a brief header comment describing its purpose.
 
 Storage modules keep their existing public entry points after splitting:
-`semester-storage.js` re-exports shared IDB and status helpers, while
+`semester-storage.js` re-exports `semester-file-io`, `semester-save`, shared IDB keys/helpers, and status UI helpers (callers keep importing the barrel), while
 `theory-library-storage.js` re-exports the pure theory model API. This keeps
 existing imports stable while isolating persistence, presentation, and model logic.
 
 **Runtime model:** `state.fileRoot` holds all semesters; `getData()` returns the active semester. Simulation roles live in `meta.simRoles` (base64 obfuscated on disk) and are edited in memory via `state.simFacultyRoot`. UI modules call `notifyChange()` to persist the semester file.
 
-**Boot order:** `UserSession.init()` → `semester-storage.init()` → `clinical-sites-library-storage.init()` → `theory-library-storage.init()` → `sim-faculty-storage.init()` → `initUI()`. Until the user session validates, `#userGateModal` blocks the app shell.
+**Boot order:** `UserSession.init()` → `semester-storage.init()` → `clinical-sites-library-storage.init()` → `theory-library-storage.init()` → `sim-faculty-storage.init()` → `initUI()` (delegates to `wireAppShell()` + `wireFileMenu()`). Until the user session validates, `#userGateModal` blocks the app shell.
 
 **Course shell:** `#courseStatusLine` dropdown sets `meta.activeCourseCode` (`REGN15` theory shell vs `REGN15P` clinical shell). Users and Clinical Sites open from the hamburger **Program libraries** menu.
 
@@ -295,8 +300,8 @@ Tests in `tests/scheduling-rules.test.js` assert program calendar, guest spread,
 | Audit lifecycle, attestation, audit PDF | Audit | `js/ui/audit-closeout.js`, `js/audit.js`, `js/audit-export.js` |
 | Roster, holidays, facilities, rebalance | Setup | `src/ui/setup/roster.js`, `setup-config.js` |
 | Advanced caps / days / headroom / site library | Setup → Advanced | `js/ui/setup-config.js` |
-| Course selection | Header dropdown | `js/main.js`, `js/course-defaults.js` |
-| Semester add/switch | Header picker | `js/main.js`, `js/ui/config-modal.js` |
+| Course selection | Header dropdown | `src/ui/course-selector.js`, `src/core/course-defaults.js` |
+| Semester add/switch | Header picker | `src/ui/semester-picker.js`, `src/ui/config-modal.js` |
 | Dark mode | Menu | `App.UI.toggleDarkMode` |
 
 **Setup roster actions:** **Rebalance clinical groups** evenly spreads students across clinical cohorts only. **Rebalance simulation groups** balances sim group sizes to the session cap (preferring clinical-cohort affinity and non-overlapping sim weekdays), regenerates with a per-student guest soft cap (`maxGuestSimsPerStudent`, default 1), and nudges membership up to 5 passes. Warns if the soft cap cannot be met (e.g. more Mon-clinical students than Tue sim seats). Playground Setup uses the same controls (cloned markup); only the save target differs (`playground.json` vs semester program file).
