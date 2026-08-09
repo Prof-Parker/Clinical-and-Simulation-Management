@@ -67,7 +67,7 @@ export var UI_TABS = [
       'setupSections', 'setupFaculty', 'setupSimInstructors', 'setupFacilities', 'setupHolidays', 'setupRoster',
       'sortRosterAzBtn', 'showStudentEmailDomain', 'cfgStudentEmailDomain',
       'cfgClinicalGroupsList', 'cfgSimGroupsList', 'cfgSimDaysList', 'cfgSimDefaultStart',
-      'cfgSimDefaultEnd', 'cfgSimTimeOverrides', 'setupAdvancedPanel'
+      'cfgSimDefaultEnd', 'cfgSimLunchBreakMinutes', 'cfgSimTimeOverrides', 'setupAdvancedPanel'
     ]
   },
   {
@@ -93,9 +93,8 @@ export var UI_TABS = [
       'theoryMasterGrid', 'theoryTopicLibraryPanel', 'theoryTopicLibraryList', 'theorySkillsLibraryList',
       'theoryLibraryConnectPrompt', 'theoryLibraryConnectBtn', 'theoryLibraryCreateBtn', 'theoryLibraryStatus',
       'theoryLibrarySections', 'theoryLibraryUnlockBtn', 'theoryLibraryLockBtn', 'theoryLibraryUnlockedBanner',
-      'theoryMasterSetup', 'theorySaveSetupBtn', 'theoryAdvancedConfigBtn',
-      'theoryLectureWeekdays', 'theoryDefaultLectureStart', 'theoryDefaultLectureEnd',
-      'theoryDefaultSkillsStart', 'theoryDefaultSkillsEnd', 'theoryDefaultSkillsFacultyRequired',
+      'theoryMasterSetup', 'theorySaveSetupBtn', 'theoryResyncPracticumBtn', 'theoryAdvancedConfigBtn',
+      'theoryLectureSessions', 'theorySkillsSessions', 'theoryDefaultSkillsFacultyRequired',
       'theoryFacultyRoster', 'theorySkillsFacultyRoster', 'theoryModuleSeedBlank', 'theoryModuleSeedPull',
       'theoryModuleSeedSemester', 'theoryModuleSeedApplyBtn', 'theoryMasterToolbar',
       'theoryShowLecturers', 'theoryShowPracticumFaculty', 'theoryShowSkillsLabContent'

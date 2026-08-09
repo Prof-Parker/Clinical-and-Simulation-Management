@@ -32,6 +32,8 @@ describe('theory-data.test.js', () => {
     TheoryData.syncHolidaysFromSemester(sem);
     var labor = TheoryData.findDay(sem.theory, '2026-09-07');
     expect(labor).toBeTruthy();
+    expect(labor.weekday).toBe('Mon');
+    expect(labor.weekLabel).toBe(CalendarEngine.getWeekIndexForDate(sem, '2026-09-07') + 1);
     expect(labor.events.some(function (e) { return e.track === 'holiday' && e.title === 'Labor Day'; })).toBe(true);
     var breakDays = (sem.theory.days || []).filter(function (d) {
       return (d.events || []).some(function (e) {
@@ -210,12 +212,12 @@ describe('theory-data.test.js', () => {
     }
     var byWeek = TheoryData.rollSchedulerHours(sem, 'REGN15P');
     expect(byWeek[5].clinical).toBe(12.5);
-    expect(byWeek[6].simulation).toBe(6);
+    expect(byWeek[6].simulation).toBe(5.5); // 0900–1500 minus 30 min lunch
     expect(byWeek[7].clinical).toBe(12.5); // union still shows C2's week
     var totals = TheoryData.semesterHourTotals(sem.theory, sem, 'REGN15P');
     // Semester clinical = C1 path only (week 5), not C2's extra week 7
     expect(totals.clinical).toBe(12.5);
-    expect(totals.simulation).toBe(6);
+    expect(totals.simulation).toBe(5.5);
   });
 
   it('builds coordinator day items and semester totals', () => {
@@ -255,6 +257,69 @@ describe('theory-data.test.js', () => {
     var totals = TheoryData.semesterHourTotals(sem.theory, sem, 'REGN15P');
     expect(totals.lecture).toBeGreaterThan(0);
     expect(totals.practicum).toBe(totals.skills_lab + totals.clinical + totals.simulation);
+  });
+
+  it('shows holiday chips before lecture/skills on coordinator days', () => {
+    var sem = DataModel.createDefaultFile().semesters[0];
+    DataModel.migrateSemester(sem);
+    sem.theory.days = [{
+      date: '2026-09-07',
+      weekIndex: 3,
+      weekday: 'Mon',
+      weekLabel: 4,
+      events: [{
+        id: 'h1',
+        track: 'holiday',
+        title: 'Labor Day',
+        categories: ['synced_holiday']
+      }, {
+        id: 'ev1',
+        track: 'theory',
+        timeStart: '0800',
+        timeEnd: '1050',
+        categories: ['lecture']
+      }]
+    }];
+    var items = TheoryData.coordinatorItemsForDay(sem.theory, sem, 4, 'Mon', 'REGN15P');
+    expect(items[0]).toEqual({ kind: 'holiday', label: 'Labor Day' });
+    expect(items[1].kind).toBe('theory');
+  });
+
+  it('coordinator week totals use live event sums and ignore weekSummaries overrides', () => {
+    var sem = DataModel.createDefaultFile().semesters[0];
+    DataModel.migrateSemester(sem);
+    sem.theory.days = [
+      {
+        date: '2026-08-19', weekIndex: 0, weekday: 'Wed', weekLabel: 1,
+        events: [
+          { id: 'a', track: 'theory', timeStart: '0800', timeEnd: '1050', categories: ['lecture'] }
+        ]
+      },
+      {
+        date: '2026-08-20', weekIndex: 0, weekday: 'Thu', weekLabel: 1,
+        events: [
+          { id: 'b', track: 'theory', timeStart: '0800', timeEnd: '1115', categories: ['lecture'] }
+        ]
+      },
+      {
+        date: '2026-08-21', weekIndex: 0, weekday: 'Fri', weekLabel: 1,
+        events: [
+          { id: 'c', track: 'theory', timeStart: '0800', timeEnd: '1050', categories: ['lecture'] },
+          { id: 'd', track: 'theory', timeStart: '1145', timeEnd: '1500', categories: ['lecture'] },
+          { id: 'e', track: 'skills', timeStart: '1200', timeEnd: '1550', categories: ['skills_lab'] }
+        ]
+      }
+    ];
+    // Stale import rollups must not win over Cont. Mult. live sums.
+    sem.theory.weekSummaries = {
+      '1': { lecture: 8.15, skills_lab: 7 }
+    };
+    var summary = TheoryData.weekSummaryForLabel(sem.theory, sem, 1, 'REGN15P');
+    // 3 + 3.5 + 3 + 3.5 = 13
+    expect(summary.lecture).toBe(13);
+    expect(summary.lecture).not.toBe(8.15);
+    expect(summary.skills_lab).toBe(TheoryData.instructionalHoursFromTimes('1200', '1550'));
+    expect(summary.skills_lab).not.toBe(7);
   });
 
   it('labels coordinator practicum items with group and sim/clinical number', () => {
@@ -324,17 +389,39 @@ describe('theory-data.test.js', () => {
     expect(sem.theory.days[0].events[0].moduleCode).toBe('1A');
     expect(sem.theory.days[1].events[0].moduleCode).toBe('1B');
     expect(sem.theory.days[2].events[0].moduleCode).toBe('1C');
-    // Same-slot topics count lecture hours once
-    expect(TheoryData.sumTheoryHoursForWeek(sem.theory, 1, 'lecture')).toBeCloseTo(2.83 * 3, 1);
+    // Same-slot topics count lecture hours once (Cont. Mult.: 0800–1050 → 3.0 h)
+    expect(TheoryData.sumTheoryHoursForWeek(sem.theory, 1, 'lecture')).toBeCloseTo(3.0 * 3, 1);
   });
 
-  it('validates contact hour targets', () => {
+  it('validates contact hour targets separately for theory and practicum', () => {
     var sem = DataModel.createDefaultFile().semesters[0];
     DataModel.migrateSemester(sem);
-    sem.theory.settings.courseHourTargets[1].contactHoursTarget = 10;
-    var v = TheoryData.contactHourValidation(sem.theory, sem, 'REGN15P');
-    expect(v.target).toBe(10);
-    expect(['on_target', 'under', 'over', 'unknown']).toContain(v.status);
+    sem.theory.days = [{
+      date: '2026-08-19', weekIndex: 0, weekday: 'Wed', weekLabel: 1,
+      events: [
+        { id: 'a', track: 'theory', timeStart: '0800', timeEnd: '1050', categories: ['lecture'] },
+        { id: 'b', track: 'skills', timeStart: '1200', timeEnd: '1550', categories: ['skills_lab'] }
+      ]
+    }];
+    sem.theory.settings.courseHourTargets = [
+      { courseCode: 'REGN15', contactHoursTarget: 3 },
+      { courseCode: 'REGN15P', contactHoursTarget: 10 }
+    ];
+    var theoryV = TheoryData.contactHourValidation(sem.theory, sem, 'REGN15');
+    expect(theoryV.scheduled).toBe(3);
+    expect(theoryV.target).toBe(3);
+    expect(theoryV.status).toBe('on_target');
+
+    var pracV = TheoryData.contactHourValidation(sem.theory, sem, 'REGN15P');
+    // Practicum scheduled excludes lecture (skills Cont. Mult. for 1200–1550 → 4.0).
+    expect(pracV.scheduled).toBe(4);
+    expect(pracV.target).toBe(10);
+    expect(pracV.status).toBe('under');
+
+    var all = TheoryData.contactHourValidations(sem.theory, sem);
+    expect(all.length).toBe(2);
+    expect(all[0].courseCode).toBe('REGN15');
+    expect(all[1].courseCode).toBe('REGN15P');
   });
 
   it('FILE_VERSION is 5', () => {

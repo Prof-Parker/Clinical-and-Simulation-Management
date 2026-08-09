@@ -11,7 +11,8 @@ import {
 import {
   FACULTY_NEEDED_NAME,
   syncHolidaysFromSemester,
-  refreshFacultyNeeded
+  refreshFacultyNeeded,
+  reindexTheoryDays
 } from './theory-events.js';
 
 export { WEEKDAYS } from './theory-modules.js';
@@ -46,9 +47,19 @@ export {
   semesterContactHourTotal,
   contactHourTarget,
   contactHourValidation,
+  contactHourValidations,
   listCourseOptions,
   simCrossCheckWarnings
 } from './theory-coordinator.js';
+
+export {
+  instructionalHoursFromTimes,
+  instructionalHoursFromMinutes,
+  clockHoursFromTimes,
+  contactTargetFromCredits,
+  contactFormulaNote,
+  semesterWeekCount
+} from './contact-hours.js';
 
 export {
   FACULTY_NEEDED_NAME,
@@ -63,7 +74,9 @@ export {
   seedTopicsFromTheory,
   moveEventToDate,
   findDay,
-  ensureDay
+  ensureDay,
+  reindexTheoryDay,
+  reindexTheoryDays
 } from './theory-events.js';
 
 export var THEORY_VERSION = 1;
@@ -82,6 +95,13 @@ export function defaultTheorySettings(courseCodes) {
     defaultLectureEnd: '1050',
     defaultSkillsStart: '1200',
     defaultSkillsEnd: '1550',
+    lectureSessions: [
+      { weekday: 'Wed', start: '0800', end: '1050' },
+      { weekday: 'Thu', start: '0800', end: '1050' }
+    ],
+    skillsSessions: [
+      { weekday: 'Fri', start: '1200', end: '1550' }
+    ],
     defaultSkillsFacultyRequired: 2,
     theoryFaculty: [],
     skillsFaculty: [],
@@ -156,6 +176,7 @@ function migrateEventFields(ev) {
   if (!ev.track) ev.track = 'other';
   if (!ev.title) ev.title = '';
   if (!ev.description) ev.description = '';
+  if (ev.notes == null) ev.notes = '';
   if (!ev.faculty) ev.faculty = [];
   if (!ev.categories) ev.categories = [];
   if (!Array.isArray(ev.moduleRefs)) {
@@ -165,8 +186,13 @@ function migrateEventFields(ev) {
   if (ev.track === 'assignment' && !ev.contentArea) {
     ev.contentArea = 'theory';
   }
-  if (ev.track === 'skills' && (ev.facultyRequired == null || isNaN(ev.facultyRequired))) {
-    ev.facultyRequired = null;
+  if (ev.track === 'skills') {
+    if (ev.facultyRequired == null || isNaN(ev.facultyRequired)) {
+      ev.facultyRequired = null;
+    }
+    if (!ev.title || String(ev.title).trim() === '' || String(ev.title).trim() === 'skills') {
+      ev.title = 'Skills lab';
+    }
   }
   (ev.faculty || []).forEach(function (slot) {
     if (!slot || typeof slot !== 'object') return;
@@ -175,6 +201,50 @@ function migrateEventFields(ev) {
     }
     if (slot.needed && !slot.name) slot.name = FACULTY_NEEDED_NAME;
   });
+}
+
+function migrateTheoryFacultyRoster(list) {
+  return (list || []).map(function (f) {
+    if (!f || typeof f !== 'object') {
+      return { id: uid(), name: '', needed: false };
+    }
+    var needed = !!f.needed || f.name === FACULTY_NEEDED_NAME;
+    return {
+      id: f.id || uid(),
+      name: needed ? FACULTY_NEEDED_NAME : String(f.name || ''),
+      needed: needed
+    };
+  });
+}
+
+function migrateSessionsSettings(settings) {
+  if (!settings) return;
+  if (!Array.isArray(settings.lectureSessions) || !settings.lectureSessions.length) {
+    var wds = settings.lectureWeekdays && settings.lectureWeekdays.length
+      ? settings.lectureWeekdays
+      : ['Wed', 'Thu'];
+    var ls = settings.defaultLectureStart || '0800';
+    var le = settings.defaultLectureEnd || '1050';
+    settings.lectureSessions = wds.map(function (wd) {
+      return { weekday: wd, start: ls, end: le };
+    });
+  }
+  if (!Array.isArray(settings.skillsSessions) || !settings.skillsSessions.length) {
+    settings.skillsSessions = [{
+      weekday: 'Fri',
+      start: settings.defaultSkillsStart || '1200',
+      end: settings.defaultSkillsEnd || '1550'
+    }];
+  }
+  if (settings.lectureSessions.length) {
+    settings.lectureWeekdays = settings.lectureSessions.map(function (s) { return s.weekday; });
+    settings.defaultLectureStart = settings.lectureSessions[0].start;
+    settings.defaultLectureEnd = settings.lectureSessions[0].end;
+  }
+  if (settings.skillsSessions.length) {
+    settings.defaultSkillsStart = settings.skillsSessions[0].start;
+    settings.defaultSkillsEnd = settings.skillsSessions[0].end;
+  }
 }
 
 export function migrateTheory(semester) {
@@ -189,6 +259,7 @@ export function migrateTheory(semester) {
   if (!semester.simInstructors) semester.simInstructors = [];
   if (!semester.theory || typeof semester.theory !== 'object') {
     semester.theory = createEmptyTheory(codes);
+    reindexTheoryDays(semester);
     syncHolidaysFromSemester(semester);
     return semester;
   }
@@ -198,12 +269,16 @@ export function migrateTheory(semester) {
   if (!t.displayWeekStart) t.displayWeekStart = 'sunday';
   if (!t.instructionalWeekdays) t.instructionalWeekdays = ['Wed', 'Thu', 'Fri'];
   if (!t.settings) t.settings = defaultTheorySettings(t.courseCodes);
+  // Build sessions from legacy weekday/time fields before default arrays are applied.
+  migrateSessionsSettings(t.settings);
   var defaults = defaultTheorySettings(t.courseCodes);
   Object.keys(defaults).forEach(function (key) {
     if (t.settings[key] === undefined) t.settings[key] = defaults[key];
   });
   if (!Array.isArray(t.settings.theoryFaculty)) t.settings.theoryFaculty = [];
   if (!Array.isArray(t.settings.skillsFaculty)) t.settings.skillsFaculty = [];
+  t.settings.theoryFaculty = migrateTheoryFacultyRoster(t.settings.theoryFaculty);
+  t.settings.skillsFaculty = migrateTheoryFacultyRoster(t.settings.skillsFaculty);
   if (t.settings.defaultSkillsFacultyRequired == null) t.settings.defaultSkillsFacultyRequired = 2;
   if (t.settings.showLecturers == null) t.settings.showLecturers = true;
   if (t.settings.showPracticumFaculty == null) t.settings.showPracticumFaculty = true;
@@ -217,6 +292,7 @@ export function migrateTheory(semester) {
     if (!day.events) day.events = [];
     day.events.forEach(migrateEventFields);
   });
+  reindexTheoryDays(semester);
   renumberAllWeekModules(t);
   syncHolidaysFromSemester(semester);
   refreshFacultyNeeded(t);

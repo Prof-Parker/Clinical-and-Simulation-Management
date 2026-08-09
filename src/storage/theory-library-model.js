@@ -72,6 +72,11 @@ function isUsableSkillTitle(title) {
   return true;
 }
 
+function normalizeLearningObjectives(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.map(function (line) { return String(line || '').trim(); }).filter(Boolean);
+}
+
 function normalizeSkill(raw) {
   if (!raw) return null;
   if (typeof raw === 'string') {
@@ -82,6 +87,7 @@ function normalizeSkill(raw) {
       title: title,
       description: '',
       kinds: inferSkillKinds(title),
+      learningObjectives: [],
       curriculumMeta: emptyCurriculumMeta(),
       courseId: null
     };
@@ -95,6 +101,7 @@ function normalizeSkill(raw) {
     kinds: Array.isArray(raw.kinds)
       ? normalizeSkillKinds(raw.kinds)
       : inferSkillKinds(skillTitle),
+    learningObjectives: normalizeLearningObjectives(raw.learningObjectives),
     curriculumMeta: normalizeCurriculumMeta(raw.curriculumMeta),
     courseId: raw.courseId || null
   };
@@ -108,11 +115,13 @@ function normalizeTopic(raw, courseId) {
     id: raw.id || ('topic_' + Date.now().toString(36)),
     title: title,
     shortLabel: raw.shortLabel != null ? String(raw.shortLabel) : '',
+    // Legacy field retained for older library files; no longer edited in UI.
     moduleRef: raw.moduleRef != null ? String(raw.moduleRef) : '',
     description: raw.description != null ? String(raw.description) : '',
     defaultLectureHours: raw.defaultLectureHours != null ? raw.defaultLectureHours : null,
     defaultTopics: Array.isArray(raw.defaultTopics) ? raw.defaultTopics.slice() : [],
     tags: Array.isArray(raw.tags) ? raw.tags.slice() : [],
+    learningObjectives: normalizeLearningObjectives(raw.learningObjectives),
     curriculumMeta: normalizeCurriculumMeta(raw.curriculumMeta),
     courseId: raw.courseId || courseId || null
   };

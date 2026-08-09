@@ -64,16 +64,26 @@ function listToLines(arr) {
   return (arr || []).join('\n');
 }
 
-function openTopicEditor(topic) {
+function learningObjectivesHtml(objectives) {
+  if (!objectives || !objectives.length) return '';
+  return '<ol class="theory-learning-objectives">' +
+    objectives.map(function (line) {
+      return '<li>' + esc(line) + '</li>';
+    }).join('') +
+    '</ol>';
+}
+
+export function openTopicEditor(topic, opts) {
+  opts = opts || {};
   var isNew = !topic;
   var t = topic || {
     title: '',
     shortLabel: '',
-    moduleRef: '',
     description: '',
     defaultLectureHours: '',
     defaultTopics: [],
     tags: [],
+    learningObjectives: [],
     curriculumMeta: TheoryLibrary.emptyCurriculumMeta()
   };
   var meta = t.curriculumMeta || TheoryLibrary.emptyCurriculumMeta();
@@ -83,16 +93,15 @@ function openTopicEditor(topic) {
     escAttr(t.title) + '" aria-label="Topic title"></label>' +
     '<label>Short label <input type="text" id="libTopicShort" class="select-control" value="' +
     escAttr(t.shortLabel || '') + '" aria-label="Topic short label"></label>' +
-    '<div class="theory-lib-form-row">' +
-    '<label>Module ref <input type="text" id="libTopicRef" class="select-control" value="' +
-    escAttr(t.moduleRef || '') + '" aria-label="Module reference"></label>' +
     '<label>Default lecture hours <input type="number" id="libTopicHours" class="select-control" ' +
     'step="0.01" min="0" value="' + escAttr(t.defaultLectureHours != null ? t.defaultLectureHours : '') +
     '" aria-label="Default lecture hours"></label>' +
-    '</div>' +
     '<label>Brief description <textarea id="libTopicDescription" class="select-control" rows="3" ' +
     'aria-label="Topic description" placeholder="Optional content-area summary">' +
     esc(t.description || '') + '</textarea></label>' +
+    '<label>Learning objectives (one per line)<textarea id="libTopicObjectives" class="select-control" rows="4" ' +
+    'aria-label="Learning objectives" placeholder="One objective per line">' +
+    esc(listToLines(t.learningObjectives)) + '</textarea></label>' +
     '<label>Default topics (one per line)<textarea id="libTopicDefaults" class="select-control" rows="3" ' +
     'aria-label="Default topics">' + esc(listToLines(t.defaultTopics)) + '</textarea></label>' +
     '<label>Tags (comma-separated)<input type="text" id="libTopicTags" class="select-control" value="' +
@@ -113,7 +122,7 @@ function openTopicEditor(topic) {
     var title = titleEl ? titleEl.value.trim() : '';
     if (!title) {
       showAlert('Topic', 'Title is required.');
-      return;
+      return false;
     }
     var curriculumMeta = Object.assign({}, meta, {
       notes: ((document.getElementById('libTopicMetaNotes') || {}).value || '').trim()
@@ -121,33 +130,38 @@ function openTopicEditor(topic) {
     var patch = {
       title: title,
       shortLabel: (document.getElementById('libTopicShort') || {}).value || '',
-      moduleRef: (document.getElementById('libTopicRef') || {}).value || '',
       description: (document.getElementById('libTopicDescription') || {}).value || '',
       defaultLectureHours: (document.getElementById('libTopicHours') || {}).value,
       defaultTopics: linesToList((document.getElementById('libTopicDefaults') || {}).value),
+      learningObjectives: linesToList((document.getElementById('libTopicObjectives') || {}).value),
       tags: String((document.getElementById('libTopicTags') || {}).value || '')
         .split(',')
         .map(function (s) { return s.trim(); })
         .filter(Boolean),
       curriculumMeta: curriculumMeta
     };
-    var done = function () { render(); };
+    var done = function (item) {
+      render();
+      if (opts.onSaved) opts.onSaved(item);
+    };
     if (isNew) {
       var created = TheoryLibrary.addTopic(title, patch);
       if (created && created.then) created.then(done);
-      else done();
+      else done(created);
     } else {
       TheoryLibrary.updateTopic(topic.id, patch).then(done);
     }
   });
 }
 
-function openSkillEditor(skill) {
+export function openSkillEditor(skill, opts) {
+  opts = opts || {};
   var isNew = !skill;
   var s = skill || {
     title: '',
     description: '',
     kinds: [],
+    learningObjectives: [],
     curriculumMeta: TheoryLibrary.emptyCurriculumMeta()
   };
   var meta = s.curriculumMeta || TheoryLibrary.emptyCurriculumMeta();
@@ -164,6 +178,9 @@ function openSkillEditor(skill) {
     '<label>Brief description <textarea id="libSkillDescription" class="select-control" rows="3" ' +
     'aria-label="Skill description" placeholder="Optional skills-lab content summary">' +
     esc(s.description || '') + '</textarea></label>' +
+    '<label>Learning objectives (one per line)<textarea id="libSkillObjectives" class="select-control" rows="4" ' +
+    'aria-label="Learning objectives" placeholder="One objective per line">' +
+    esc(listToLines(s.learningObjectives)) + '</textarea></label>' +
     '<div class="theory-lib-kind-group" role="group" aria-label="Skill tags">' +
     '<span class="section-sub">Tags</span><div class="theory-skill-kinds">' + kindChecks + '</div></div>' +
     '<details class="theory-lib-meta-stub">' +
@@ -174,12 +191,15 @@ function openSkillEditor(skill) {
     '</details>' +
     '</div>';
 
+  var dialogContent = document.querySelector('#dialogModal .modal-content');
+  if (dialogContent) dialogContent.style.maxWidth = '36rem';
+
   showDialog(isNew ? 'Add skill' : 'Edit skill', body, function () {
     var titleEl = document.getElementById('libSkillTitle');
     var title = titleEl ? titleEl.value.trim() : '';
     if (!title) {
       showAlert('Skill', 'Title is required.');
-      return;
+      return false;
     }
     var kinds = [];
     document.querySelectorAll('.lib-skill-kind:checked').forEach(function (cb) {
@@ -191,14 +211,18 @@ function openSkillEditor(skill) {
     var patch = {
       title: title,
       description: (document.getElementById('libSkillDescription') || {}).value || '',
+      learningObjectives: linesToList((document.getElementById('libSkillObjectives') || {}).value),
       kinds: kinds,
       curriculumMeta: curriculumMeta
     };
-    var done = function () { render(); };
+    var done = function (item) {
+      render();
+      if (opts.onSaved) opts.onSaved(item);
+    };
     if (isNew) {
       var created = TheoryLibrary.addSkill(title, patch);
       if (created && created.then) created.then(done);
-      else done();
+      else done(created);
     } else {
       TheoryLibrary.updateSkill(skill.id, patch).then(done);
     }
@@ -286,10 +310,11 @@ function renderTopicLibraryList() {
     var descHint = t.description
       ? '<div class="theory-lib-row-meta text-muted">' + esc(t.description) + '</div>'
       : '';
+    var objHint = learningObjectivesHtml(t.learningObjectives);
     return '<li class="theory-lib-topic-row" data-topic-id="' + escAttr(t.id) + '">' +
       '<div class="theory-lib-row-main">' +
       '<span class="theory-lib-topic-title">' + esc(t.title) + '</span>' +
-      descHint +
+      descHint + objHint +
       '</div>' + actions + '</li>';
   }).join('');
   ensureAddRow(list, 'topic', addRow);
@@ -329,6 +354,7 @@ function renderSkillsLibraryList() {
       (s.description
         ? '<div class="theory-lib-row-meta text-muted">' + esc(s.description) + '</div>'
         : '') +
+      learningObjectivesHtml(s.learningObjectives) +
       '</div>' +
       '<span class="theory-skill-kinds" role="group" aria-label="Skill tags for ' + escAttr(s.title) + '">' +
       checks + '</span>' + actions + '</li>';

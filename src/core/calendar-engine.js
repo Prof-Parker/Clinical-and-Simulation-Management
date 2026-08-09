@@ -19,10 +19,12 @@ import {
   holidayBlocksFullWeek,
   weekHasHoliday
 } from './calendar-holidays.js';
+import { reindexTheoryDays } from './theory-day-index.js';
 
 function rebuildWeeks(data) {
   data.calendar.weeks = buildWeekList(data.calendar.semesterStartDate);
   applyHolidays(data);
+  reindexTheoryDays(data);
   return data.calendar.weeks;
 }
 

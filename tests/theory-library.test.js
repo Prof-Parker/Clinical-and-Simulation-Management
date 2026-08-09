@@ -76,53 +76,72 @@ describe('theory-library.test.js', () => {
     expect(TheoryLibrary.inferSkillKinds('Hand hygiene')).toEqual([]);
   });
 
-  it('updates and removes topics and skills with description and curriculum meta', async () => {
+  it('updates and removes topics and skills with description and learning objectives', async () => {
     state.theoryLibraryRoot = TheoryLibrary.createEmptyLibrary('REGN15');
     var topic = await TheoryLibrary.addTopic('Syllabus', {
-      moduleRef: '1A',
       description: 'Course orientation and syllabus overview',
+      learningObjectives: ['Identify course policies', 'Locate the COR'],
       curriculumMeta: Object.assign(TheoryLibrary.emptyCurriculumMeta(), {
         notes: 'COR Unit 1 stub'
       })
     });
     expect(topic.title).toBe('Syllabus');
     expect(topic.description).toBe('Course orientation and syllabus overview');
+    expect(topic.learningObjectives).toEqual(['Identify course policies', 'Locate the COR']);
     expect(topic.defaultSkills).toBeUndefined();
     expect(topic.curriculumMeta.notes).toBe('COR Unit 1 stub');
     expect(topic.curriculumMeta.acenStandards).toEqual([]);
 
     await TheoryLibrary.updateTopic(topic.id, {
       title: 'REGN15 Syllabus',
-      moduleRef: 'M1',
       description: 'Updated description',
+      learningObjectives: ['Updated objective'],
       curriculumMeta: Object.assign(TheoryLibrary.emptyCurriculumMeta(), {
         acenStandards: ['ACEN-6.1']
       })
     });
     var updatedTopic = TheoryLibrary.getTopicById(topic.id);
     expect(updatedTopic.title).toBe('REGN15 Syllabus');
-    expect(updatedTopic.moduleRef).toBe('M1');
+    expect(updatedTopic.learningObjectives).toEqual(['Updated objective']);
     expect(updatedTopic.description).toBe('Updated description');
     expect(updatedTopic.curriculumMeta.acenStandards).toEqual(['ACEN-6.1']);
     expect(updatedTopic.defaultSkills).toBeUndefined();
 
     var skill = await TheoryLibrary.addSkill('PPE', {
       kinds: ['introduction'],
-      description: 'Donning and doffing PPE'
+      description: 'Donning and doffing PPE',
+      learningObjectives: ['Demonstrate donning PPE']
     });
     expect(skill.title).toBe('PPE');
     expect(skill.description).toBe('Donning and doffing PPE');
+    expect(skill.learningObjectives).toEqual(['Demonstrate donning PPE']);
     await TheoryLibrary.updateSkill(skill.id, {
       title: 'PPE & Hand hygiene',
       kinds: ['introduction', 'practice'],
-      description: 'PPE with hand hygiene practice'
+      description: 'PPE with hand hygiene practice',
+      learningObjectives: ['Demonstrate PPE', 'Perform hand hygiene']
     });
     expect(TheoryLibrary.getSkillById(skill.id).kinds).toEqual(['introduction', 'practice']);
     expect(TheoryLibrary.getSkillById(skill.id).description).toBe('PPE with hand hygiene practice');
+    expect(TheoryLibrary.getSkillById(skill.id).learningObjectives).toEqual([
+      'Demonstrate PPE',
+      'Perform hand hygiene'
+    ]);
 
     await TheoryLibrary.removeSkill(skill.id);
     expect(TheoryLibrary.getSkillById(skill.id)).toBe(null);
     await TheoryLibrary.removeTopic(topic.id);
     expect(TheoryLibrary.getTopicById(topic.id)).toBe(null);
+  });
+
+  it('normalizes missing learningObjectives to empty arrays', () => {
+    var migrated = TheoryLibrary.migrateLibrary({
+      meta: { courseId: 'REGN15' },
+      topics: [{ id: 't1', title: 'Topic', moduleRef: 'legacy' }],
+      skills: [{ id: 's1', title: 'Hand hygiene', kinds: [] }]
+    });
+    expect(migrated.topics[0].learningObjectives).toEqual([]);
+    expect(migrated.topics[0].moduleRef).toBe('legacy');
+    expect(migrated.skills[0].learningObjectives).toEqual([]);
   });
 });

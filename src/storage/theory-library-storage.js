@@ -219,6 +219,7 @@ export function addSkill(title, opts) {
     title: title,
     description: opts.description || '',
     kinds: opts.kinds,
+    learningObjectives: opts.learningObjectives || [],
     curriculumMeta: opts.curriculumMeta,
     courseId: (root.meta && root.meta.courseId) || 'REGN15'
   });
@@ -232,6 +233,11 @@ export function addSkill(title, opts) {
     });
     if (opts.description != null && opts.description !== '') {
       existing.description = String(opts.description);
+    }
+    if (opts.learningObjectives) {
+      existing.learningObjectives = Array.isArray(opts.learningObjectives)
+        ? opts.learningObjectives.map(function (t) { return String(t || '').trim(); }).filter(Boolean)
+        : [];
     }
     if (opts.curriculumMeta) {
       existing.curriculumMeta = normalizeCurriculumMeta(opts.curriculumMeta);
@@ -256,6 +262,11 @@ export function updateSkill(skillId, patch) {
   }
   if (patch.description !== undefined) skill.description = String(patch.description || '');
   if (patch.kinds !== undefined) skill.kinds = normalizeSkillKinds(patch.kinds);
+  if (patch.learningObjectives !== undefined) {
+    skill.learningObjectives = Array.isArray(patch.learningObjectives)
+      ? patch.learningObjectives.map(function (t) { return String(t || '').trim(); }).filter(Boolean)
+      : [];
+  }
   if (patch.curriculumMeta !== undefined) {
     skill.curriculumMeta = normalizeCurriculumMeta(patch.curriculumMeta);
   }
@@ -286,11 +297,11 @@ export function addTopic(title, opts) {
     id: 'topic_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
     title: title,
     shortLabel: opts.shortLabel || '',
-    moduleRef: opts.moduleRef || '',
     description: opts.description || '',
     defaultLectureHours: opts.defaultLectureHours != null ? opts.defaultLectureHours : null,
     defaultTopics: opts.defaultTopics || [],
     tags: opts.tags || [],
+    learningObjectives: opts.learningObjectives || [],
     curriculumMeta: opts.curriculumMeta,
     courseId: (root.meta && root.meta.courseId) || 'REGN15'
   }, root.meta.courseId);
@@ -309,7 +320,6 @@ export function updateTopic(topicId, patch) {
     topic.title = nextTitle;
   }
   if (patch.shortLabel !== undefined) topic.shortLabel = String(patch.shortLabel || '').trim();
-  if (patch.moduleRef !== undefined) topic.moduleRef = String(patch.moduleRef || '').trim();
   if (patch.description !== undefined) topic.description = String(patch.description || '');
   if (patch.defaultLectureHours !== undefined) {
     var hours = patch.defaultLectureHours;
@@ -326,6 +336,11 @@ export function updateTopic(topicId, patch) {
   if (patch.tags !== undefined) {
     topic.tags = Array.isArray(patch.tags)
       ? patch.tags.map(function (t) { return String(t || '').trim(); }).filter(Boolean)
+      : [];
+  }
+  if (patch.learningObjectives !== undefined) {
+    topic.learningObjectives = Array.isArray(patch.learningObjectives)
+      ? patch.learningObjectives.map(function (t) { return String(t || '').trim(); }).filter(Boolean)
       : [];
   }
   if (patch.curriculumMeta !== undefined) {

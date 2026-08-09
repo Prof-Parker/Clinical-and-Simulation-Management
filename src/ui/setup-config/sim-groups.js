@@ -94,6 +94,7 @@ function renderSimTimeOverrides(cfg) {
 function collectSimTimesIntoConfig(cfg) {
     var simStartEl = setupEl('cfgSimDefaultStart');
     var simEndEl = setupEl('cfgSimDefaultEnd');
+    var lunchEl = setupEl('cfgSimLunchBreakMinutes');
     if (simStartEl) {
       cfg.simDefaultStart = ScheduleHours.timeInputToHhmm(
         simStartEl.value, ScheduleHours.DEFAULT_SIM_START
@@ -103,6 +104,12 @@ function collectSimTimesIntoConfig(cfg) {
       cfg.simDefaultEnd = ScheduleHours.timeInputToHhmm(
         simEndEl.value, ScheduleHours.DEFAULT_SIM_END
       );
+    }
+    if (lunchEl) {
+      var lunch = parseInt(lunchEl.value, 10);
+      cfg.simLunchBreakMinutes = isNaN(lunch)
+        ? ScheduleHours.DEFAULT_SIM_LUNCH_BREAK_MINUTES
+        : lunch;
     }
     cfg.simTimeOverrides = [];
     setupQueryAll('cfgSimTimeOverrides', '[data-sim-override-row]').forEach(function (row) {

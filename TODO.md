@@ -108,7 +108,7 @@ TODO.md
     -[X] Login issues
     -[X] No overwrite protection/guard on program file->user file
 - [ ] Add acredidation tracking support for content (large feature)
-- [ ] Work on Audra contact hour items
+- [X] Work on Audra contact hour items
 - [ ] Add support to change user roles from user management system
 - [ ] Add file structure to seed and program data picker to support batch export and archieve folder, audit folder archieve, and password send folder
 - [ ] Add audit mailto feature
@@ -124,7 +124,7 @@ TODO.md
 # Priority items from demo
 - [ ] Build out 1st-3rd semester for clinicals and sims
 - [ ] add self scheduling support for faculty
-- [ ] Integrate audra contact hour tracking support (theory only)
+- [X] Integrate audra contact hour tracking support (theory only)
 - [X] Debug file kind guards — [file_kind_guards_login_debug.md](file_kind_guards_login_debug.md)
 - [ ] **Priority**select which clinical day was missed on make up finder. Highlight/mark missed clinical or sim days. 
 - [ ] **Priority**makup finder should exclude missed sim as makeup option (example student 1 missed sim 1, make up finder shows week 5 as option even though this was the missed sim)
@@ -132,7 +132,7 @@ TODO.md
 - [X] Add back button to login page steps 2,3
 - [ ] Hide bottom and top bars 
 - [X] Possible duplicate file names in login page step 3
-- [ ] Unable to save from embeded browser, file kind guards too tight. Maybe allow classic file picker if program folder picker not active from app login. Apply red styling `danger zone warning as UI deterent`
+- [X] Unable to save from embeded browser, file kind guards too tight. Maybe allow classic file picker if program folder picker not active from app login. Apply red styling `danger zone warning as UI deterent`
 - [ ] **Priority before rolling out to adjunct faculty** with high numbers of users folder structure is very vulnerable to overwrite both in and out of app. Based on live user demo, app folder requires all users to have full edit access to critical files such as user.registry.json
 - [ ] allow program engineer to be assigned in role of lead faculty for a course, while still granting full UI interface
 - [X] Add week-17 makeup clinical clustering to force to lowest number of clinical groups required to accomodate makeup needs. (Dashboard Apply; modes + preferred-site conflict transfer; soft-floor + multi-pass thin consolidate — see `PROJECT_IMPLEMENTATION_GUIDE.md` §5.1 and `docs/Design Docs/week17_makeup_clustering_and_sim_soft_floor.md`)
@@ -149,12 +149,15 @@ TODO.md
 - [X] Finalize semester should lock setup. Include toggle to unlock setup
 
 ## Theory
-- [ ] Cancel Button not closing new event in theory calendar
-- [ ] Thanksgiving break pulled over in correctly
-- [ ] Remove title, just use topic for events. All events must be entered into topic library
-- [ ] Remove module ref from topic library
-- [ ] Add learning objectives to topic library
-- [ ] Add different lecture times for different days 
+- [X] Add resync practicum information (orientation days, holidays, sims, clinicals etc) button
+- [X] Remove title, just use topic for events. All events must be entered into topic library
+- [X] Remove module ref from topic library
+- [X] Add learning objectives to topic library
+- [X] Add skills lab notes optional field. Will display as **Note** below skills lab times in master calendar. Example: **Bring skills kit**
+- [X] Add different lecture times for different days 
+- [X] Increase size of faculty slots
+- [X] Add contact hour calculator
+
 
 
 

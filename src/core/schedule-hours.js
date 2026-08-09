@@ -13,6 +13,7 @@ export var DEFAULT_CLINICAL_START = '0600';
 export var DEFAULT_CLINICAL_END = '1830';
 export var DEFAULT_SIM_START = '0900';
 export var DEFAULT_SIM_END = '1500';
+export var DEFAULT_SIM_LUNCH_BREAK_MINUTES = 30;
 export var DEFAULT_ORIENT_START = '0800';
 export var DEFAULT_ORIENT_END = '1200';
 
@@ -74,6 +75,10 @@ export function ensureSimTimes(cfg) {
   if (!cfg.simDefaultEnd) cfg.simDefaultEnd = DEFAULT_SIM_END;
   cfg.simDefaultStart = normalizeHhmm(cfg.simDefaultStart, DEFAULT_SIM_START);
   cfg.simDefaultEnd = normalizeHhmm(cfg.simDefaultEnd, DEFAULT_SIM_END);
+  var lunchMins = parseInt(cfg.simLunchBreakMinutes, 10);
+  if (isNaN(lunchMins) || lunchMins < 0) lunchMins = DEFAULT_SIM_LUNCH_BREAK_MINUTES;
+  if (lunchMins > 240) lunchMins = 240;
+  cfg.simLunchBreakMinutes = lunchMins;
   if (!Array.isArray(cfg.simTimeOverrides)) cfg.simTimeOverrides = [];
   cfg.simTimeOverrides = cfg.simTimeOverrides.map(function (o) {
     if (!o || o.simNum == null) return null;
@@ -134,6 +139,17 @@ export function resolveSimDayHours(semester, simNum) {
   var practicum = codes.find(function (c) { return /P$/i.test(c); }) || codes[0];
   var rules = getContactHourRules(semester.theory, practicum);
   return simHoursForDay(rules, simNum) || hoursFromTimes(DEFAULT_SIM_START, DEFAULT_SIM_END);
+}
+
+/**
+ * Sim contact hours for Coordinator rollups: wall-clock session minus configured lunch.
+ * Student calendars continue to show full start/end from simTimesForNum.
+ */
+export function resolveSimDayContactHours(semester, simNum) {
+  var wall = resolveSimDayHours(semester, simNum);
+  var cfg = ensureSimTimes((semester && semester.config) || {});
+  var lunchHours = (cfg.simLunchBreakMinutes || 0) / 60;
+  return roundHours(Math.max(0, wall - lunchHours));
 }
 
 export function orientationSessionHours(orient) {
@@ -206,7 +222,7 @@ export function rollPracticumHoursByWeek(semester, options) {
       }
       if (!simSet && cell.sim &&
           (!simGroup || student.simGroup === simGroup)) {
-        simulation = resolveSimDayHours(semester, cell.sim);
+        simulation = resolveSimDayContactHours(semester, cell.sim);
         simSet = true;
       }
     });
@@ -238,10 +254,74 @@ export function representativeSimGroup(semester) {
   return groups[0] || null;
 }
 
-/** One-cohort clinical + sim hours by week (for semester / contact-hour totals). */
-export function rollPracticumHoursForCohort(semester) {
-  return rollPracticumHoursByWeek(semester, {
-    clinicalGroup: representativeClinicalGroup(semester),
-    simGroup: representativeSimGroup(semester)
+/** First student in a clinical group (stable cohort path for semester totals). */
+export function representativeClinicalStudent(semester) {
+  var group = representativeClinicalGroup(semester);
+  if (!group) return null;
+  return (semester.students || []).find(function (s) {
+    return s.clinicalGroup === group;
+  }) || null;
+}
+
+function homeSimCount(student) {
+  var n = 0;
+  (student.schedule || []).forEach(function (cell) {
+    if (cell && cell.sim && !cell.simGuestGroup) n += 1;
   });
+  return n;
+}
+
+/**
+ * Student in the representative sim group with the fullest home-sim path
+ * (most non-guest sessions). Avoids underselling semester totals when the
+ * first roster row is a guest-heavy or incomplete schedule.
+ */
+export function representativeSimStudent(semester) {
+  var group = representativeSimGroup(semester);
+  if (!group) return null;
+  var best = null;
+  var bestCount = -1;
+  (semester.students || []).forEach(function (s) {
+    if (s.simGroup !== group) return;
+    var n = homeSimCount(s);
+    if (n > bestCount) {
+      best = s;
+      bestCount = n;
+    }
+  });
+  return best;
+}
+
+/**
+ * One student's clinical + home-sim hours by week (for semester / contact-hour totals).
+ * Uses a single representative student per track so guest sit-ins from other
+ * classmates do not inflate the union of sim weeks past simDaysRequired.
+ * Guest sims (simGuestGroup set) are excluded from the program contact total;
+ * weekly Coordinator columns still use rollPracticumHoursByWeek (any group).
+ */
+export function rollPracticumHoursForCohort(semester) {
+  var clinStudent = representativeClinicalStudent(semester);
+  var simStudent = representativeSimStudent(semester);
+  var byWeek = {};
+  for (var wi = 0; wi < 18; wi++) {
+    var clinical = 0;
+    var simulation = 0;
+    if (clinStudent) {
+      var cCell = clinStudent.schedule && clinStudent.schedule[wi];
+      if (cCell && !cCell.inactive && cCell.clinical && !cCell.clinicalMissed) {
+        clinical = resolveClinicalDayHours(semester, cellFacilityId(clinStudent, cCell));
+      }
+    }
+    if (simStudent) {
+      var sCell = simStudent.schedule && simStudent.schedule[wi];
+      if (sCell && !sCell.inactive && sCell.sim && !sCell.simGuestGroup) {
+        simulation = resolveSimDayContactHours(semester, sCell.sim);
+      }
+    }
+    byWeek[wi + 1] = {
+      clinical: roundHours(clinical),
+      simulation: roundHours(simulation)
+    };
+  }
+  return byWeek;
 }

@@ -2698,11 +2698,25 @@ button.course-status-line[aria-expanded="true"] .course-status-context-value {
   min-width: 12rem; background: var(--bg); border: 1px solid var(--border);
   border-radius: 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.12); margin-top: 0.25rem;
 }
-.theory-master-wrap { overflow-x: auto; }
+.theory-master-wrap {
+  /* Bleed past section.card padding so zebra rows reach the card's left/right edges. */
+  margin-left: -1.25rem;
+  margin-right: -1.25rem;
+  width: calc(100% + 2.5rem);
+  overflow-x: auto;
+}
 .theory-master-table {
   table-layout: fixed;
   width: 100%;
   min-width: 52rem;
+  /* Stripe + grid lines: enough contrast on shaded weeks without clashing with odd weeks. */
+  --theory-week-stripe: #f1f5f9;
+  --theory-week-stripe-border: #cbd5e1;
+}
+html.dark .theory-master-table {
+  /* Lighter than --border/#334155 so grid lines remain visible on the stripe. */
+  --theory-week-stripe: #243044;
+  --theory-week-stripe-border: #475569;
 }
 .theory-master-table th,
 .theory-master-table td {
@@ -2712,11 +2726,20 @@ button.course-status-line[aria-expanded="true"] .course-status-context-value {
 }
 .theory-master-table .theory-week-label,
 .theory-master-table thead th:first-child {
-  width: 3.75rem;
+  width: 5rem;
   white-space: nowrap;
+  padding-left: 1.25rem;
 }
 .theory-master-table .theory-week-label {
   vertical-align: middle;
+}
+.theory-master-table tbody tr.theory-week-even {
+  background: var(--theory-week-stripe);
+}
+.theory-master-table .theory-week-even > td {
+  background: var(--theory-week-stripe);
+  border-right-color: var(--theory-week-stripe-border);
+  border-bottom-color: var(--theory-week-stripe-border);
 }
 .theory-day-cell {
   cursor: pointer;
@@ -2734,8 +2757,10 @@ button.course-status-line[aria-expanded="true"] .course-status-context-value {
 .theory-week-theory-row .theory-day-cell {
   border-bottom: none;
 }
-.theory-week-divider-row td {
+/* Must beat table.data-table td { border-bottom: 1px } or a solid line duplicates the dashed band divider. */
+table.data-table.theory-master-table .theory-week-divider-row > td {
   padding: 0;
+  border-top: none;
   border-right: none;
   border-bottom: none;
 }
@@ -2750,8 +2775,21 @@ button.course-status-line[aria-expanded="true"] .course-status-context-value {
   margin: 0;
   width: 100%;
 }
-.theory-week-practicum-row .theory-day-cell {
+.theory-master-table .theory-week-even .theory-week-divider {
+  border-top-color: var(--theory-week-stripe-border);
+}
+table.data-table.theory-master-table .theory-week-practicum-row .theory-day-cell {
   border-top: none;
+  border-bottom: 3px solid var(--border);
+}
+.theory-master-table .theory-week-even.theory-week-practicum-row .theory-day-cell {
+  border-bottom-color: var(--theory-week-stripe-border);
+}
+.theory-master-table .theory-week-theory-row .theory-week-label {
+  border-bottom: 3px solid var(--border);
+}
+.theory-master-table .theory-week-even.theory-week-theory-row .theory-week-label {
+  border-bottom-color: var(--theory-week-stripe-border);
 }
 .theory-track {
   padding: 0.2rem;
@@ -2853,9 +2891,18 @@ button.course-status-line[aria-expanded="true"] .course-status-context-value {
 .theory-master-setup { margin: 0 0 1rem; }
 .theory-master-setup-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  grid-template-columns: minmax(16rem, 1.25fr) minmax(14rem, 1fr);
   gap: 1rem;
   margin-top: 0.75rem;
+  align-items: start;
+}
+.theory-master-setup-span {
+  grid-column: 1 / -1;
+}
+@media (max-width: 720px) {
+  .theory-master-setup-grid {
+    grid-template-columns: 1fr;
+  }
 }
 .theory-master-setup-fieldset {
   border: 1px solid var(--border);
@@ -2864,8 +2911,38 @@ button.course-status-line[aria-expanded="true"] .course-status-context-value {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-width: 0;
 }
 .theory-weekday-checks { display: flex; flex-wrap: wrap; gap: 0.35rem 0.75rem; }
+.theory-master-setup-sessions .config-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.theory-master-setup-sessions .config-list-row.setup-facility-row-times {
+  grid-template-columns: minmax(5rem, auto) minmax(5.75rem, auto) minmax(5.75rem, auto) auto 2.25rem;
+}
+.theory-master-setup .theory-setup-faculty-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+.theory-master-setup .theory-setup-faculty-row .setup-faculty-slot {
+  min-width: 0;
+  width: 100%;
+}
+.theory-master-setup .theory-setup-faculty-row .setup-faculty-slot input {
+  min-width: 8rem;
+  flex: 1;
+}
+.theory-ev-note {
+  font-size: 0.85rem;
+  margin-top: 0.2rem;
+  line-height: 1.3;
+}
+.theory-learning-objectives {
+  margin: 0.25rem 0 0;
+  padding-left: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted, var(--text));
+}
 .theory-master-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -2891,8 +2968,68 @@ html.dark .theory-track-assignment-theory { border-color: #93c5fd; color: #93c5f
 html.dark .theory-track-assignment-skills { border-color: #fdba74; color: #fdba74; }
 html.dark .theory-track-assignment-simulation { border-color: #c4b5fd; color: #c4b5fd; }
 html.dark .theory-track-assignment-clinical { border-color: #86efac; color: #86efac; }
-.theory-coordinator-header { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1rem; }
-.theory-coordinator-chip { font-size: 0.85rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; background: var(--surface-alt); }
+.theory-coordinator-header { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-start; margin-bottom: 1rem; }
+.theory-coordinator-status {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: stretch;
+  min-width: 0;
+}
+.theory-coordinator-chip {
+  font-size: 0.8125rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.625rem;
+  line-height: 1.35;
+  color: var(--text);
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  min-width: 13rem;
+  flex: 0 1 auto;
+}
+.theory-coord-chip-code {
+  font-weight: 700;
+  margin-bottom: 0.15rem;
+}
+.theory-coord-chip-line {
+  font-size: 0.8rem;
+}
+.theory-chip-on_target {
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.08);
+  color: #065f46;
+}
+html.dark .theory-chip-on_target {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(52, 211, 153, 0.45);
+  color: #6ee7b7;
+}
+.theory-chip-under {
+  border: 1px solid rgba(234, 179, 8, 0.45);
+  background: rgba(234, 179, 8, 0.08);
+  color: #92400e;
+}
+html.dark .theory-chip-under {
+  background: rgba(234, 179, 8, 0.12);
+  border-color: rgba(250, 204, 21, 0.45);
+  color: #fcd34d;
+}
+.theory-chip-over {
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.08);
+  color: #991b1b;
+}
+html.dark .theory-chip-over {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fca5a5;
+}
+.theory-chip-unknown {
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text);
+}
 .theory-coordinator-wrap { overflow-x: auto; max-height: min(75vh, 52rem); overflow-y: auto; }
 .theory-coordinator-table {
   table-layout: fixed;
@@ -2907,8 +3044,20 @@ html.dark .theory-track-assignment-clinical { border-color: #86efac; color: #86e
 }
 .theory-coordinator-table .theory-week-label,
 .theory-coordinator-table thead th:first-child {
-  width: 3.75rem;
+  width: 5.5rem;
+  min-width: 5.5rem;
   white-space: nowrap;
+}
+.theory-coord-semester-label {
+  overflow: visible;
+  vertical-align: middle;
+}
+.theory-coord-semester-totals td {
+  position: sticky; bottom: 0; z-index: 2;
+  background: var(--sticky-bg); border-top: 2px solid var(--border);
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.08);
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
 }
 .theory-coord-day-cell {
   min-height: 2.5rem;
@@ -2928,10 +3077,12 @@ html.dark .theory-track-assignment-clinical { border-color: #86efac; color: #86e
 .theory-coord-item-skills { background: #ffedd5; color: #9a3412; }
 .theory-coord-item-simulation { background: #ede9fe; color: #5b21b6; }
 .theory-coord-item-clinical { background: #e0e7ff; color: #3730a3; }
+.theory-coord-item-holiday { background: #fee2e2; color: #991b1b; font-weight: 600; }
 html.dark .theory-coord-item-theory { background: #1e40af; color: #dbeafe; }
 html.dark .theory-coord-item-skills { background: #c2410c; color: #ffedd5; }
 html.dark .theory-coord-item-simulation { background: #6d28d9; color: #ede9fe; }
 html.dark .theory-coord-item-clinical { background: #4338ca; color: #e0e7ff; }
+html.dark .theory-coord-item-holiday { background: #b91c1c; color: #fef2f2; }
 .theory-coord-week-totals { font-size: 0.72rem; line-height: 1.45; white-space: nowrap; }
 .theory-coord-totals-col,
 .theory-coord-week-totals {
@@ -2940,15 +3091,7 @@ html.dark .theory-coord-item-clinical { background: #4338ca; color: #e0e7ff; }
 }
 .theory-coord-total-line { margin: 0.05rem 0; }
 .theory-coord-practicum-total { margin-top: 0.35rem; padding-top: 0.25rem; border-top: 1px solid var(--border); }
-.theory-coord-semester-totals td {
-  position: sticky; bottom: 0; z-index: 2;
-  background: var(--sticky-bg); border-top: 2px solid var(--border);
-  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.08);
-}
 html.dark .theory-coord-semester-totals td { box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.35); }
-.theory-chip-on_target { color: #166534; }
-.theory-chip-under { color: #b45309; }
-.theory-chip-over { color: #b91c1c; }
 .theory-topic-library { margin-bottom: 1rem; padding: 0.75rem; background: var(--surface-alt); border-radius: 0.5rem; }
 .theory-library-header {
   display: flex;

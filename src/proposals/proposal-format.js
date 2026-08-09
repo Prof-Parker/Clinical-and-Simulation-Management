@@ -33,7 +33,8 @@ var SENTINEL = {
     week17MakeupPreferredSiteId: 'Makeup week preferred clinical site',
     clinicalGroups: 'Clinical groups list',
     simGroups: 'Simulation groups list',
-    simDays: 'Simulation weekdays'
+    simDays: 'Simulation weekdays',
+    simLunchBreakMinutes: 'Simulation lunch break (minutes)'
   };
   var META_LABELS = {
     semesterSeason: 'Semester season',

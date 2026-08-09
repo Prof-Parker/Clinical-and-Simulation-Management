@@ -4,14 +4,23 @@
 
 import { getData, getFileRoot, notifyChange } from '../../core/state.js';
 import * as TheoryData from '../../core/theory-data.js';
-import * as ScheduleHours from '../../core/schedule-hours.js';
 import * as UserDirectory from '../../storage/user-directory.js';
 import { uid } from '../../core/data-model/students.js';
 import * as Permissions from '../../auth/permissions.js';
 import { showAlert } from '../dialogs.js';
 import { refresh } from '../chrome.js';
+import {
+  isFacultyNeeded,
+  applyFacultySlotValue
+} from '../setup/faculty-slots.js';
+import {
+  renderSessionList,
+  collectSessions,
+  migrateSessionsFromLegacy,
+  defaultLectureSessions,
+  defaultSkillsSessions
+} from './master-setup-sessions.js';
 
-var WEEKDAY_OPTS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 var bound = false;
 
 function canEdit() {
@@ -38,6 +47,25 @@ function datalistHtml() {
   }).join('');
 }
 
+function rosterSlotInnerHtml(f, i, listId) {
+  var needed = isFacultyNeeded(f);
+  var nameVal = needed ? '' : (f.name || '');
+  var mode = needed ? '__needed__' : (nameVal ? '__named__' : '');
+  return '<div class="setup-faculty-slot">' +
+    '<select data-roster="slot" data-roster-idx="' + i + '" class="select-control setup-faculty-slot-select" ' +
+    'aria-label="Faculty assignment">' +
+    '<option value=""' + (mode === '' ? ' selected' : '') + '>—</option>' +
+    '<option value="__needed__"' + (mode === '__needed__' ? ' selected' : '') + '>Faculty needed</option>' +
+    '<option value="__named__"' + (mode === '__named__' ? ' selected' : '') + '>Named faculty</option>' +
+    '</select>' +
+    '<input type="text" data-roster="name" data-roster-idx="' + i + '" list="' + listId + '" ' +
+    'value="' + escAttr(nameVal) + '" placeholder="Faculty name" autocomplete="off" ' +
+    'aria-label="Faculty name"' +
+    (needed ? ' disabled class="setup-autofill-field"' : '') +
+    '>' +
+    '</div>';
+}
+
 function renderRoster(containerId, list) {
   var el = document.getElementById(containerId);
   if (!el) return;
@@ -45,9 +73,8 @@ function renderRoster(containerId, list) {
   el.innerHTML = '<datalist id="' + listId + '">' + datalistHtml() + '</datalist>';
   (list || []).forEach(function (f, i) {
     el.innerHTML +=
-      '<div class="config-list-row">' +
-      '<input type="text" class="select-control" data-roster-idx="' + i + '" list="' + listId + '" ' +
-      'value="' + escAttr(f.name || '') + '" placeholder="Faculty name" aria-label="Faculty name" autocomplete="off">' +
+      '<div class="config-list-row setup-faculty-row theory-setup-faculty-row">' +
+      rosterSlotInnerHtml(f, i, listId) +
       '<button type="button" class="btn btn-icon-remove remove-roster-row" data-roster-idx="' + i + '" ' +
       'aria-label="Remove faculty" title="Remove faculty">&times;</button></div>';
   });
@@ -59,11 +86,33 @@ function renderRoster(containerId, list) {
 function collectRoster(containerId, keepEmpty) {
   var el = document.getElementById(containerId);
   if (!el) return [];
+  var byIdx = {};
+  el.querySelectorAll('[data-roster-idx]').forEach(function (node) {
+    var idx = parseInt(node.getAttribute('data-roster-idx'), 10);
+    if (isNaN(idx)) return;
+    if (!byIdx[idx]) byIdx[idx] = { id: uid(), name: '', needed: false };
+    var field = node.getAttribute('data-roster');
+    if (field === 'slot') {
+      if (node.value === '__needed__') {
+        byIdx[idx].needed = true;
+        byIdx[idx].name = TheoryData.FACULTY_NEEDED_NAME;
+      } else if (node.value === '__named__') {
+        byIdx[idx].needed = false;
+      } else {
+        byIdx[idx].needed = false;
+        byIdx[idx].name = '';
+      }
+    } else if (field === 'name' && !byIdx[idx].needed) {
+      byIdx[idx].name = node.value.trim();
+    }
+  });
   var out = [];
-  el.querySelectorAll('input[data-roster-idx]').forEach(function (input) {
-    var name = input.value.trim();
-    if (!name && !keepEmpty) return;
-    out.push({ id: uid(), name: name });
+  Object.keys(byIdx).sort(function (a, b) {
+    return parseInt(a, 10) - parseInt(b, 10);
+  }).forEach(function (k) {
+    var row = byIdx[k];
+    if (!keepEmpty && !row.needed && !row.name) return;
+    out.push(row);
   });
   return out;
 }
@@ -78,14 +127,13 @@ function resizeSkillsFaculty(list, count) {
   var next = (list || []).slice();
   var target = clampSkillsFacultyRequired(count);
   while (next.length < target) {
-    next.push({ id: uid(), name: '' });
+    next.push({ id: uid(), name: TheoryData.FACULTY_NEEDED_NAME, needed: true });
   }
   if (next.length > target) {
-    // Prefer dropping empty trailing slots, then trim from the end.
     while (next.length > target) {
       var emptyIdx = -1;
       for (var i = next.length - 1; i >= 0; i--) {
-        if (!String(next[i].name || '').trim()) {
+        if (!String(next[i].name || '').trim() || next[i].needed) {
           emptyIdx = i;
           break;
         }
@@ -95,17 +143,6 @@ function resizeSkillsFaculty(list, count) {
     }
   }
   return next;
-}
-
-function renderWeekdayChecks(settings) {
-  var el = document.getElementById('theoryLectureWeekdays');
-  if (!el) return;
-  var selected = settings.lectureWeekdays || ['Wed', 'Thu'];
-  el.innerHTML = WEEKDAY_OPTS.map(function (d) {
-    var checked = selected.indexOf(d) >= 0 ? ' checked' : '';
-    return '<label class="filter-check filter-check-compact">' +
-      '<input type="checkbox" data-lecture-wd="' + d + '"' + checked + '> ' + d + '</label>';
-  }).join('');
 }
 
 function fillSeedSemesterSelect(data) {
@@ -121,22 +158,27 @@ function fillSeedSemesterSelect(data) {
   });
 }
 
+function syncLegacyFromSessions(settings) {
+  if (settings.lectureSessions && settings.lectureSessions.length) {
+    settings.lectureWeekdays = settings.lectureSessions.map(function (s) { return s.weekday; });
+    settings.defaultLectureStart = settings.lectureSessions[0].start;
+    settings.defaultLectureEnd = settings.lectureSessions[0].end;
+  }
+  if (settings.skillsSessions && settings.skillsSessions.length) {
+    settings.defaultSkillsStart = settings.skillsSessions[0].start;
+    settings.defaultSkillsEnd = settings.skillsSessions[0].end;
+  }
+}
+
 export function render(data) {
   if (!data || !data.theory) return;
   var settings = data.theory.settings || {};
-  renderWeekdayChecks(settings);
-  var start = document.getElementById('theoryDefaultLectureStart');
-  var end = document.getElementById('theoryDefaultLectureEnd');
-  var sStart = document.getElementById('theoryDefaultSkillsStart');
-  var sEnd = document.getElementById('theoryDefaultSkillsEnd');
+  migrateSessionsFromLegacy(settings);
+  renderSessionList('theoryLectureSessions', settings.lectureSessions, 'lecture');
+  renderSessionList('theorySkillsSessions', settings.skillsSessions, 'skills');
   var req = document.getElementById('theoryDefaultSkillsFacultyRequired');
-  if (start) start.value = ScheduleHours.hhmmToTimeInput(settings.defaultLectureStart || '0800');
-  if (end) end.value = ScheduleHours.hhmmToTimeInput(settings.defaultLectureEnd || '1050');
-  if (sStart) sStart.value = ScheduleHours.hhmmToTimeInput(settings.defaultSkillsStart || '1200');
-  if (sEnd) sEnd.value = ScheduleHours.hhmmToTimeInput(settings.defaultSkillsEnd || '1550');
   var required = settings.defaultSkillsFacultyRequired != null ? settings.defaultSkillsFacultyRequired : 2;
   if (req) req.value = required;
-  // Keep roster length in sync with the default required count (pad only; do not shrink on render).
   var skillsList = settings.skillsFaculty || [];
   if (skillsList.length < required) {
     settings.skillsFaculty = resizeSkillsFaculty(skillsList, required);
@@ -146,7 +188,6 @@ export function render(data) {
   renderRoster('theorySkillsFacultyRoster', skillsList);
   fillSeedSemesterSelect(data);
   var pull = document.getElementById('theoryModuleSeedPull');
-  var blank = document.getElementById('theoryModuleSeedBlank');
   var seedSel = document.getElementById('theoryModuleSeedSemester');
   if (seedSel) seedSel.disabled = !(pull && pull.checked);
   var showL = document.getElementById('theoryShowLecturers');
@@ -160,25 +201,16 @@ export function render(data) {
 export function collectInto(data) {
   if (!data || !data.theory || !data.theory.settings) return;
   var settings = data.theory.settings;
-  var wds = [];
-  document.querySelectorAll('#theoryLectureWeekdays [data-lecture-wd]').forEach(function (cb) {
-    if (cb.checked) wds.push(cb.getAttribute('data-lecture-wd'));
-  });
-  if (wds.length) settings.lectureWeekdays = wds;
-  var start = document.getElementById('theoryDefaultLectureStart');
-  var end = document.getElementById('theoryDefaultLectureEnd');
-  var sStart = document.getElementById('theoryDefaultSkillsStart');
-  var sEnd = document.getElementById('theoryDefaultSkillsEnd');
+  settings.lectureSessions = collectSessions('theoryLectureSessions', 'lecture');
+  settings.skillsSessions = collectSessions('theorySkillsSessions', 'skills');
+  if (!settings.lectureSessions.length) settings.lectureSessions = defaultLectureSessions();
+  if (!settings.skillsSessions.length) settings.skillsSessions = defaultSkillsSessions();
+  syncLegacyFromSessions(settings);
   var req = document.getElementById('theoryDefaultSkillsFacultyRequired');
-  if (start) settings.defaultLectureStart = ScheduleHours.timeInputToHhmm(start.value, '0800');
-  if (end) settings.defaultLectureEnd = ScheduleHours.timeInputToHhmm(end.value, '1050');
-  if (sStart) settings.defaultSkillsStart = ScheduleHours.timeInputToHhmm(sStart.value, '1200');
-  if (sEnd) settings.defaultSkillsEnd = ScheduleHours.timeInputToHhmm(sEnd.value, '1550');
   if (req) {
     settings.defaultSkillsFacultyRequired = clampSkillsFacultyRequired(parseInt(req.value, 10));
   }
   settings.theoryFaculty = collectRoster('theoryFacultyRoster', false);
-  // Keep empty slots so roster length stays aligned with defaultSkillsFacultyRequired.
   settings.skillsFaculty = resizeSkillsFaculty(
     collectRoster('theorySkillsFacultyRoster', true),
     settings.defaultSkillsFacultyRequired
@@ -233,6 +265,22 @@ function saveSetup() {
   notifyChange();
   refresh();
   showAlert('Theory setup applied', 'Changes applied to this semester. Use Sync to OneDrive when ready.');
+}
+
+function resyncPracticum() {
+  if (!canEdit()) {
+    showAlert('Resync', 'You do not have permission to edit theory.');
+    return;
+  }
+  var data = getData();
+  if (!data || !data.theory) return;
+  TheoryData.syncHolidaysFromSemester(data);
+  notifyChange();
+  refresh();
+  showAlert(
+    'Resync with practicum calendar',
+    'Holiday and break dates and labels were refreshed from Setup onto the Master Calendar.'
+  );
 }
 
 function applyTopicSeed() {
@@ -294,9 +342,70 @@ export function init() {
         render(dataReq);
         return;
       }
+      var slotSel = e.target.closest('[data-roster="slot"]');
+      if (slotSel) {
+        if (!canEdit()) return;
+        var dataSlot = getData();
+        var parentSlot = slotSel.closest('#theoryFacultyRoster, #theorySkillsFacultyRoster');
+        if (!parentSlot || !dataSlot || !dataSlot.theory) return;
+        var idxSlot = parseInt(slotSel.getAttribute('data-roster-idx'), 10);
+        var listKey = parentSlot.id === 'theoryFacultyRoster' ? 'theoryFaculty' : 'skillsFaculty';
+        var list = collectRoster(parentSlot.id, true);
+        var row = list[idxSlot] || { id: uid(), name: '', needed: false };
+        if (slotSel.value === '__needed__') {
+          applyFacultySlotValue(row, '__needed__');
+        } else if (slotSel.value === '__named__') {
+          row.needed = false;
+          if (row.name === TheoryData.FACULTY_NEEDED_NAME) row.name = '';
+        } else {
+          row.needed = false;
+          row.name = '';
+        }
+        list[idxSlot] = row;
+        dataSlot.theory.settings[listKey] = list;
+        notifyChange();
+        render(dataSlot);
+        return;
+      }
       if (e.target.closest('#theoryMasterSetup')) persistFromUi();
     });
     setup.addEventListener('click', function (e) {
+      var addSession = e.target.closest('.add-session-row');
+      if (addSession) {
+        if (!canEdit()) return;
+        var dataS = getData();
+        if (!dataS || !dataS.theory) return;
+        collectInto(dataS);
+        var kind = addSession.getAttribute('data-session-kind');
+        var key = kind === 'skills' ? 'skillsSessions' : 'lectureSessions';
+        var sessions = dataS.theory.settings[key] || [];
+        sessions.push(kind === 'skills'
+          ? { weekday: 'Fri', start: '1200', end: '1550' }
+          : { weekday: 'Wed', start: '0800', end: '1050' });
+        dataS.theory.settings[key] = sessions;
+        syncLegacyFromSessions(dataS.theory.settings);
+        notifyChange();
+        render(dataS);
+        return;
+      }
+      var rmSession = e.target.closest('.remove-session-row');
+      if (rmSession) {
+        if (!canEdit()) return;
+        var dataRm = getData();
+        if (!dataRm || !dataRm.theory) return;
+        collectInto(dataRm);
+        var kindRm = rmSession.getAttribute('data-session-kind');
+        var keyRm = kindRm === 'skills' ? 'skillsSessions' : 'lectureSessions';
+        var idxRm = parseInt(rmSession.getAttribute('data-session-idx'), 10);
+        var listRm = dataRm.theory.settings[keyRm] || [];
+        if (listRm.length <= 1 || isNaN(idxRm)) return;
+        listRm.splice(idxRm, 1);
+        dataRm.theory.settings[keyRm] = listRm;
+        syncLegacyFromSessions(dataRm.theory.settings);
+        notifyChange();
+        render(dataRm);
+        return;
+      }
       var addBtn = e.target.closest('.add-roster-row');
       if (addBtn) {
         if (!canEdit()) return;
@@ -305,11 +414,15 @@ export function init() {
         if (!parent) return;
         if (parent.id === 'theoryFacultyRoster') {
           data.theory.settings.theoryFaculty = collectRoster('theoryFacultyRoster', true);
-          data.theory.settings.theoryFaculty.push({ id: uid(), name: '' });
+          data.theory.settings.theoryFaculty.push({
+            id: uid(),
+            name: TheoryData.FACULTY_NEEDED_NAME,
+            needed: true
+          });
         } else {
           var skills = collectRoster('theorySkillsFacultyRoster', true);
           if (skills.length >= 10) return;
-          skills.push({ id: uid(), name: '' });
+          skills.push({ id: uid(), name: TheoryData.FACULTY_NEEDED_NAME, needed: true });
           data.theory.settings.skillsFaculty = skills;
           data.theory.settings.defaultSkillsFacultyRequired = clampSkillsFacultyRequired(skills.length);
         }
@@ -353,6 +466,8 @@ export function init() {
   }
   var saveBtn = document.getElementById('theorySaveSetupBtn');
   if (saveBtn) saveBtn.addEventListener('click', saveSetup);
+  var resyncBtn = document.getElementById('theoryResyncPracticumBtn');
+  if (resyncBtn) resyncBtn.addEventListener('click', resyncPracticum);
   var advancedBtn = document.getElementById('theoryAdvancedConfigBtn');
   if (advancedBtn) advancedBtn.addEventListener('click', toggleAdvanced);
   var applyBtn = document.getElementById('theoryModuleSeedApplyBtn');

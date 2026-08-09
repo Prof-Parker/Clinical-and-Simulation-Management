@@ -11,8 +11,8 @@ import { openEventEditor } from './event-editor.js';
 import { render as renderSetup } from './master-setup.js';
 import { render as renderContentLibrary } from './content-library.js';
 import { refresh } from '../chrome.js';
+import { WEEK_COLS, buildMasterCalendarWeeks } from './master-calendar-layout.js';
 
-var WEEK_COLS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 var dragEventId = null;
 var suppressClick = false;
 
@@ -105,6 +105,9 @@ function renderEventChip(data, ev, settings) {
   if (ev.timeStart) {
     html += '<div class="theory-ev-time">' + ev.timeStart + '–' + (ev.timeEnd || '') + '</div>';
   }
+  if (ev.track === 'skills' && ev.notes) {
+    html += '<div class="theory-ev-note"><strong>Note</strong> ' + esc(ev.notes) + '</div>';
+  }
   html += renderSkillsLabContent(ev, settings);
   html += renderFacultyBlock(data, ev, settings);
   html += '</div>';
@@ -117,35 +120,35 @@ export function render(data) {
   if (!grid || !data.theory) return;
   var theory = data.theory;
   var settings = theory.settings || {};
-  var byWeek = {};
-  (theory.days || []).forEach(function (day) {
-    var wl = day.weekLabel || 1;
-    if (!byWeek[wl]) byWeek[wl] = {};
-    byWeek[wl][day.weekday] = day;
-  });
+  var weeks = buildMasterCalendarWeeks(data);
 
   var html = '<div class="theory-master-wrap"><table class="data-table theory-master-table"><thead><tr>' +
     '<th>Week</th>' + WEEK_COLS.map(function (d) { return '<th>' + d + '</th>'; }).join('') + '</tr></thead><tbody>';
 
-  for (var w = 1; w <= 18; w++) {
-    var dayMeta = WEEK_COLS.map(function (wd) {
-      var day = byWeek[w] && byWeek[w][wd];
-      var date = (day && day.date) || TheoryData.dateForWeekdayInWeek(data, w - 1, wd) || '';
+  weeks.forEach(function (week) {
+    var dayMeta = week.days.map(function (cell) {
       var theoryHtml = '';
       var practicumHtml = '';
-      if (day) {
-        (day.events || []).forEach(function (ev) {
-          var chip = renderEventChip(data, ev, settings);
-          if (TheoryData.isPracticumTrackEvent(ev)) practicumHtml += chip;
-          else theoryHtml += chip;
-        });
-      }
-      return { wd: wd, day: day, date: date, theoryHtml: theoryHtml, practicumHtml: practicumHtml };
+      (cell.events || []).forEach(function (ev) {
+        var chip = renderEventChip(data, ev, settings);
+        if (TheoryData.isPracticumTrackEvent(ev)) practicumHtml += chip;
+        else theoryHtml += chip;
+      });
+      return {
+        wd: cell.wd,
+        day: cell.day,
+        date: cell.date,
+        theoryHtml: theoryHtml,
+        practicumHtml: practicumHtml
+      };
     });
 
+    // Theory + practicum share one zebra class so the whole week block reads as a unit.
+    var zebra = (week.weekLabel % 2 === 0) ? ' theory-week-even' : ' theory-week-odd';
+
     // Theory band row — height shared across the week so the divider aligns.
-    html += '<tr class="theory-week-theory-row">';
-    html += '<td class="theory-week-label" rowspan="3">Wk ' + w + '</td>';
+    html += '<tr class="theory-week-theory-row' + zebra + '">';
+    html += '<td class="theory-week-label" rowspan="3">Wk ' + week.weekLabel + '</td>';
     dayMeta.forEach(function (meta) {
       html += '<td class="theory-day-cell theory-day-theory-cell" data-date="' + meta.date + '">';
       if (meta.date) {
@@ -156,18 +159,18 @@ export function render(data) {
     html += '</tr>';
 
     // Continuous week divider (one cell spanning all day columns).
-    html += '<tr class="theory-week-divider-row" aria-hidden="true">' +
+    html += '<tr class="theory-week-divider-row' + zebra + '" aria-hidden="true">' +
       '<td colspan="' + WEEK_COLS.length + '" class="theory-week-divider-cell">' +
       '<div class="theory-week-divider"></div></td></tr>';
 
     // Practicum band row.
-    html += '<tr class="theory-week-practicum-row">';
+    html += '<tr class="theory-week-practicum-row' + zebra + '">';
     dayMeta.forEach(function (meta) {
       html += '<td class="theory-day-cell theory-day-practicum-cell" data-date="' + meta.date + '">' +
         '<div class="theory-day-practicum-band">' + meta.practicumHtml + '</div></td>';
     });
     html += '</tr>';
-  }
+  });
   html += '</tbody></table></div>';
   grid.innerHTML = html;
 

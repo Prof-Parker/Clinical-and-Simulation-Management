@@ -33,6 +33,8 @@ export function defaultConfig() {
     simDays: ['Mon', 'Tue'],
     simDefaultStart: '0900',
     simDefaultEnd: '1500',
+    /** Minutes deducted from sim wall-clock for Coordinator contact-hour rollups. */
+    simLunchBreakMinutes: 30,
     simTimeOverrides: [],
     /** When true, a holiday date blocks the entire instructional week for algo sim/clinical. */
     holidayBlocksFullWeek: true,
@@ -136,6 +138,10 @@ export function normalizeConfig(cfg) {
   cfg.maxGuestSimsPerStudent = guestSoft;
   if (!cfg.simDefaultStart) cfg.simDefaultStart = '0900';
   if (!cfg.simDefaultEnd) cfg.simDefaultEnd = '1500';
+  var lunchMins = parseInt(cfg.simLunchBreakMinutes, 10);
+  if (isNaN(lunchMins) || lunchMins < 0) lunchMins = 30;
+  if (lunchMins > 240) lunchMins = 240;
+  cfg.simLunchBreakMinutes = lunchMins;
   if (!Array.isArray(cfg.simTimeOverrides)) cfg.simTimeOverrides = [];
   if (cfg.holidayBlocksFullWeek === undefined || cfg.holidayBlocksFullWeek === null) {
     cfg.holidayBlocksFullWeek = true;

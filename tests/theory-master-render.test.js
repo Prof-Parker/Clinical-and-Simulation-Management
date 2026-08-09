@@ -167,6 +167,10 @@ describe('theory master calendar render (mock-onedrive / synthetic)', () => {
     expect(grid.querySelector('table.theory-master-table'), 'week grid table missing').toBeTruthy();
     expect(grid.querySelectorAll('tr.theory-week-theory-row').length).toBe(18);
     expect(grid.querySelectorAll('tr.theory-week-practicum-row').length).toBe(18);
+    expect(grid.querySelectorAll('tr.theory-week-odd').length).toBe(27); // 9 odd weeks × 3 rows
+    expect(grid.querySelectorAll('tr.theory-week-even').length).toBe(27); // 9 even weeks × 3 rows
+    expect(grid.querySelector('tr.theory-week-theory-row.theory-week-odd')).toBeTruthy();
+    expect(grid.querySelector('tr.theory-week-practicum-row.theory-week-even')).toBeTruthy();
 
     var chips = grid.querySelectorAll('[data-event-id], .theory-track');
     expect(chips.length, 'expected event chips in Master Calendar (' + source + ')').toBeGreaterThan(0);

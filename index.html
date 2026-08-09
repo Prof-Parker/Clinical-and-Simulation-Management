@@ -581,13 +581,16 @@
                             <div id="cfgSimGroupsList" class="config-list"></div>
                             <div class="setup-sim-times-block">
                                 <h4 style="margin:0">Simulation times</h4>
-                                <p class="section-sub">Default session window for calendars and audit hours. Optional overrides per sim number.</p>
+                                <p class="section-sub">Default session window for calendars and audit hours. Optional overrides per sim number. Lunch break is deducted only from Coordinator contact-hour totals (student calendars still show full start–end).</p>
                                 <div class="setup-sim-times-grid">
                                     <label>Default start
                                         <input type="time" id="cfgSimDefaultStart" aria-label="Default simulation start time">
                                     </label>
                                     <label>Default end
                                         <input type="time" id="cfgSimDefaultEnd" aria-label="Default simulation end time">
+                                    </label>
+                                    <label>Lunch break (minutes)
+                                        <input type="number" id="cfgSimLunchBreakMinutes" class="select-control" min="0" max="240" step="5" value="30" aria-label="Simulation lunch break minutes for contact hours">
                                     </label>
                                 </div>
                                 <div id="cfgSimTimeOverrides" class="config-list" style="margin-top:0.65rem"></div>
@@ -737,6 +740,7 @@
             <div class="setup-actions-sticky card no-print">
                 <div class="setup-actions">
                     <button id="theorySaveSetupBtn" class="btn btn-primary" type="button">Save Setup</button>
+                    <button id="theoryResyncPracticumBtn" class="btn" type="button">Resync with practicum calendar</button>
                     <button id="theoryAdvancedConfigBtn" class="btn" type="button" aria-expanded="false">Advanced Configuration</button>
                 </div>
             </div>
@@ -746,25 +750,17 @@
                 <div id="theoryMasterSetup" class="theory-master-setup setup-advanced-panel hidden">
                     <div class="theory-master-setup-body">
                         <div class="theory-master-setup-grid">
-                            <fieldset class="theory-master-setup-fieldset">
+                            <fieldset class="theory-master-setup-fieldset theory-master-setup-sessions">
                                 <legend>Lecture days &amp; times</legend>
-                                <div id="theoryLectureWeekdays" class="theory-weekday-checks" role="group" aria-label="Default lecture weekdays"></div>
-                                <label>Lecture start
-                                    <input type="time" id="theoryDefaultLectureStart" class="select-control" aria-label="Default lecture start">
-                                </label>
-                                <label>Lecture end
-                                    <input type="time" id="theoryDefaultLectureEnd" class="select-control" aria-label="Default lecture end">
-                                </label>
-                                <label>Skills lab start
-                                    <input type="time" id="theoryDefaultSkillsStart" class="select-control" aria-label="Default skills start">
-                                </label>
-                                <label>Skills lab end
-                                    <input type="time" id="theoryDefaultSkillsEnd" class="select-control" aria-label="Default skills end">
-                                </label>
+                                <div id="theoryLectureSessions" class="config-list" role="group" aria-label="Lecture days and times"></div>
                             </fieldset>
                             <fieldset class="theory-master-setup-fieldset">
                                 <legend>Theory faculty roster</legend>
                                 <div id="theoryFacultyRoster" class="config-list"></div>
+                            </fieldset>
+                            <fieldset class="theory-master-setup-fieldset theory-master-setup-sessions">
+                                <legend>Skills lab days &amp; times</legend>
+                                <div id="theorySkillsSessions" class="config-list" role="group" aria-label="Skills lab days and times"></div>
                             </fieldset>
                             <fieldset class="theory-master-setup-fieldset">
                                 <legend>Skills lab faculty roster</legend>
@@ -773,7 +769,7 @@
                                 </label>
                                 <div id="theorySkillsFacultyRoster" class="config-list"></div>
                             </fieldset>
-                            <fieldset class="theory-master-setup-fieldset">
+                            <fieldset class="theory-master-setup-fieldset theory-master-setup-span">
                                 <legend>Module topics</legend>
                                 <label class="filter-check filter-check-compact">
                                     <input type="radio" name="theoryModuleSeedMode" id="theoryModuleSeedBlank" value="blank" checked>
@@ -861,7 +857,7 @@
             <section class="card" style="padding:1.25rem">
                 <div class="theory-coordinator-header">
                     <h3 class="section-title">Coordinator</h3>
-                    <span id="theoryCoordinatorStatusChip" class="theory-coordinator-chip"></span>
+                    <div id="theoryCoordinatorStatusChip" class="theory-coordinator-status"></div>
                     <button id="theoryHourSettingsBtn" class="btn btn-sm" type="button">Hour settings</button>
                 </div>
                 <div id="theorySimWarnBanner" class="closeout-banner hidden" role="status"></div>

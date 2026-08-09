@@ -5,30 +5,30 @@
 import { getClinicalDayForGroup } from './data-model/index.js';
 import {
   resolveClinicalDayHours,
-  resolveSimDayHours,
+  resolveSimDayContactHours,
   rollPracticumHoursByWeek,
   rollPracticumHoursForCohort
 } from './schedule-hours.js';
 import { isLectureTopicEvent } from './theory-modules.js';
+import {
+  clockHoursFromTimes,
+  instructionalHoursFromTimes
+} from './contact-hours.js';
 
 export function isTheoryCourseCode(courseCode) {
   if (!courseCode) return false;
   return /^REGN\d+$/i.test(courseCode) && !/P$/i.test(courseCode);
 }
 
+/** @deprecated Prefer instructionalHoursFromTimes for lecture/skills; clockHoursFromTimes for raw duration. */
 export function hoursFromTimes(timeStart, timeEnd) {
-  if (!timeStart || !timeEnd) return 0;
-  var sh = parseInt(timeStart.slice(0, 2), 10);
-  var sm = parseInt(timeStart.slice(2, 4) || '0', 10);
-  var eh = parseInt(timeEnd.slice(0, 2), 10);
-  var em = parseInt(timeEnd.slice(2, 4) || '0', 10);
-  var mins = (eh * 60 + em) - (sh * 60 + sm);
-  return mins > 0 ? Math.round((mins / 60) * 100) / 100 : 0;
+  return clockHoursFromTimes(timeStart, timeEnd);
 }
 
+/** Lecture / skills / theory-event hours use Cont. Mult. instructional chart. */
 export function eventContactHours(ev) {
   if (ev.contactHours != null && !isNaN(ev.contactHours)) return ev.contactHours;
-  return hoursFromTimes(ev.timeStart, ev.timeEnd);
+  return instructionalHoursFromTimes(ev.timeStart, ev.timeEnd);
 }
 
 export function sumTheoryHoursForWeek(theory, weekLabel, category) {
@@ -120,7 +120,7 @@ export function practicumSlotsForDay(semester, weekLabel, weekday, courseCode) {
         simByKey[key] = {
           group: sg,
           simNum: cell.sim,
-          hours: resolveSimDayHours(semester, cell.sim)
+          hours: resolveSimDayContactHours(semester, cell.sim)
         };
       }
     }
@@ -132,20 +132,29 @@ export function practicumSlotsForDay(semester, weekLabel, weekday, courseCode) {
 }
 
 export function coordinatorItemsForDay(theory, semester, weekLabel, weekday, courseCode) {
-  var items = [];
+  var holidayItems = [];
+  var theoryItems = [];
   var day = (theory.days || []).find(function (d) {
     return d.weekLabel === weekLabel && d.weekday === weekday;
   });
   if (day) {
     (day.events || []).forEach(function (ev) {
+      if (ev.track === 'holiday') {
+        holidayItems.push({
+          kind: 'holiday',
+          label: ev.title || 'Holiday'
+        });
+        return;
+      }
       // Lecture / skills only — simulation comes from the practicum scheduler.
       if (['theory', 'skills'].indexOf(ev.track) < 0) return;
-      items.push({
+      theoryItems.push({
         kind: ev.track,
         label: coordinatorCompactLabel(ev.track, ev.timeStart, ev.timeEnd)
       });
     });
   }
+  var items = holidayItems.concat(theoryItems);
   var practicum = practicumSlotsForDay(semester, weekLabel, weekday, courseCode);
   practicum.clinicals.forEach(function (c) {
     items.push({
@@ -163,17 +172,13 @@ export function coordinatorItemsForDay(theory, semester, weekLabel, weekday, cou
 }
 
 export function weekSummaryForLabel(theory, semester, weekLabel, courseCode) {
-  var override = theory.weekSummaries && theory.weekSummaries[String(weekLabel)];
+  // Always live-sum from theory.days + practicum schedule. Ignore imported
+  // theory.weekSummaries overrides so Coordinator totals match on-grid events.
   var lecture = sumTheoryHoursForWeek(theory, weekLabel, 'lecture');
   var skills_lab = sumTheoryHoursForWeek(theory, weekLabel, 'skills_lab');
   var sched = rollPracticumHoursByWeek(semester);
   var clinical = sched[weekLabel] ? sched[weekLabel].clinical : 0;
   var simulation = sched[weekLabel] ? sched[weekLabel].simulation : 0;
-  if (override) {
-    if (override.lecture != null) lecture = override.lecture;
-    if (override.skills_lab != null) skills_lab = override.skills_lab;
-    // Clinical / sim always come from the practicum scheduler + Setup times.
-  }
   return { lecture: lecture, skills_lab: skills_lab, clinical: clinical, simulation: simulation };
 }
 
@@ -197,7 +202,11 @@ export function semesterHourTotals(theory, semester, courseCode) {
 
 export function semesterContactHourTotal(theory, semester, courseCode) {
   var t = semesterHourTotals(theory, semester, courseCode);
-  return Math.round((t.lecture + t.skills_lab + t.clinical + t.simulation) * 100) / 100;
+  // Theory courses count lecture only; practicum courses count skills + clinical + sim.
+  if (isTheoryCourseCode(courseCode)) {
+    return t.lecture;
+  }
+  return t.practicum;
 }
 
 export function contactHourTarget(theory, courseCode) {
@@ -209,11 +218,36 @@ export function contactHourTarget(theory, courseCode) {
 export function contactHourValidation(theory, semester, courseCode) {
   var target = contactHourTarget(theory, courseCode);
   var scheduled = semesterContactHourTotal(theory, semester, courseCode);
-  if (target == null) return { scheduled: scheduled, target: null, delta: null, status: 'unknown' };
+  if (target == null) {
+    return {
+      courseCode: courseCode || null,
+      scheduled: scheduled,
+      target: null,
+      delta: null,
+      status: 'unknown'
+    };
+  }
   var delta = Math.round((scheduled - target) * 100) / 100;
   var tol = 0.5;
   var status = Math.abs(delta) <= tol ? 'on_target' : (delta < 0 ? 'under' : 'over');
-  return { scheduled: scheduled, target: target, delta: delta, status: status };
+  return {
+    courseCode: courseCode || null,
+    scheduled: scheduled,
+    target: target,
+    delta: delta,
+    status: status
+  };
+}
+
+/** Per-course (theory + practicum) contact-hour status for Coordinator header. */
+export function contactHourValidations(theory, semester) {
+  var codes = (theory && theory.courseCodes) || [];
+  if (!codes.length) {
+    return [contactHourValidation(theory, semester, practicumCourseCode(theory))];
+  }
+  return codes.map(function (code) {
+    return contactHourValidation(theory, semester, code);
+  });
 }
 
 export function listCourseOptions(fileRoot) {
