@@ -39,7 +39,8 @@ function renderConflicts(validation) {
   (validation.orientationConflicts || []).forEach(function (v) { msgs.push(v.message); });
   if (msgs.length) {
     panel.classList.remove('hidden');
-    panel.innerHTML = '<strong>Scheduling conflicts:</strong><ul><li>' + msgs.join('</li><li>') + '</li></ul>';
+    panel.innerHTML = '<strong>Scheduling conflicts:</strong><ul><li>' +
+      msgs.map(escapeHtml).join('</li><li>') + '</li></ul>';
   } else {
     panel.classList.add('hidden');
     panel.innerHTML = '';

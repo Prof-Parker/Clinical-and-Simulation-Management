@@ -72,7 +72,7 @@ import {
 } from './sim-placement.js';
 
 export function regenerateAll(data) {
-  if (!data || !data.students.length) return data;
+  if (!data || !data.students || !data.students.length) return data;
   CalendarEngine.rebuildWeeks(data);
   assignSimGroups(data.students, data.config);
   assignFacilities(data.students, data.facilities, data.config);

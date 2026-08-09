@@ -50,7 +50,10 @@ export function assertProgramRoot(fileRoot, fileName) {
 
 export function readFromHandle(handle) {
   return readHandleText(handle, 'readwrite').then(function (text) {
-    return DataModel.migrateFile(JSON.parse(text));
+    var raw = JSON.parse(text);
+    // Kind-check raw JSON before migrateFile so non-semester roots cannot be laundered.
+    assertProgramRoot(raw, handle.name);
+    return DataModel.migrateFile(raw);
   });
 }
 
@@ -66,14 +69,7 @@ export function applyLoadedFileRoot(fileRoot) {
   return fileRoot;
 }
 
-export function needsRegeneration(semester) {
-  if (!semester || !semester.students || !semester.students.length) return false;
-  return semester.students.every(function (s) {
-    return s.schedule.every(function (c) {
-      return !c.clinical && !c.sim && !c.makeupClinical && !c.inactive;
-    });
-  });
-}
+export { needsRegeneration } from './semester-hydrate.js';
 
 export function semesterFileTokenFromMeta(season, year, courseId) {
   if (!season || !year || !courseId) return null;

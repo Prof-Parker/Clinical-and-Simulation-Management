@@ -14,21 +14,42 @@ function readOptionalWeekInput(id) {
   return isNaN(n) ? null : n;
 }
 
+function readIntField(id, fallback) {
+  var el = setupEl(id);
+  if (!el || el.value === '') return fallback;
+  var n = parseInt(el.value, 10);
+  return isNaN(n) ? fallback : n;
+}
+
 export function readFormIntoConfig(cfg, data) {
-  cfg.clinicalDaysRequired = parseInt(setupEl('cfgClinDays').value, 10);
-  cfg.simDaysRequired = parseInt(setupEl('cfgSimDays').value, 10);
-  cfg.maxStudents = parseInt(setupEl('cfgMaxStudents').value, 10);
-  cfg.maxPerClinicalGroup = parseInt(setupEl('cfgMaxClinGroup').value, 10);
-  cfg.maxPerClinicalGroupOverload = parseInt(setupEl('cfgMaxClinOverload').value, 10);
-  cfg.maxStudentsPerSimSession = parseInt(setupEl('cfgMaxSimSession').value, 10);
-  cfg.maxStudentsPerSimSessionOverload = parseInt(setupEl('cfgMaxSimOverload').value, 10);
+  cfg.clinicalDaysRequired = readIntField('cfgClinDays', cfg.clinicalDaysRequired || 10);
+  cfg.simDaysRequired = readIntField('cfgSimDays', cfg.simDaysRequired || 5);
+  cfg.maxStudents = readIntField('cfgMaxStudents', cfg.maxStudents || 30);
+  cfg.maxPerClinicalGroup = readIntField('cfgMaxClinGroup', cfg.maxPerClinicalGroup || 6);
+  cfg.maxPerClinicalGroupOverload = readIntField(
+    'cfgMaxClinOverload',
+    cfg.maxPerClinicalGroupOverload || (cfg.maxPerClinicalGroup || 6) + 1
+  );
+  cfg.maxStudentsPerSimSession = readIntField(
+    'cfgMaxSimSession',
+    cfg.maxStudentsPerSimSession || 8
+  );
+  cfg.maxStudentsPerSimSessionOverload = readIntField(
+    'cfgMaxSimOverload',
+    cfg.maxStudentsPerSimSessionOverload || 9
+  );
   var guestSoftEl = setupEl('cfgMaxGuestSims');
-  if (guestSoftEl) cfg.maxGuestSimsPerStudent = parseInt(guestSoftEl.value, 10);
-  cfg.simMakeupHeadroomReserved = parseInt(setupEl('cfgSimHeadroom').value, 10);
+  if (guestSoftEl) {
+    cfg.maxGuestSimsPerStudent = readIntField('cfgMaxGuestSims', cfg.maxGuestSimsPerStudent || 1);
+  }
+  cfg.simMakeupHeadroomReserved = readIntField(
+    'cfgSimHeadroom',
+    cfg.simMakeupHeadroomReserved != null ? cfg.simMakeupHeadroomReserved : 1
+  );
   var holBlockEl = setupEl('cfgHolidayBlocksWeek');
   if (holBlockEl) cfg.holidayBlocksFullWeek = !!holBlockEl.checked;
-  cfg.clinicalStartWeek = parseInt(setupEl('cfgClinStart').value, 10);
-  cfg.simStartWeek = parseInt(setupEl('cfgSimStart').value, 10);
+  cfg.clinicalStartWeek = readIntField('cfgClinStart', cfg.clinicalStartWeek || 5);
+  cfg.simStartWeek = readIntField('cfgSimStart', cfg.simStartWeek || 5);
   cfg.clinicalMakeupPrimaryWeek = readOptionalWeekInput('cfgClinMakeupPrimary');
   cfg.clinicalMakeupFallbackWeek = readOptionalWeekInput('cfgClinMakeupFallback');
   cfg.simMakeupLastResortWeek = readOptionalWeekInput('cfgSimMakeupLastResort');

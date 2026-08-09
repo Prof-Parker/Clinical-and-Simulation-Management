@@ -45,7 +45,7 @@ export function scheduleClinicalForStudent(student, data) {
     var wi = weeks[i];
     if (CalendarEngine.isSchedulingBlockedDay(data, wi, clinDay)) continue;
     var cell = student.schedule[wi];
-    if (cell.inactive || cell.makeupClinical) continue;
+    if (!cell || cell.inactive || cell.makeupClinical) continue;
     if (cell.clinical && !cell.clinicalMissed) continue;
     var ordinal = countedClinicals(student);
     cell.clinical = true;
@@ -55,7 +55,7 @@ export function scheduleClinicalForStudent(student, data) {
   for (var j = makeupWeeks.clinicalFallback; j >= clinStart && countedClinicals(student) < needed; j--) {
     if (CalendarEngine.isSchedulingBlockedDay(data, j, clinDay)) continue;
     var c = student.schedule[j];
-    if (c.inactive || c.sim || c.clinical || c.makeupClinical) continue;
+    if (!c || c.inactive || c.sim || c.clinical || c.makeupClinical) continue;
     c.makeupClinical = true;
     if (ClinicalSites) {
       var mkFac = ClinicalSites.resolveFacilityForWeek(

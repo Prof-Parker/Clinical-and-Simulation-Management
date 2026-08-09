@@ -92,8 +92,10 @@ function getScheduleFilteredStudents(data, validation) {
   }
 
 function populateFilters(data) {
-    var cfg = data.config;
+    if (!data) return;
+    var cfg = data.config || {};
     var weekFilter = document.getElementById('weekFilter');
+    if (!weekFilter) return;
     var weekVal = weekFilter.value;
     weekFilter.innerHTML = '';
     for (var i = 0; i < 18; i++) {

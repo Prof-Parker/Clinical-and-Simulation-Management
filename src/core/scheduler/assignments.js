@@ -48,9 +48,11 @@ export function clearSchedules(students) {
 }
 
 export function markInactiveWeeks(data) {
+  if (!data || !data.students || !data.calendar || !data.calendar.weeks) return;
   data.students.forEach(function (s) {
+    if (!s || !s.schedule) return;
     data.calendar.weeks.forEach(function (w, i) {
-      if (w.inactive) {
+      if (w && w.inactive && s.schedule[i]) {
         s.schedule[i].inactive = true;
       }
     });

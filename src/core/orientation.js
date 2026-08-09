@@ -72,12 +72,12 @@ var KNOWN_INITIALS = {
 
   function getOrientationFacilityId(data, student) {
     var groupOrient = getGroupOrientation(data, student.clinicalGroup);
-    if (groupOrient.facilityId) return groupOrient.facilityId;
+    if (groupOrient && groupOrient.facilityId) return groupOrient.facilityId;
     if (ClinicalSites) {
       var primary = ClinicalSites.getPrimaryGroupFacility(data, student.clinicalGroup);
       if (primary) return primary;
     }
-    return student.facilityId || null;
+    return (student && student.facilityId) || null;
   }
 
   function getOrientationWeeksForStudent(data, student) {

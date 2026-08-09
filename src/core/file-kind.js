@@ -3,6 +3,12 @@
  * Accident prevention only; OneDrive ACLs remain authoritative.
  */
 
+import {
+  detectFileKind,
+  inferFileKind,
+  inferFromFilenameOnly
+} from './file-kind-detect.js';
+
 export var FILE_KINDS = {
   PROGRAM_SEMESTER: 'program_semester',
   PLAYGROUND: 'playground',
@@ -50,53 +56,7 @@ export function stampFileKind(root, kind) {
   return root;
 }
 
-export function detectFileKind(raw, fileName) {
-  if (!raw || typeof raw !== 'object') return null;
-  if (raw.meta && raw.meta.fileKind) return raw.meta.fileKind;
-  if (raw.fileKind === FILE_KINDS.USER_CREDENTIAL) return FILE_KINDS.USER_CREDENTIAL;
-  return inferFileKind(raw, fileName);
-}
-
-/**
- * Legacy inference when meta.fileKind is absent. First match wins.
- */
-export function inferFileKind(raw, fileName) {
-  var name = baseName(fileName);
-  if (!raw || typeof raw !== 'object') {
-    return inferFromFilenameOnly(name);
-  }
-
-  var hasSemesters = Array.isArray(raw.semesters);
-  // Identity-only credentials: userId + no semester root (legacy files may still have `key`).
-  if (raw.userId && !hasSemesters && !raw.users) return FILE_KINDS.USER_CREDENTIAL;
-  if (raw.users && typeof raw.users === 'object' && !hasSemesters) return FILE_KINDS.USERS_REGISTRY;
-  if (raw.topics && Array.isArray(raw.topics)) return FILE_KINDS.THEORY_CONTENT_LIBRARY;
-  if (raw.sites && Array.isArray(raw.sites) && !hasSemesters) {
-    return FILE_KINDS.CLINICAL_SITES_LIBRARY;
-  }
-  if (hasSemesters) {
-    if (raw.meta && raw.meta.playgroundSource) return FILE_KINDS.PLAYGROUND;
-    if (/_playground\.json$/i.test(name)) return FILE_KINDS.PLAYGROUND;
-    return FILE_KINDS.PROGRAM_SEMESTER;
-  }
-
-  return inferFromFilenameOnly(name);
-}
-
-function inferFromFilenameOnly(name) {
-  if (!name) return null;
-  if (/^users-registry\.json$/i.test(name)) return FILE_KINDS.USERS_REGISTRY;
-  if (/\.user\.json$/i.test(name)) return FILE_KINDS.USER_CREDENTIAL;
-  if (/^clinical-sites-library\.json$/i.test(name)) return FILE_KINDS.CLINICAL_SITES_LIBRARY;
-  if (/^theory-content-library_/i.test(name) && /\.json$/i.test(name)) {
-    return FILE_KINDS.THEORY_CONTENT_LIBRARY;
-  }
-  if (/_playground\.json$/i.test(name)) return FILE_KINDS.PLAYGROUND;
-  if (/^[FS]20\d{2}_.+\.json$/i.test(name) && !/_playground/i.test(name)) {
-    return FILE_KINDS.PROGRAM_SEMESTER;
-  }
-  return null;
-}
+export { detectFileKind, inferFileKind };
 
 export function filenameMatchesKind(name, kind) {
   var n = baseName(name);

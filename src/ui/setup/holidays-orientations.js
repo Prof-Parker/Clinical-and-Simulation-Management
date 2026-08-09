@@ -15,7 +15,7 @@ import { setupEl, setupQueryAll } from './scope.js';
 function syncBreakHolidayDate(h, data) {
     if (h.type !== 'break') return;
     var wi = h.weekIndex != null ? parseInt(h.weekIndex, 10) : 0;
-    if (wi < 0) wi = 0;
+    if (isNaN(wi) || wi < 0) wi = 0;
     if (wi > 17) wi = 17;
     h.weekIndex = wi;
     if (data.calendar.weeks && data.calendar.weeks[wi]) {
@@ -219,9 +219,19 @@ function bindHolidayEditor(containerId, options) {
 
 function orientationFacilitySelectHtml(data, selectedId) {
     selectedId = DataModel.getCanonicalFacilityId(data, selectedId);
-    return DataModel.getUniqueFacilitiesForSelect(data).map(function (f) {
-      return '<option value="' + f.id + '"' + (selectedId === f.id ? ' selected' : '') + '>' + escAttr(f.name) + '</option>';
+    var facilities = DataModel.getUniqueFacilitiesForSelect(data);
+    var html = facilities.map(function (f) {
+      return '<option value="' + escAttr(f.id) + '"' +
+        (selectedId === f.id ? ' selected' : '') + '>' + escAttr(f.name) + '</option>';
     }).join('');
+    if (selectedId && !facilities.some(function (f) { return f.id === selectedId; })) {
+      html = '<option value="' + escAttr(selectedId) + '" selected>' +
+        escAttr(selectedId) + ' (missing)</option>' + html;
+    }
+    if (!html) {
+      html = '<option value="">No sites available</option>';
+    }
+    return html;
   }
 
 function orientationWeekHintText(data, dateStr) {

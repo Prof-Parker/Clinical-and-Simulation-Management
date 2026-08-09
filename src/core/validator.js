@@ -165,14 +165,15 @@ function validateStudent(student, data) {
         });
       }
       conflictWeeks.forEach(function (wi) {
-        var hasMakeup = s.schedule.some(function (cell, idx) {
-          if (!cell.makeupClinical) return false;
-          return s.makeups.some(function (m) {
-            return m.type === 'clinical' && m.weekIndex === idx && m.clinicalConflict;
+        var makeups = s.makeups || [];
+        var hasMakeup = (s.schedule || []).some(function (cell, idx) {
+          if (!cell || !cell.makeupClinical) return false;
+          return makeups.some(function (m) {
+            return m && m.type === 'clinical' && m.weekIndex === idx && m.clinicalConflict;
           });
         });
-        if (!hasMakeup && s.makeups.every(function (m) {
-          return !(m.type === 'clinical' && m.clinicalConflict);
+        if (!hasMakeup && makeups.every(function (m) {
+          return !(m && m.type === 'clinical' && m.clinicalConflict);
         })) {
           violations.push({
             studentId: s.id,
@@ -193,8 +194,8 @@ function validateStudent(student, data) {
       var programSim = Scheduler.getWeekSimNumber(calendar, w);
       var studentSims = {};
       data.students.forEach(function (s) {
-        var c = s.schedule[w];
-        if (c.sim) studentSims[c.sim] = true;
+        var c = s.schedule && s.schedule[w];
+        if (c && c.sim) studentSims[c.sim] = true;
       });
       var simNums = Object.keys(studentSims).map(function (k) { return parseInt(k, 10); });
       if (simNums.length > 1) {
@@ -224,8 +225,8 @@ function validateStudent(student, data) {
     var violations = [];
     data.students.forEach(function (s) {
       var counts = {};
-      s.schedule.forEach(function (c) {
-        if (c.sim) counts[c.sim] = (counts[c.sim] || 0) + 1;
+      (s.schedule || []).forEach(function (c) {
+        if (c && c.sim) counts[c.sim] = (counts[c.sim] || 0) + 1;
       });
       for (var n = 1; n <= simReq; n++) {
         if (!counts[n]) {
@@ -310,9 +311,9 @@ function validateStudent(student, data) {
   }
   function validateWeek18SimFallbacks(data) {
     var warnings = [];
-    data.students.forEach(function (s) {
-      s.makeups.forEach(function (m) {
-        if (m.type === 'sim' && m.week18Fallback) {
+    (data.students || []).forEach(function (s) {
+      (s.makeups || []).forEach(function (m) {
+        if (m && m.type === 'sim' && m.week18Fallback) {
           warnings.push(s.name + ': Sim ' + m.simNum + ' assigned via Week 18 fallback (not preferred)');
         }
       });
@@ -321,22 +322,40 @@ function validateStudent(student, data) {
   }
   function validateGroups(data) {
     var cfg = data.config;
+    var students = data.students || [];
     var maxClin = cfg.maxPerClinicalGroup || 6;
     var counts = {};
     DataModel.getClinicalGroups(data.config).forEach(function (g) { counts[g] = 0; });
-    data.students.forEach(function (s) {
+    students.forEach(function (s) {
       if (counts[s.clinicalGroup] !== undefined) counts[s.clinicalGroup]++;
     });
     var errors = [];
     Object.keys(counts).forEach(function (g) {
       if (counts[g] > maxClin) errors.push(g + ' has ' + counts[g] + ' students (max ' + maxClin + ')');
     });
-    if (data.students.length > (cfg.maxStudents || 30)) {
-      errors.push('Total students ' + data.students.length + ' exceeds max ' + cfg.maxStudents);
+    if (students.length > (cfg.maxStudents || 30)) {
+      errors.push('Total students ' + students.length + ' exceeds max ' + cfg.maxStudents);
     }
     return errors;
   }
   function validateAll(data) {
+    if (!data || !Array.isArray(data.students)) {
+      return {
+        students: {},
+        simSessions: [],
+        clinicalSessions: [],
+        groupErrors: [],
+        doubleBooking: [],
+        orientationConflicts: [],
+        simClinicalConflicts: [],
+        simGroupExceptions: [],
+        simWeekOrder: [],
+        programSimWeeks: [],
+        studentSimParticipation: [],
+        simBlockNoRepeat: [],
+        allValid: true
+      };
+    }
     var w18Warnings = validateWeek18SimFallbacks(data);
     var doubleBooking = validateNoDoubleBooking(data);
     var simClinical = validateSimClinicalConflicts(data);

@@ -2,7 +2,6 @@
  * Semester cache, autosave, hybrid save, download export, and clear defaults.
  */
 
-import * as CalendarEngine from '../core/calendar-engine.js';
 import * as DataModel from '../core/data-model/index.js';
 import * as Proposals from '../proposals/proposals.js';
 import * as Scheduler from '../core/scheduler/index.js';
@@ -26,6 +25,7 @@ import {
   readFromHandle,
   suggestedSemesterFileName
 } from './semester-file-io.js';
+import { resolveActiveSemester, prepareActiveSemester } from './semester-hydrate.js';
 
 var LEGACY_LOCAL_STORAGE_KEYS = [
   'nursingWeekDates',
@@ -253,11 +253,8 @@ export function clearAndRestoreDefaults() {
   }).then(function () {
     clearLegacyLocalStorage();
     var fileRoot = DataModel.createDefaultFile();
-    var sem = fileRoot.semesters.find(function (s) {
-      return s.id === fileRoot.meta.activeSemesterId;
-    }) || fileRoot.semesters[0];
-    CalendarEngine.rebuildWeeks(sem);
-    if (Scheduler) Scheduler.regenerateAll(sem);
+    var sem = resolveActiveSemester(fileRoot);
+    prepareActiveSemester(sem, Scheduler);
     state.fileHandle = null;
     state.fileName = null;
     state.programSemesterDirHandle = null;

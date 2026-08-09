@@ -198,7 +198,11 @@ export function linkFacilitiesToSiteLibrary(facilities) {
 }
 
 export function normalizeFacilities(semester) {
-  if (!semester.facilities || !semester.facilities.length) {
+  if (!Array.isArray(semester.facilities)) semester.facilities = [];
+  semester.facilities = semester.facilities.filter(function (f) {
+    return f && typeof f === 'object';
+  });
+  if (!semester.facilities.length) {
     semester.facilities = defaultFacilities();
     linkFacilitiesToSiteLibrary(semester.facilities);
     return;
@@ -244,9 +248,10 @@ export function normalizeFacilities(semester) {
     return id;
   }
   (semester.students || []).forEach(function (s) {
+    if (!s) return;
     if (s.facilityId) s.facilityId = remapId(s.facilityId);
     (s.makeups || []).forEach(function (m) {
-      if (m.facilityId) m.facilityId = remapId(m.facilityId);
+      if (m && m.facilityId) m.facilityId = remapId(m.facilityId);
     });
     (s.schedule || []).forEach(function (c) {
       if (c && c.facilityId) c.facilityId = remapId(c.facilityId);

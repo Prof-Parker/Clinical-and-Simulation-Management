@@ -8,6 +8,7 @@ import {
   daySelectHtml, renderSimGroupsList, renderSimDaysList, renderSimTimeOverrides
 } from './sim-groups.js';
 import { setupEl, setupQueryAll } from '../setup/scope.js';
+import { escAttr, escHtml } from '../setup/dom-utils.js';
 import * as ScheduleHours from '../../core/schedule-hours.js';
 
 function getGroupFacilityIds(data, group) {
@@ -22,15 +23,23 @@ function groupFacilitySelectHtml(data, group, selectedId) {
     var facIds = getGroupFacilityIds(data, group);
     var unique = DataModel.getUniqueFacilitiesForSelect(data);
     var html = '';
+    var matched = false;
     unique.forEach(function (f) {
       var allowed = facIds.some(function (id) {
         return DataModel.sameFacilitySite(data, id, f.id);
       });
       if (!allowed) return;
-      html += '<option value="' + f.id + '"' +
-        (DataModel.sameFacilitySite(data, selectedId, f.id) ? ' selected' : '') + '>' +
-        f.name + '</option>';
+      var isSelected = DataModel.sameFacilitySite(data, selectedId, f.id);
+      if (isSelected) matched = true;
+      html += '<option value="' + escAttr(f.id) + '"' +
+        (isSelected ? ' selected' : '') + '>' +
+        escHtml(f.name) + '</option>';
     });
+    if (selectedId && !matched) {
+      html = '<option value="' + escAttr(selectedId) + '" selected>' +
+        escHtml(String(selectedId)) + ' (missing)</option>' + html;
+    }
+    if (!html) html = '<option value="">No sites available</option>';
     return html;
   }
 

@@ -2,7 +2,6 @@
  * Semester persistence barrel — open/init/activate + stable public re-exports.
  */
 
-import * as CalendarEngine from '../core/calendar-engine.js';
 import * as DataModel from '../core/data-model/index.js';
 import * as Scheduler from '../core/scheduler/index.js';
 import * as ProgramData from './program-data.js';
@@ -19,6 +18,11 @@ import {
 import { markClean, onStateChange, setFileRoot, state } from '../core/state.js';
 import { isCancelError } from './hybrid-save.js';
 import {
+  resolveActiveSemester,
+  migrateLoadedRoot,
+  prepareActiveSemester
+} from './semester-hydrate.js';
+import {
   HANDLE_KEY,
   DIR_HANDLE_KEY,
   PROGRAM_KIND,
@@ -28,7 +32,6 @@ import {
   readFromHandle,
   assertProgramRoot,
   applyLoadedFileRoot,
-  needsRegeneration,
   semesterFileToken,
   semesterFileTokenFromMeta,
   suggestedSemesterFileName,
@@ -55,7 +58,6 @@ export function openFilePicker() {
   }).then(function (handles) {
     var handle = handles[0];
     return readFromHandle(handle).then(function (fileRoot) {
-      assertProgramRoot(fileRoot, handle.name);
       state.fileHandle = handle;
       state.fileName = handle.name;
       state.semesterFileConnected = true;
@@ -72,8 +74,8 @@ export function openFilePicker() {
 export function loadFromProgramData(fileName) {
   var path = ProgramData.semesterPath(fileName);
   return ProgramData.readRelative(path, PROGRAM_KIND).then(function (result) {
+    assertProgramRoot(result.raw, result.name);
     var fileRoot = DataModel.migrateFile(result.raw);
-    assertProgramRoot(fileRoot, result.name);
     state.fileHandle = result.handle;
     state.fileName = result.name;
     state.semesterFileConnected = true;
@@ -121,8 +123,9 @@ export function importFromFile(file) {
     var reader = new FileReader();
     reader.onload = function () {
       try {
-        var data = DataModel.migrateFile(JSON.parse(reader.result));
-        assertProgramRoot(data, file && file.name);
+        var raw = JSON.parse(reader.result);
+        assertProgramRoot(raw, file && file.name);
+        var data = DataModel.migrateFile(raw);
         state.fileHandle = null;
         resolve(data);
       } catch (e) { reject(e); }
@@ -164,15 +167,11 @@ export function init() {
     } else {
       loadedFromFile = true;
     }
-    var fileRoot = raw ? DataModel.migrateFile(raw) : DataModel.createDefaultFile();
+    var hydrated = migrateLoadedRoot(raw, loadedFromFile);
+    var fileRoot = hydrated.fileRoot;
+    loadedFromFile = hydrated.loadedFromFile;
     if (loadedFromFile) fileRoot = applyLoadedFileRoot(fileRoot);
-    var sem = fileRoot.semesters.find(function (s) {
-      return s.id === fileRoot.meta.activeSemesterId;
-    }) || fileRoot.semesters[0];
-    CalendarEngine.rebuildWeeks(sem);
-    if (needsRegeneration(sem) && Scheduler) {
-      Scheduler.regenerateAll(sem);
-    }
+    prepareActiveSemester(hydrated.semester, Scheduler);
     setFileRoot(fileRoot);
     markClean();
     state.semesterFileConnected = loadedFromFile;
@@ -194,13 +193,9 @@ export function isSemesterFileConnected() {
 }
 
 export function activateFileRoot(fileRoot, fileName) {
-  var sem = fileRoot.semesters.find(function (s) {
-    return s.id === fileRoot.meta.activeSemesterId;
-  }) || fileRoot.semesters[0];
-  CalendarEngine.rebuildWeeks(sem);
-  if (needsRegeneration(sem) && Scheduler) {
-    Scheduler.regenerateAll(sem);
-  }
+  var sem = resolveActiveSemester(fileRoot);
+  if (!sem) throw new Error('Invalid semester file: no semesters found');
+  prepareActiveSemester(sem, Scheduler);
   setFileRoot(fileRoot);
   state.semesterFileConnected = true;
   if (fileName != null) state.fileName = fileName;
