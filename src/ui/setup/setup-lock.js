@@ -19,20 +19,31 @@ function allowWhileLocked(el) {
 /**
  * After setup render: when finalized, disable editable controls in #view-setup
  * (except Finalize/Unlock and Advanced Configuration toggle).
+ * On unlock, re-enable only controls this lock disabled so widget-owned
+ * disabled states (lead faculty name/select, faculty "needed" slots) survive.
  */
 export function applySetupFinalizedLock(data) {
   var root = document.getElementById('view-setup');
   if (!root) return;
   var locked = isSetupFinalizedLocked(data);
   root.classList.toggle('setup-finalized-locked', locked);
-  if (!locked) return;
+  var auditRo = !!(Audit && Audit.isReadOnly(data));
 
   root.querySelectorAll('input, select, textarea, button').forEach(function (el) {
     if (allowWhileLocked(el)) {
-      el.disabled = !!(Audit && Audit.isReadOnly(data));
+      el.disabled = auditRo;
+      delete el.dataset.finalizedDisabled;
       return;
     }
-    el.disabled = true;
+    if (locked) {
+      if (!el.disabled) {
+        el.disabled = true;
+        el.dataset.finalizedDisabled = '1';
+      }
+    } else if (el.dataset.finalizedDisabled === '1') {
+      el.disabled = false;
+      delete el.dataset.finalizedDisabled;
+    }
   });
 }
 
