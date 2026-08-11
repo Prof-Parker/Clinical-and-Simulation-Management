@@ -1,5 +1,6 @@
 /**
  * Users registry admin tab.
+ * Specialty tag UI helpers live in users-admin-specialties.js.
  */
 
 import * as Permissions from '../auth/permissions.js';
@@ -7,6 +8,13 @@ import * as UserData from '../auth/user-data.js';
 import * as UserSession from '../auth/user-session.js';
 import * as UserTemplate from '../auth/user-template.js';
 import * as UsersRegistryStorage from '../storage/users-registry-storage.js';
+import * as SpecialtyRequests from '../core/faculty-schedule/specialty-requests.js';
+import {
+  specialtiesCheckboxesHtml,
+  readSpecialtyCheckboxes,
+  formatSpecialtiesCell,
+  renderSpecialtyRequests
+} from './users-admin-specialties.js';
 import { escapeHtml, showAlert, showConfirm, showDialog } from './dialogs.js';
 import { refresh } from './chrome.js';
 import { showTemporaryCredentialDialog } from './users-temp-credentials.js';
@@ -72,6 +80,7 @@ function buildUserRowsHtml(registry, filters) {
         '<td>' + displayField(u.lastName) + '</td>' +
         '<td>' + displayField(u.email) + '</td>' +
         '<td>' + esc(UserTemplate.roleDisplayName(u.role)) + '</td>' +
+        '<td>' + formatSpecialtiesCell(u) + '</td>' +
         '<td><span class="stat-pill' + (u.status === 'active' ? '' : ' stat-muted') + '">' +
           esc(u.status) + '</span></td>' +
         '<td class="users-actions-cell">' +
@@ -104,7 +113,7 @@ function refreshUserTable(registry) {
   var rows = buildUserRowsHtml(registry, filterState);
   var shown = rows ? (rows.match(/<tr>/g) || []).length : 0;
   tbody.innerHTML = rows ||
-    '<tr><td colspan="7" class="text-muted">No users match the current filters.</td></tr>';
+    '<tr><td colspan="8" class="text-muted">No users match the current filters.</td></tr>';
   if (summary) {
     summary.textContent = shown === total
       ? total + ' user' + (total === 1 ? '' : 's')
@@ -176,10 +185,11 @@ function render() {
     '<div class="users-table-wrap">' +
     '<table class="data-table users-data-table">' +
     '<thead><tr>' +
-    '<th>User ID</th><th>First name</th><th>Last name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th>' +
+    '<th>User ID</th><th>First name</th><th>Last name</th><th>Email</th><th>Role</th><th>Specialties</th><th>Status</th><th>Actions</th>' +
     '</tr></thead>' +
     '<tbody id="usersTableBody"></tbody>' +
     '</table></div>' +
+    '<div id="usersSpecialtyRequests" class="users-specialty-requests"></div>' +
     '<div id="usersCreateForm" class="hidden users-create-form">' +
     '<h4>Create user</h4>' +
     '<p class="section-sub">A temporary password is generated automatically (72-hour expiry; required change at next sign-in).</p>' +
@@ -189,6 +199,10 @@ function render() {
     '</div>' +
     '<label>Email<input type="email" id="usersNewEmail" autocomplete="email" required></label>' +
     '<label>Role<select id="usersNewRole" required></select></label>' +
+    '<fieldset class="users-specialty-fieldset">' +
+    '<legend class="section-sub">Specialties</legend>' +
+    '<div id="usersNewSpecialties">' + specialtiesCheckboxesHtml([], 'usersNewSpec') + '</div>' +
+    '</fieldset>' +
     '<button type="button" class="btn btn-primary btn-sm" id="usersCreateConfirmBtn">Create New User</button>' +
     '</div>';
 
@@ -201,6 +215,7 @@ function render() {
   setHelpDeskStatusEl(container, registry);
 
   refreshUserTable(registry);
+  renderSpecialtyRequests(container, registry, render);
   wireFilters(registry);
 
   document.getElementById('usersCreateBtn').addEventListener('click', function () {
@@ -283,7 +298,8 @@ function createUser() {
   UserData.hashPassword(tempPassword).then(function (passwordHash) {
     var session = UserSession.getSession();
     email = UserData.normalizeEmail(email);
-    var profile = { firstName: firstName, lastName: lastName, email: email };
+    var specialties = readSpecialtyCheckboxes(document.getElementById('usersNewSpecialties'));
+    var profile = { firstName: firstName, lastName: lastName, email: email, specialties: specialties };
     var entry = UserData.createRegistryEntry(role, passwordHash, session ? session.name : '', profile);
     UserData.markTemporaryPassword(entry);
     UsersRegistryStorage.addOrUpdateUser(userId, entry);
@@ -320,7 +336,11 @@ function editUser(userId) {
     '<label class="section-sub" for="usersEditEmail">Email</label>' +
     '<input id="usersEditEmail" type="email" autocomplete="email" required style="width:100%;margin:0.25rem 0 0.75rem">' +
     '<label class="section-sub" for="usersEditRole">Role</label>' +
-    '<select id="usersEditRole" class="select-control" required style="width:100%;margin:0.25rem 0"></select>',
+    '<select id="usersEditRole" class="select-control" required style="width:100%;margin:0.25rem 0"></select>' +
+    '<fieldset style="margin-top:0.75rem">' +
+    '<legend class="section-sub">Specialties</legend>' +
+    '<div id="usersEditSpecialties">' + specialtiesCheckboxesHtml(entry.specialties, 'usersEditSpec') + '</div>' +
+    '</fieldset>',
     function () {
       var firstName = document.getElementById('usersEditFirstName').value.trim();
       var lastName = document.getElementById('usersEditLastName').value.trim();
@@ -342,6 +362,11 @@ function editUser(userId) {
       entry.lastName = lastName;
       entry.email = UserData.normalizeEmail(email);
       entry.role = role;
+      SpecialtyRequests.setUserSpecialties(
+        registry,
+        userId,
+        readSpecialtyCheckboxes(document.getElementById('usersEditSpecialties'))
+      );
       UsersRegistryStorage.mergeSave(registry).then(function (result) {
         if (result.conflict) {
           showAlert('Conflict', 'Registry was updated elsewhere. Reload and try again.');

@@ -3520,3 +3520,29 @@ html.dark .theory-coord-semester-totals td { box-shadow: 0 -2px 8px rgba(0, 0, 0
   border-color: var(--warning, #c9a227);
   background: color-mix(in srgb, var(--warning, #c9a227) 12%, var(--surface));
 }
+
+/* Faculty Schedule */
+.faculty-schedule-root { padding: 0.5rem 0 1.5rem; }
+.faculty-schedule-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; }
+.faculty-subnav { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.faculty-schedule-filters { margin-bottom: 0.75rem; }
+.faculty-browse-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 280px); gap: 1rem; align-items: start; }
+@media (max-width: 900px) { .faculty-browse-layout { grid-template-columns: 1fr; } }
+.faculty-browse-calendar, .faculty-glance-calendar { overflow: auto; }
+.faculty-browse-table td, .faculty-glance-table td { vertical-align: top; min-width: 7.5rem; }
+.faculty-band-label, .faculty-week-label { font-weight: 600; white-space: nowrap; }
+.faculty-slot-chip { display: block; margin: 0.25rem 0; padding: 0.35rem 0.45rem; border-radius: 0.3rem; cursor: pointer; text-align: left; border: 1px solid transparent; }
+.faculty-slot-chip-selected { outline: 2px solid var(--accent, #2563eb); border-color: var(--accent, #2563eb); }
+.faculty-slot-chip-filled { opacity: 0.85; cursor: default; }
+.faculty-chip-title { font-weight: 600; font-size: 0.8rem; }
+.faculty-chip-line { font-size: 0.75rem; opacity: 0.95; }
+.faculty-cart-panel, .faculty-review-card { border: 1px solid var(--border); border-radius: 0.4rem; padding: 0.75rem; background: var(--surface); }
+.faculty-cart-list { margin: 0.5rem 0; padding-left: 1.1rem; }
+.faculty-review-card { margin: 0.65rem 0; }
+.faculty-review-item { display: flex; flex-wrap: wrap; gap: 0.4rem 0.75rem; align-items: center; margin: 0.35rem 0; }
+.faculty-admin-toolbar { margin-bottom: 0.75rem; }
+.faculty-sub-marker { font-size: 0.75rem; margin-top: 0.2rem; color: var(--danger, #b91c1c); font-weight: 600; }
+.faculty-glance-toolbar { margin-bottom: 0.65rem; }
+.users-specialty-fieldset { margin: 0.75rem 0; border: 1px solid var(--border); border-radius: 0.35rem; padding: 0.5rem 0.75rem; }
+.users-specialty-requests { margin-top: 1rem; }
+.users-specialty-request-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.4rem 0; }

@@ -4,6 +4,7 @@
  */
 
 import { FACULTY_NEEDED_NAME } from '../../core/theory-events.js';
+import { listOpenSlots } from '../../core/faculty-schedule/slot-inventory.js';
 import { escAttr } from './dom-utils.js';
 
 export { FACULTY_NEEDED_NAME };
@@ -26,31 +27,19 @@ export function applyFacultySlotValue(slot, value) {
   return slot;
 }
 
-/** Stub for a future faculty-scheduling page. */
+/** Open faculty signup slots from semester inventory. */
 export function listFacultyNeededSlots(data) {
-  var out = [];
-  (data.faculty || []).forEach(function (f) {
-    if (isFacultyNeeded(f)) {
-      out.push({
-        kind: 'clinical',
-        id: f.id,
-        clinicalGroup: f.clinicalGroup,
-        name: FACULTY_NEEDED_NAME,
-        needed: true
-      });
-    }
+  return listOpenSlots(data || {}).map(function (slot) {
+    return {
+      kind: slot.kind,
+      id: slot.sourceId || slot.slotId,
+      slotId: slot.slotId,
+      clinicalGroup: slot.clinicalGroup || '',
+      name: FACULTY_NEEDED_NAME,
+      needed: true,
+      specialties: slot.specialties || []
+    };
   });
-  (data.simInstructors || []).forEach(function (f) {
-    if (isFacultyNeeded(f)) {
-      out.push({
-        kind: 'sim',
-        id: f.id,
-        name: FACULTY_NEEDED_NAME,
-        needed: true
-      });
-    }
-  });
-  return out;
 }
 
 function facultySlotInnerHtml(opts) {

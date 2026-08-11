@@ -12,6 +12,10 @@ import {
   MIN_PASSWORD_LENGTH,
   TEMP_PASSWORD_LENGTH
 } from './password.js';
+import {
+  ensureLeadLectureTag,
+  normalizeSpecialties
+} from '../core/faculty-schedule/specialties.js';
 
 var REGISTRY_VERSION = 1;
 var USER_FILE_VERSION = 1;
@@ -38,9 +42,29 @@ function createEmptyRegistry() {
       fileKind: 'users_registry',
       lastModified: new Date().toISOString(),
       revision: 1,
-      helpDeskEngineerUserId: ''
+      helpDeskEngineerUserId: '',
+      specialtyRequests: []
     },
     users: {}
+  };
+}
+
+function migrateSpecialtyRequest(req) {
+  if (!req || typeof req !== 'object') return null;
+  return {
+    id: String(req.id || ('sreq_' + Math.random().toString(36).slice(2, 10))),
+    userId: String(req.userId || ''),
+    requestedSpecialties: normalizeSpecialties(req.requestedSpecialties),
+    note: String(req.note || ''),
+    status: req.status === 'approved' || req.status === 'denied' ? req.status : 'pending',
+    requestedAt: String(req.requestedAt || new Date().toISOString()),
+    reviewedAt: req.reviewedAt != null ? String(req.reviewedAt) : null,
+    reviewedBy: req.reviewedBy && typeof req.reviewedBy === 'object'
+      ? {
+        userId: String(req.reviewedBy.userId || ''),
+        name: String(req.reviewedBy.name || '')
+      }
+      : null
   };
 }
 
@@ -51,6 +75,12 @@ function migrateRegistry(raw) {
   if (!raw.meta.revision) raw.meta.revision = 1;
   if (raw.meta.helpDeskEngineerUserId == null) raw.meta.helpDeskEngineerUserId = '';
   else raw.meta.helpDeskEngineerUserId = String(raw.meta.helpDeskEngineerUserId);
+  if (!Array.isArray(raw.meta.specialtyRequests)) raw.meta.specialtyRequests = [];
+  else {
+    raw.meta.specialtyRequests = raw.meta.specialtyRequests
+      .map(migrateSpecialtyRequest)
+      .filter(Boolean);
+  }
   if (!raw.users) raw.users = {};
   Object.keys(raw.users).forEach(function (id) {
     raw.users[id] = migrateRegistryUserEntry(raw.users[id]);
@@ -208,6 +238,7 @@ function createUserFile(userId, firstName, lastName, email) {
 
 function createRegistryEntry(role, passwordHash, issuedBy, profile) {
   profile = profile || {};
+  var specialties = ensureLeadLectureTag(role, profile.specialties);
   return {
     role: role,
     passwordHash: passwordHash,
@@ -218,7 +249,9 @@ function createRegistryEntry(role, passwordHash, issuedBy, profile) {
     lastName: String(profile.lastName || ''),
     email: String(profile.email || ''),
     mustChangePassword: false,
-    temporaryPasswordExpiresAt: ''
+    temporaryPasswordExpiresAt: '',
+    specialties: specialties,
+    messages: []
   };
 }
 
@@ -233,6 +266,8 @@ function migrateRegistryUserEntry(entry) {
   if (!entry.passwordHash && entry.keyHash) {
     entry.passwordHash = entry.keyHash;
   }
+  entry.specialties = ensureLeadLectureTag(entry.role, entry.specialties);
+  if (!Array.isArray(entry.messages)) entry.messages = [];
   return entry;
 }
 
@@ -271,7 +306,8 @@ function sessionSuccessPayload(userId, entry, extras) {
     name: formatFullName(entry.firstName, entry.lastName),
     firstName: String(entry.firstName || ''),
     lastName: String(entry.lastName || ''),
-    email: String(entry.email || '')
+    email: String(entry.email || ''),
+    specialties: normalizeSpecialties(entry.specialties)
   }, extras);
 }
 

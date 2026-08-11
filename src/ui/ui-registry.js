@@ -47,7 +47,7 @@ export var UI_TABS = [
     id: 'faculty',
     shell: 'clinical',
     workspace: 'calendars',
-    anchors: ['facultyPlaceholderPanel']
+    anchors: ['facultyScheduleRoot']
   },
   {
     id: 'roles',

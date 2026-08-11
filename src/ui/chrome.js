@@ -23,6 +23,7 @@ import { renderSetupTab } from './playground/index.js';
 import { isPlaygroundShell } from './playground-shell.js';
 import { render as renderUsersAdmin } from './users-admin.js';
 import { render as renderClinicalSitesTab } from './clinical-sites-tab.js';
+import { render as renderFaculty } from './faculty/index.js';
 import * as Theory from './theory/index.js';
 import {
   updateCourseStatusLabel,
@@ -198,6 +199,7 @@ export function refresh() {
   if (tab === 'playground-setup') renderSetupTab();
   if (tab === 'users') renderUsersAdmin();
   if (tab === 'clinical-sites') renderClinicalSitesTab();
+  if (tab === 'faculty') renderFaculty(data);
   if (tab === 'theory-master' || tab === 'theory-lecture' || tab === 'theory-coordinator') {
     Theory.renderTheoryTab(tab);
   }

@@ -199,6 +199,13 @@ export function migrateSemester(semester) {
   if (semester.meta.configCustomized === undefined) semester.meta.configCustomized = false;
   if (semester.meta.finalized === undefined) semester.meta.finalized = false;
   if (semester.meta.showStudentEmailDomain === undefined) semester.meta.showStudentEmailDomain = true;
+  if (semester.meta.selfSchedulingOpen === undefined) semester.meta.selfSchedulingOpen = false;
+  if (!semester.facultySchedule || typeof semester.facultySchedule !== 'object') {
+    semester.facultySchedule = { substitutes: [] };
+  }
+  if (!Array.isArray(semester.facultySchedule.substitutes)) {
+    semester.facultySchedule.substitutes = [];
+  }
   ensureAuditMeta(semester.meta);
   var parsed = parseSemesterDisplay(semester);
   if (!semester.meta.semesterSeason && parsed.season) {
@@ -221,6 +228,10 @@ export function migrateSemester(semester) {
     );
   }
   if (!Array.isArray(semester.proposals)) semester.proposals = [];
+  semester.proposals.forEach(function (p) {
+    if (!p || typeof p !== 'object') return;
+    if (!p.kind) p.kind = 'setup';
+  });
   migrateTheory(semester);
   return semester;
 }

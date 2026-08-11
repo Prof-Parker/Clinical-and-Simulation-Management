@@ -47,6 +47,7 @@ function setSession(data) {
     name: data.name,
     email: data.email,
     role: data.role,
+    specialties: Array.isArray(data.specialties) ? data.specialties.slice() : [],
     validatedAt: new Date().toISOString(),
     validated: true
   };
