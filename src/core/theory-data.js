@@ -14,6 +14,7 @@ import {
   refreshFacultyNeeded,
   reindexTheoryDays
 } from './theory-events.js';
+import * as SkillPlacements from './skill-placements.js';
 
 export { WEEKDAYS } from './theory-modules.js';
 export {
@@ -183,6 +184,7 @@ function migrateEventFields(ev) {
     ev.moduleRefs = ev.moduleRef ? [ev.moduleRef] : [];
   }
   if (!Array.isArray(ev.skillRefs)) ev.skillRefs = [];
+  SkillPlacements.migrateEventSkillPlacements(ev);
   if (ev.track === 'assignment' && !ev.contentArea) {
     ev.contentArea = 'theory';
   }

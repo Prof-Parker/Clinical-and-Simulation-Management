@@ -4,7 +4,13 @@
 
 import * as TheoryLibrary from '../../storage/theory-library-storage.js';
 import * as Permissions from '../../auth/permissions.js';
-import { showAlert, showConfirm, showDialog, escapeHtml } from '../dialogs.js';
+import { showAlert, showConfirm, showDialog } from '../dialogs.js';
+import {
+  openSkillEditor as openSkillEditorImpl,
+  renderSkillsLibraryList as renderSkillsLibraryListImpl
+} from './content-library-skills.js';
+import { renderSkillCoveragePanel } from './skill-coverage-panel.js';
+import { getData } from '../../core/state.js';
 
 var libraryUnlocked = false;
 var bound = false;
@@ -155,78 +161,7 @@ export function openTopicEditor(topic, opts) {
 }
 
 export function openSkillEditor(skill, opts) {
-  opts = opts || {};
-  var isNew = !skill;
-  var s = skill || {
-    title: '',
-    description: '',
-    kinds: [],
-    learningObjectives: [],
-    curriculumMeta: TheoryLibrary.emptyCurriculumMeta()
-  };
-  var meta = s.curriculumMeta || TheoryLibrary.emptyCurriculumMeta();
-  var kindChecks = TheoryLibrary.SKILL_KINDS.map(function (kind) {
-    var checked = (s.kinds || []).indexOf(kind) >= 0 ? ' checked' : '';
-    return '<label class="filter-check filter-check-compact">' +
-      '<input type="checkbox" class="lib-skill-kind" value="' + kind + '"' + checked + '> ' +
-      escapeHtml(TheoryLibrary.skillKindLabel(kind)) + '</label>';
-  }).join(' ');
-  var body =
-    '<div class="theory-lib-form">' +
-    '<label>Title <input type="text" id="libSkillTitle" class="select-control" value="' +
-    escAttr(s.title) + '" aria-label="Skill title"></label>' +
-    '<label>Brief description <textarea id="libSkillDescription" class="select-control" rows="3" ' +
-    'aria-label="Skill description" placeholder="Optional skills-lab content summary">' +
-    esc(s.description || '') + '</textarea></label>' +
-    '<label>Learning objectives (one per line)<textarea id="libSkillObjectives" class="select-control" rows="4" ' +
-    'aria-label="Learning objectives" placeholder="One objective per line">' +
-    esc(listToLines(s.learningObjectives)) + '</textarea></label>' +
-    '<div class="theory-lib-kind-group" role="group" aria-label="Skill tags">' +
-    '<span class="section-sub">Tags</span><div class="theory-skill-kinds">' + kindChecks + '</div></div>' +
-    '<details class="theory-lib-meta-stub">' +
-    '<summary>Curriculum metadata (stub)</summary>' +
-    '<p class="section-sub">Reserved for COR alignment, ACEN standards, and curriculum mapping.</p>' +
-    '<label>Notes <textarea id="libSkillMetaNotes" class="select-control" rows="2" ' +
-    'aria-label="Curriculum metadata notes">' + esc(meta.notes || '') + '</textarea></label>' +
-    '</details>' +
-    '</div>';
-
-  var dialogContent = document.querySelector('#dialogModal .modal-content');
-  if (dialogContent) dialogContent.style.maxWidth = '36rem';
-
-  showDialog(isNew ? 'Add skill' : 'Edit skill', body, function () {
-    var titleEl = document.getElementById('libSkillTitle');
-    var title = titleEl ? titleEl.value.trim() : '';
-    if (!title) {
-      showAlert('Skill', 'Title is required.');
-      return false;
-    }
-    var kinds = [];
-    document.querySelectorAll('.lib-skill-kind:checked').forEach(function (cb) {
-      kinds.push(cb.value);
-    });
-    var curriculumMeta = Object.assign({}, meta, {
-      notes: ((document.getElementById('libSkillMetaNotes') || {}).value || '').trim()
-    });
-    var patch = {
-      title: title,
-      description: (document.getElementById('libSkillDescription') || {}).value || '',
-      learningObjectives: linesToList((document.getElementById('libSkillObjectives') || {}).value),
-      kinds: kinds,
-      curriculumMeta: curriculumMeta
-    };
-    var done = function (item) {
-      render();
-      if (opts.onSaved) opts.onSaved(item);
-    };
-    if (isNew) {
-      var created = TheoryLibrary.addSkill(title, patch);
-      if (created && created.then) created.then(done);
-      else done(created);
-    } else {
-      TheoryLibrary.updateSkill(skill.id, patch).then(done);
-    }
-  });
+  return openSkillEditorImpl(skill, opts, render);
 }
 
 function confirmRemoveTopic(topic) {
@@ -281,7 +216,9 @@ export function render() {
     unlockedBanner.classList.toggle('hidden', !ready || !libraryUnlocked);
   }
   renderTopicLibraryList();
-  renderSkillsLibraryList();
+  renderSkillsLibraryListImpl(libraryUnlocked, ensureAddRow);
+  var data = getData();
+  renderSkillCoveragePanel(data && data.theory);
 }
 
 function renderTopicLibraryList() {
@@ -318,48 +255,6 @@ function renderTopicLibraryList() {
       '</div>' + actions + '</li>';
   }).join('');
   ensureAddRow(list, 'topic', addRow);
-}
-
-function renderSkillsLibraryList() {
-  var list = document.getElementById('theorySkillsLibraryList');
-  if (!list) return;
-  var skills = TheoryLibrary.listSkills();
-  var addRow = libraryUnlocked
-    ? '<div class="config-list-add-row"><button type="button" class="btn btn-sm add-lib-skill">Add skill</button></div>'
-    : '';
-  if (!skills.length) {
-    list.innerHTML = '<li class="text-muted">No skills in this library yet.</li>';
-    ensureAddRow(list, 'skill', addRow);
-    return;
-  }
-  list.innerHTML = skills.map(function (s) {
-    var checks = TheoryLibrary.SKILL_KINDS.map(function (kind) {
-      var checked = (s.kinds || []).indexOf(kind) >= 0 ? ' checked' : '';
-      var disabled = libraryUnlocked ? '' : ' disabled';
-      return '<label class="filter-check filter-check-compact theory-skill-kind-tag">' +
-        '<input type="checkbox" data-skill-kind="' + kind + '" data-skill-id="' + escAttr(s.id) + '"' +
-        checked + disabled + '> ' + esc(TheoryLibrary.skillKindLabel(kind)) + '</label>';
-    }).join('');
-    var actions = '';
-    if (libraryUnlocked) {
-      actions =
-        '<span class="theory-lib-row-actions">' +
-        '<button type="button" class="btn btn-sm edit-lib-skill" data-skill-id="' + escAttr(s.id) + '">Edit</button>' +
-        '<button type="button" class="btn btn-icon-remove remove-lib-skill" data-skill-id="' + escAttr(s.id) + '" ' +
-        'aria-label="Remove skill" title="Remove skill">&times;</button></span>';
-    }
-    return '<li class="theory-skill-row" data-skill-id="' + escAttr(s.id) + '">' +
-      '<div class="theory-lib-row-main">' +
-      '<span class="theory-skill-title">' + esc(s.title) + '</span>' +
-      (s.description
-        ? '<div class="theory-lib-row-meta text-muted">' + esc(s.description) + '</div>'
-        : '') +
-      learningObjectivesHtml(s.learningObjectives) +
-      '</div>' +
-      '<span class="theory-skill-kinds" role="group" aria-label="Skill tags for ' + escAttr(s.title) + '">' +
-      checks + '</span>' + actions + '</li>';
-  }).join('');
-  ensureAddRow(list, 'skill', addRow);
 }
 
 function ensureAddRow(listEl, kind, addRowHtml) {
@@ -425,24 +320,6 @@ export function init() {
       var skillRm = TheoryLibrary.getSkillById(rmSkill.getAttribute('data-skill-id'));
       if (skillRm) confirmRemoveSkill(skillRm);
     }
-  });
-
-  panel.addEventListener('change', function (e) {
-    var input = e.target.closest('input[data-skill-kind]');
-    if (!input) return;
-    if (!libraryUnlocked) {
-      input.checked = !input.checked;
-      requestUnlock();
-      return;
-    }
-    var skillId = input.getAttribute('data-skill-id');
-    var row = input.closest('[data-skill-id]');
-    if (!skillId || !row) return;
-    var kinds = [];
-    row.querySelectorAll('input[data-skill-kind]:checked').forEach(function (cb) {
-      kinds.push(cb.getAttribute('data-skill-kind'));
-    });
-    TheoryLibrary.setSkillKinds(skillId, kinds);
   });
 
   render();

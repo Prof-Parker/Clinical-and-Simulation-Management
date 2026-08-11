@@ -14,6 +14,7 @@ import {
   normalizeCurriculumMeta,
   inferSkillKinds,
   normalizeSkillKinds,
+  normalizeSkillTestoutSettings,
   isUsableSkillTitle,
   normalizeSkill,
   normalizeTopic,
@@ -210,6 +211,28 @@ export function setSkillKinds(skillId, kinds) {
   return saveCurrent().then(function () { return skill; }).catch(function () { return skill; });
 }
 
+function applySkillTestoutPatch(skill, opts) {
+  if (!opts) return;
+  if (opts.requiresTestout !== undefined ||
+      opts.recommendedTestoutCount !== undefined ||
+      opts.recommendedPracticeCount !== undefined) {
+    var next = normalizeSkillTestoutSettings({
+      requiresTestout: opts.requiresTestout !== undefined
+        ? opts.requiresTestout
+        : skill.requiresTestout,
+      recommendedTestoutCount: opts.recommendedTestoutCount !== undefined
+        ? opts.recommendedTestoutCount
+        : skill.recommendedTestoutCount,
+      recommendedPracticeCount: opts.recommendedPracticeCount !== undefined
+        ? opts.recommendedPracticeCount
+        : skill.recommendedPracticeCount
+    });
+    skill.requiresTestout = next.requiresTestout;
+    skill.recommendedTestoutCount = next.recommendedTestoutCount;
+    skill.recommendedPracticeCount = next.recommendedPracticeCount;
+  }
+}
+
 export function addSkill(title, opts) {
   opts = opts || {};
   var root = getLibrary();
@@ -219,6 +242,9 @@ export function addSkill(title, opts) {
     title: title,
     description: opts.description || '',
     kinds: opts.kinds,
+    requiresTestout: opts.requiresTestout,
+    recommendedTestoutCount: opts.recommendedTestoutCount,
+    recommendedPracticeCount: opts.recommendedPracticeCount,
     learningObjectives: opts.learningObjectives || [],
     curriculumMeta: opts.curriculumMeta,
     courseId: (root.meta && root.meta.courseId) || 'REGN15'
@@ -242,6 +268,7 @@ export function addSkill(title, opts) {
     if (opts.curriculumMeta) {
       existing.curriculumMeta = normalizeCurriculumMeta(opts.curriculumMeta);
     }
+    applySkillTestoutPatch(existing, opts);
     return saveCurrent().then(function () { return existing; }).catch(function () { return existing; });
   }
   root.skills.push(skill);
@@ -262,6 +289,7 @@ export function updateSkill(skillId, patch) {
   }
   if (patch.description !== undefined) skill.description = String(patch.description || '');
   if (patch.kinds !== undefined) skill.kinds = normalizeSkillKinds(patch.kinds);
+  applySkillTestoutPatch(skill, patch);
   if (patch.learningObjectives !== undefined) {
     skill.learningObjectives = Array.isArray(patch.learningObjectives)
       ? patch.learningObjectives.map(function (t) { return String(t || '').trim(); }).filter(Boolean)

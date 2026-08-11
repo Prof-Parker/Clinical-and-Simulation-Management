@@ -5,6 +5,7 @@
 import * as TheoryData from '../../core/theory-data.js';
 import * as TheoryLibrary from '../../storage/theory-library-storage.js';
 import * as ScheduleHours from '../../core/schedule-hours.js';
+import * as SkillPlacements from '../../core/skill-placements.js';
 import * as UserDirectory from '../../storage/user-directory.js';
 import { sessionForWeekday } from './master-setup-sessions.js';
 
@@ -32,12 +33,20 @@ export function topicOptionsHtml(selectedId) {
 
 export function skillOptionsHtml(selectedId) {
   var html = TheoryLibrary.listSkills().map(function (s) {
-    var kinds = (s.kinds || []).map(TheoryLibrary.skillKindLabel).filter(Boolean).join(', ');
-    var label = s.title + (kinds ? ' (' + kinds + ')' : '');
     var sel = s.id === selectedId ? ' selected' : '';
-    return '<option value="' + escAttr(s.id) + '"' + sel + '>' + esc(label) + '</option>';
+    return '<option value="' + escAttr(s.id) + '"' + sel + '>' + esc(s.title) + '</option>';
   }).join('');
   html += '<option value="__new__">New skill activity</option>';
+  return html;
+}
+
+export function skillKindOptionsHtml(selectedKind) {
+  var kind = selectedKind || '';
+  var html = '<option value=""' + (kind === '' ? ' selected' : '') + '>—</option>';
+  SkillPlacements.SKILL_KINDS.forEach(function (k) {
+    html += '<option value="' + k + '"' + (kind === k ? ' selected' : '') + '>' +
+      esc(SkillPlacements.skillKindLabel(k)) + '</option>';
+  });
   return html;
 }
 
@@ -117,12 +126,19 @@ export function skillsFacultyFields(ev, settings) {
 export function renderSkillsTopics(ev) {
   var wrap = document.getElementById('theoryEvSkillsTopics');
   if (!wrap) return;
-  var refs = (ev.skillRefs && ev.skillRefs.length)
-    ? ev.skillRefs.slice()
-    : [''];
-  if (!refs.length) refs = [''];
-  wrap.innerHTML = refs.map(function (ref, i) {
-    return '<label>Skill ' + (i + 1) + ' <select class="select-control theory-skills-topic" data-skill-idx="' + i + '">' +
-      '<option value="">—</option>' + skillOptionsHtml(ref) + '</select></label>';
+  SkillPlacements.migrateEventSkillPlacements(ev);
+  var placements = (ev.skillPlacements && ev.skillPlacements.length)
+    ? ev.skillPlacements.slice()
+    : [{ skillId: '', kind: '' }];
+  if (!placements.length) placements = [{ skillId: '', kind: '' }];
+  wrap.innerHTML = placements.map(function (p, i) {
+    var skillId = p && p.skillId ? p.skillId : '';
+    var kind = p && p.kind ? p.kind : '';
+    return '<div class="theory-skills-placement-row" data-skill-idx="' + i + '">' +
+      '<label>Skill ' + (i + 1) + ' <select class="select-control theory-skills-topic" data-skill-idx="' + i + '">' +
+      '<option value="">—</option>' + skillOptionsHtml(skillId) + '</select></label>' +
+      '<label>Tag <select class="select-control theory-skills-kind" data-skill-idx="' + i + '" ' +
+      'aria-label="Skill placement tag">' + skillKindOptionsHtml(kind) + '</select></label>' +
+      '</div>';
   }).join('');
 }

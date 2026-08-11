@@ -5,6 +5,7 @@
 import * as TheoryData from '../../core/theory-data.js';
 import * as TheoryLibrary from '../../storage/theory-library-storage.js';
 import * as ScheduleHours from '../../core/schedule-hours.js';
+import * as SkillPlacements from '../../core/skill-placements.js';
 import { uid } from '../../core/data-model/students.js';
 import { notifyChange } from '../../core/state.js';
 import { showDialog, showAlert } from '../dialogs.js';
@@ -94,6 +95,7 @@ function blankEvent(track, settings, weekday) {
     moduleRef: null,
     moduleRefs: [],
     skillRefs: [],
+    skillPlacements: [],
     timeStart: session.start,
     timeEnd: session.end,
     faculty: faculty,
@@ -339,8 +341,10 @@ function wireFormHandlers(data, day, ev) {
   if (addTopicBtn) {
     addTopicBtn.onclick = function () {
       saveFormToEvent(data, day, { soft: true });
-      if (!ev.skillRefs) ev.skillRefs = [];
-      ev.skillRefs.push('');
+      SkillPlacements.migrateEventSkillPlacements(ev);
+      if (!ev.skillPlacements) ev.skillPlacements = [];
+      ev.skillPlacements.push({ skillId: '', kind: '' });
+      ev.skillRefs = SkillPlacements.skillRefsFromPlacements(ev.skillPlacements);
       renderSkillsTopics(ev);
       wireSkillSelectHandlers(data, day);
     };
@@ -414,13 +418,23 @@ function saveFormToEvent(data, day, options) {
   }
   var topicSelects = document.querySelectorAll('.theory-skills-topic');
   if (topicSelects.length) {
-    ev.skillRefs = Array.prototype.map.call(topicSelects, function (sel) {
-      return sel.value === '__new__' ? '' : (sel.value || '');
-    }).filter(Boolean);
-    ev.description = ev.skillRefs.map(function (id) {
+    var placements = [];
+    Array.prototype.forEach.call(topicSelects, function (sel) {
+      var idx = parseInt(sel.getAttribute('data-skill-idx'), 10);
+      if (isNaN(idx)) idx = placements.length;
+      var skillId = sel.value === '__new__' ? '' : (sel.value || '');
+      var kindSel = document.querySelector('.theory-skills-kind[data-skill-idx="' + idx + '"]');
+      var kind = kindSel ? kindSel.value : '';
+      if (!skillId) return;
+      var normalized = SkillPlacements.normalizeSkillPlacement({ skillId: skillId, kind: kind });
+      if (normalized) placements.push(normalized);
+    });
+    ev.skillPlacements = placements;
+    ev.skillRefs = SkillPlacements.skillRefsFromPlacements(placements);
+    ev.description = SkillPlacements.formatSkillPlacementsDescription(placements, function (id) {
       var skill = TheoryLibrary.getSkillById(id);
       return skill ? skill.title : '';
-    }).filter(Boolean).join('; ');
+    });
   }
   if (ev.track === 'skills') {
     ev.title = 'Skills lab';

@@ -77,16 +77,42 @@ function normalizeLearningObjectives(raw) {
   return raw.map(function (line) { return String(line || '').trim(); }).filter(Boolean);
 }
 
+function toNonNegInt(raw, fallback) {
+  var n = Number(raw);
+  if (!isFinite(n) || n < 0) return fallback;
+  return Math.floor(n);
+}
+
+/**
+ * Normalize requires-testout settings on a skill.
+ * When requiresTestout is off, recommended counts still normalize but UI ignores them.
+ */
+function normalizeSkillTestoutSettings(raw) {
+  var requires = !!(raw && raw.requiresTestout);
+  var testoutCount = toNonNegInt(raw && raw.recommendedTestoutCount, requires ? 1 : 0);
+  var practiceCount = toNonNegInt(raw && raw.recommendedPracticeCount, 0);
+  if (requires && testoutCount < 1) testoutCount = 1;
+  return {
+    requiresTestout: requires,
+    recommendedTestoutCount: testoutCount,
+    recommendedPracticeCount: practiceCount
+  };
+}
+
 function normalizeSkill(raw) {
   if (!raw) return null;
   if (typeof raw === 'string') {
     var title = raw.trim();
     if (!isUsableSkillTitle(title)) return null;
+    var inferred = normalizeSkillTestoutSettings(null);
     return {
       id: skillIdFromTitle(title),
       title: title,
       description: '',
       kinds: inferSkillKinds(title),
+      requiresTestout: inferred.requiresTestout,
+      recommendedTestoutCount: inferred.recommendedTestoutCount,
+      recommendedPracticeCount: inferred.recommendedPracticeCount,
       learningObjectives: [],
       curriculumMeta: emptyCurriculumMeta(),
       courseId: null
@@ -94,6 +120,7 @@ function normalizeSkill(raw) {
   }
   var skillTitle = String(raw.title || '').trim();
   if (!isUsableSkillTitle(skillTitle)) return null;
+  var settings = normalizeSkillTestoutSettings(raw);
   return {
     id: raw.id || skillIdFromTitle(skillTitle),
     title: skillTitle,
@@ -101,6 +128,9 @@ function normalizeSkill(raw) {
     kinds: Array.isArray(raw.kinds)
       ? normalizeSkillKinds(raw.kinds)
       : inferSkillKinds(skillTitle),
+    requiresTestout: settings.requiresTestout,
+    recommendedTestoutCount: settings.recommendedTestoutCount,
+    recommendedPracticeCount: settings.recommendedPracticeCount,
     learningObjectives: normalizeLearningObjectives(raw.learningObjectives),
     curriculumMeta: normalizeCurriculumMeta(raw.curriculumMeta),
     courseId: raw.courseId || null
@@ -202,6 +232,7 @@ export {
   normalizeCurriculumMeta,
   inferSkillKinds,
   normalizeSkillKinds,
+  normalizeSkillTestoutSettings,
   isUsableSkillTitle,
   normalizeSkill,
   normalizeTopic,

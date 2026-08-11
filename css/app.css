@@ -2838,8 +2838,25 @@ table.data-table.theory-master-table .theory-week-practicum-row .theory-day-cell
   padding: 0;
   line-height: 1.25;
 }
-.theory-ev-skills-content {
+.theory-ev-skills-groups {
   margin: 0.2rem 0 0.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.theory-ev-skills-group {
+  min-width: 0;
+}
+.theory-ev-skills-heading {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  margin: 0 0 0.1rem;
+  opacity: 0.95;
+}
+.theory-ev-skills-content {
+  margin: 0;
   padding-left: 1.1rem;
   list-style: disc;
   color: inherit;
@@ -3194,6 +3211,61 @@ html.dark .theory-coord-semester-totals td { box-shadow: 0 -2px 8px rgba(0, 0, 0
 .theory-skill-kind-tag {
   font-size: 0.75rem;
   font-weight: 500;
+}
+.theory-skill-flags {
+  margin-top: 0.25rem;
+}
+.theory-skill-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted, #6b7280);
+}
+.theory-lib-testout-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.theory-lib-testout-recs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.65rem;
+}
+.theory-lib-testout-recs > label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+.theory-skills-placement-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: flex-end;
+  width: 100%;
+}
+.theory-skills-placement-row > label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  min-width: 8rem;
+}
+.theory-skill-coverage-section.hidden {
+  display: none;
+}
+.theory-skill-coverage-details > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.theory-skill-coverage-details > summary::-webkit-details-marker { display: none; }
+.theory-skill-coverage-details > summary::marker { content: ''; }
+.theory-skill-coverage-summary-hint {
+  margin: 0;
+  font-weight: 400;
 }
 .theory-lib-form {
   display: flex;

@@ -50,13 +50,22 @@ export function openNewSkillFlow(data, day, skillIdx, editingEventId, saveFormSo
         if (!liveDay) return;
         var ev = (liveDay.events || []).find(function (e) { return e.id === eventId; });
         if (ev) {
-          if (!ev.skillRefs) ev.skillRefs = [];
-          while (ev.skillRefs.length <= skillIdx) ev.skillRefs.push('');
-          ev.skillRefs[skillIdx] = skill.id;
+          if (!ev.skillPlacements) ev.skillPlacements = [];
+          while (ev.skillPlacements.length <= skillIdx) {
+            ev.skillPlacements.push({ skillId: '', kind: '' });
+          }
+          var prevKind = (ev.skillPlacements[skillIdx] && ev.skillPlacements[skillIdx].kind) || '';
+          ev.skillPlacements[skillIdx] = { skillId: skill.id, kind: prevKind };
+          ev.skillRefs = ev.skillPlacements.map(function (p) {
+            return p && p.skillId ? p.skillId : '';
+          }).filter(Boolean);
           ev.title = 'Skills lab';
-          ev.description = ev.skillRefs.map(function (id) {
-            var s = TheoryLibrary.getSkillById(id);
-            return s ? s.title : '';
+          ev.description = ev.skillPlacements.map(function (p) {
+            if (!p || !p.skillId) return '';
+            var s = TheoryLibrary.getSkillById(p.skillId);
+            if (!s) return '';
+            var label = TheoryLibrary.skillKindLabel(p.kind);
+            return label ? (s.title + ' (' + label + ')') : s.title;
           }).filter(Boolean).join('; ');
         }
         reopenEditor(live, date, eventId);

@@ -97,7 +97,8 @@ export var UI_TABS = [
       'theoryLectureSessions', 'theorySkillsSessions', 'theoryDefaultSkillsFacultyRequired',
       'theoryFacultyRoster', 'theorySkillsFacultyRoster', 'theoryModuleSeedBlank', 'theoryModuleSeedPull',
       'theoryModuleSeedSemester', 'theoryModuleSeedApplyBtn', 'theoryMasterToolbar',
-      'theoryShowLecturers', 'theoryShowPracticumFaculty', 'theoryShowSkillsLabContent'
+      'theoryShowLecturers', 'theoryShowPracticumFaculty', 'theoryShowSkillsLabContent',
+      'theorySkillCoverageSection', 'theorySkillCoverage'
     ]
   },
   {

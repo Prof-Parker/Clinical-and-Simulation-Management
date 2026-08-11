@@ -4,12 +4,14 @@
 
 import * as TheoryData from '../../core/theory-data.js';
 import * as TheoryLibrary from '../../storage/theory-library-storage.js';
+import * as SkillPlacements from '../../core/skill-placements.js';
 import { formatDisplayDate } from '../../core/calendar-engine.js';
 import { notifyChange } from '../../core/state.js';
 import * as Permissions from '../../auth/permissions.js';
 import { openEventEditor } from './event-editor.js';
 import { render as renderSetup } from './master-setup.js';
 import { render as renderContentLibrary } from './content-library.js';
+import { renderSkillCoveragePanel } from './skill-coverage-panel.js';
 import { refresh } from '../chrome.js';
 import { WEEK_COLS, buildMasterCalendarWeeks } from './master-calendar-layout.js';
 
@@ -71,32 +73,73 @@ function renderFacultyBlock(data, ev, settings) {
   return '<div class="theory-ev-faculty">' + esc(names.join(', ')) + '</div>';
 }
 
-function eventSkillsLabTopics(ev) {
-  var titles = [];
-  var seen = {};
-  function add(title) {
+/**
+ * Group skills-lab chip lines by placement kind.
+ * @returns {{ untagged: string[], introPractice: string[], testout: string[] }}
+ */
+function eventSkillsLabGroups(ev) {
+  var groups = { untagged: [], introPractice: [], testout: [] };
+  var seen = { untagged: {}, introPractice: {}, testout: {} };
+
+  function add(groupKey, title) {
     var t = String(title || '').trim();
-    if (!t || seen[t.toLowerCase()]) return;
-    seen[t.toLowerCase()] = true;
-    titles.push(t);
+    if (!t) return;
+    var key = t.toLowerCase();
+    if (seen[groupKey][key]) return;
+    seen[groupKey][key] = true;
+    groups[groupKey].push(t);
   }
-  (ev.skillRefs || []).forEach(function (id) {
-    var skill = TheoryLibrary.getSkillById(id);
-    if (skill) add(skill.title);
+
+  SkillPlacements.migrateEventSkillPlacements(ev);
+  var placements = ev.skillPlacements || [];
+  var addedFromPlacements = false;
+  placements.forEach(function (p) {
+    if (!p || !p.skillId) return;
+    var skill = TheoryLibrary.getSkillById(p.skillId);
+    if (!skill) return;
+    addedFromPlacements = true;
+    if (p.kind === 'testout') {
+      add('testout', skill.title);
+      return;
+    }
+    if (p.kind === 'introduction' || p.kind === 'practice') {
+      var label = SkillPlacements.skillKindLabel(p.kind);
+      add('introPractice', skill.title + ' (' + label + ')');
+      return;
+    }
+    add('untagged', skill.title);
   });
-  if (!titles.length && ev.description) {
-    String(ev.description).split(/[;|]/).forEach(function (part) { add(part); });
+
+  if (!addedFromPlacements) {
+    (ev.skillRefs || []).forEach(function (id) {
+      var skill = TheoryLibrary.getSkillById(id);
+      if (skill) add('untagged', skill.title);
+    });
   }
-  return titles;
+  if (!groups.untagged.length && !groups.introPractice.length && !groups.testout.length &&
+      ev.description) {
+    String(ev.description).split(/[;|]/).forEach(function (part) { add('untagged', part); });
+  }
+  return groups;
+}
+
+function renderSkillsGroup(heading, items) {
+  if (!items || !items.length) return '';
+  return '<div class="theory-ev-skills-group">' +
+    '<div class="theory-ev-skills-heading">' + esc(heading) + '</div>' +
+    '<ul class="theory-ev-skills-content">' +
+    items.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') +
+    '</ul></div>';
 }
 
 function renderSkillsLabContent(ev, settings) {
   if (ev.track !== 'skills' || settings.showSkillsLabContent === false) return '';
-  var topics = eventSkillsLabTopics(ev);
-  if (!topics.length) return '';
-  return '<ul class="theory-ev-skills-content">' +
-    topics.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') +
-    '</ul>';
+  var groups = eventSkillsLabGroups(ev);
+  var html = renderSkillsGroup('Clinical Learning Activities', groups.untagged) +
+    renderSkillsGroup('Skills Intro/Practice', groups.introPractice) +
+    renderSkillsGroup('Skills test', groups.testout);
+  if (!html) return '';
+  return '<div class="theory-ev-skills-groups">' + html + '</div>';
 }
 
 function renderEventChip(data, ev, settings) {
@@ -116,6 +159,7 @@ function renderEventChip(data, ev, settings) {
 
 export function render(data) {
   renderSetup(data);
+  renderSkillCoveragePanel(data && data.theory);
   var grid = document.getElementById('theoryMasterGrid');
   if (!grid || !data.theory) return;
   var theory = data.theory;

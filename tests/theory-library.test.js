@@ -48,9 +48,64 @@ describe('theory-library.test.js', () => {
     expect(practice.kinds).toContain('practice');
     expect(testout.kinds).toContain('testout');
     expect(plain.kinds).toEqual([]);
+    expect(plain.requiresTestout).toBe(false);
+    expect(plain.recommendedTestoutCount).toBe(0);
+    expect(plain.recommendedPracticeCount).toBe(0);
     expect(migrated.topics[0].defaultSkills).toBeUndefined();
     expect(plain.description).toBe('');
     expect(plain.curriculumMeta).toEqual(TheoryLibrary.emptyCurriculumMeta());
+  });
+
+  it('normalizes requiresTestout and recommended counts on skills', () => {
+    var migrated = TheoryLibrary.migrateLibrary({
+      meta: { courseId: 'REGN15' },
+      topics: [],
+      skills: [
+        {
+          id: 'skill_hand_hygiene',
+          title: 'Hand hygiene',
+          kinds: [],
+          requiresTestout: true,
+          recommendedTestoutCount: 2,
+          recommendedPracticeCount: 3
+        },
+        {
+          id: 'skill_vitals',
+          title: 'Vital signs',
+          kinds: [],
+          requiresTestout: true,
+          recommendedTestoutCount: 0
+        }
+      ]
+    });
+    var hand = migrated.skills.find(function (s) { return s.id === 'skill_hand_hygiene'; });
+    var vitals = migrated.skills.find(function (s) { return s.id === 'skill_vitals'; });
+    expect(hand.requiresTestout).toBe(true);
+    expect(hand.recommendedTestoutCount).toBe(2);
+    expect(hand.recommendedPracticeCount).toBe(3);
+    expect(vitals.requiresTestout).toBe(true);
+    expect(vitals.recommendedTestoutCount).toBe(1);
+  });
+
+  it('persists requiresTestout settings via addSkill and updateSkill', async () => {
+    state.theoryLibraryRoot = TheoryLibrary.createEmptyLibrary('REGN15');
+    var skill = await TheoryLibrary.addSkill('Hand hygiene', {
+      requiresTestout: true,
+      recommendedTestoutCount: 2,
+      recommendedPracticeCount: 1
+    });
+    expect(skill.requiresTestout).toBe(true);
+    expect(skill.recommendedTestoutCount).toBe(2);
+    expect(skill.recommendedPracticeCount).toBe(1);
+    await TheoryLibrary.updateSkill(skill.id, {
+      requiresTestout: false,
+      recommendedTestoutCount: 5,
+      recommendedPracticeCount: 4
+    });
+    var updated = TheoryLibrary.getSkillById(skill.id);
+    expect(updated.requiresTestout).toBe(false);
+    expect(updated.recommendedTestoutCount).toBe(5);
+    expect(updated.recommendedPracticeCount).toBe(4);
   });
 
   it('excludes holiday and break titles from the skills bank', () => {
