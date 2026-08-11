@@ -5,7 +5,6 @@
 import { getData, getFileRoot, onStateChange } from '../../core/state.js';
 import * as TheoryData from '../../core/theory-data.js';
 import * as TheoryLibrary from '../../storage/theory-library-storage.js';
-import { refresh } from '../chrome.js';
 import { showAlert } from '../dialogs.js';
 import { render as renderMaster, renderTopicLibraryPanel } from './master-calendar.js';
 import { render as renderLecture } from './lecture-assignments.js';
@@ -61,11 +60,6 @@ export function init() {
     if (data && data.theory) {
       import('./coordinator.js').then(function (m) { m.render(data); });
     }
-  });
-  document.querySelectorAll('.nav-tab[data-shell="theory"]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      refresh();
-    });
   });
 }
 

@@ -8,7 +8,6 @@ import * as UserTemplate from './user-template.js';
 import { showAlert } from '../ui/dialogs.js';
 import { getData } from '../core/state.js';
 import * as Audit from '../audit/audit.js';
-import { getNavShell } from '../ui/course-selector.js';
 import { applyFileMenuGating } from '../ui/file-menu-gating.js';
 
 function currentRole() {
@@ -51,12 +50,18 @@ function currentRole() {
   }
 
   function applyNavGating() {
-    var shell = getNavShell();
-    document.querySelectorAll('.nav-tab[data-shell]').forEach(function (btn) {
+    // Workspace rail/subnav owns destination visibility (role + playground).
+    // Keep legacy .nav-tab elements gated by role only (no clinical/theory shell split).
+    document.querySelectorAll('.nav-tab[data-tab]').forEach(function (btn) {
       var tab = btn.dataset.tab;
+      if (tab === 'sandbox') {
+        var sandboxOk = canTab('playground-dashboard');
+        btn.classList.toggle('hidden', !sandboxOk);
+        btn.disabled = !sandboxOk;
+        return;
+      }
       var allowed = canTab(tab);
-      var shellMatch = btn.dataset.shell === shell;
-      btn.classList.toggle('hidden', !allowed || !shellMatch);
+      btn.classList.toggle('hidden', !allowed);
       btn.disabled = !allowed;
     });
   }

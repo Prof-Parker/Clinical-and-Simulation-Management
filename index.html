@@ -40,6 +40,35 @@
                 <button id="pwaOnedriveDismiss" class="btn btn-sm" type="button" aria-label="Dismiss">Dismiss</button>
             </div>
         </div>
+        <div class="workspace-shell">
+        <aside id="workspaceRail" class="workspace-rail no-print" aria-label="Primary workspaces">
+            <div class="workspace-rail-brand" title="Shasta College ADN">SC</div>
+            <div class="workspace-rail-group" id="workspaceRailPrimary">
+                <button type="button" class="workspace-rail-btn active" data-workspace="dashboard" title="Dashboard">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+                    <span>Dash</span>
+                </button>
+                <button type="button" class="workspace-rail-btn" data-workspace="calendars" title="Calendar views">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                    <span>Cal</span>
+                </button>
+                <button type="button" class="workspace-rail-btn" data-workspace="tools" title="Tools">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                    <span>Tools</span>
+                </button>
+                <button type="button" class="workspace-rail-btn" data-workspace="setup" title="Setup">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <span>Setup</span>
+                </button>
+            </div>
+            <div class="workspace-rail-spacer"></div>
+            <button type="button" class="workspace-rail-btn" data-workspace="libraries" title="Program libraries">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h5v14H4zM10 4h5v16h-5zM16 8h4v12h-4z"/></svg>
+                <span>Libs</span>
+            </button>
+        </aside>
+
+        <div class="workspace-main">
         <div class="sticky-top no-print">
             <header class="header-row">
                 <div class="header-brand">
@@ -55,7 +84,22 @@
                     </div>
                 </div>
                 <div class="header-right">
+                    <div class="header-status-wrap course-status-wrap context-chip-wrap">
+                        <div class="course-status-display context-chip-display">
+                            <div class="semester-picker" id="semesterPickerWrap">
+                                <button id="semesterPickerBtn" type="button" class="semester-picker-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="semesterPickerMenu">
+                                    <span id="semesterPickerLabel" class="semester-picker-label course-status-semester"></span>
+                                    <svg class="semester-picker-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" d="M6 9l6 6 6-6"/></svg>
+                                </button>
+                                <ul id="semesterPickerMenu" class="semester-picker-menu hidden" role="listbox"></ul>
+                                <input type="file" id="semesterPickerFileInput" class="hidden" accept=".json,application/json">
+                            </div>
+                            <button id="courseStatusLine" type="button" class="course-status-line" aria-live="polite" aria-haspopup="listbox" aria-expanded="false" aria-controls="courseStatusDropdown">No semester file connected</button>
+                        </div>
+                        <div id="courseStatusDropdown" class="course-status-dropdown hidden" role="listbox"></div>
+                    </div>
                     <div class="header-right-controls">
+                        <button id="headerSaveBtn" class="btn btn-primary btn-sm" type="button">Save</button>
                         <div class="user-menu-wrap">
                             <button id="userMenuToggle" class="user-avatar-btn hidden" type="button" aria-label="Open user menu" aria-haspopup="menu" aria-expanded="false" aria-controls="userMenuDropdown">
                                 <span id="userStatusLine" class="user-avatar-initials" aria-hidden="true"></span>
@@ -81,10 +125,7 @@
                             </button>
                             <div id="menuDropdown" class="menu-dropdown hidden" role="menu">
                                 <button id="newSemesterBatchBtn" class="menu-item" type="button" role="menuitem">New semester…</button>
-                                <div class="menu-group" role="group" aria-labelledby="menuSemesterSwitchLabel">
-                                    <div id="menuSemesterSwitchLabel" class="menu-group-label">Switch semester</div>
-                                    <div id="semesterSwitchMenu"></div>
-                                </div>
+                                <div id="semesterSwitchMenu" class="hidden" aria-hidden="true"></div>
                                 <div id="menuFileManagementGroup" class="menu-group" role="group" aria-labelledby="menuFileManagementLabel">
                                     <div id="menuFileManagementLabel" class="menu-group-label">File Management</div>
                                     <p id="menuFileClassicGuide" class="menu-file-guide hidden">
@@ -106,35 +147,12 @@
                                         <button id="newFileBtn" class="menu-item menu-item-nested" type="button" role="menuitem">New OneDrive file</button>
                                     </div>
                                 </div>
-                                <div class="menu-group" role="group" aria-labelledby="menuLibrariesLabel">
-                                    <div id="menuLibrariesLabel" class="menu-group-label">Program libraries</div>
-                                    <button id="menuUsersLibraryBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Users registry</button>
-                                    <button id="menuClinicalSitesBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Clinical sites library</button>
-                                </div>
-                                <div class="menu-group" role="group" aria-labelledby="menuPlaygroundLabel">
-                                    <div id="menuPlaygroundLabel" class="menu-group-label">Sandbox</div>
-                                    <button id="menuPlaygroundBtn" class="menu-item menu-item-nested" type="button" role="menuitem">Course playground…</button>
-                                    <button id="menuExitPlaygroundBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">Return to semester file</button>
-                                </div>
+                                <button id="menuExitPlaygroundBtn" class="menu-item menu-item-nested hidden" type="button" role="menuitem">Return to semester file</button>
                                 <hr class="menu-divider">
                                 <button id="clearStorageBtn" class="menu-item menu-item-danger" type="button" role="menuitem">Clear storage &amp; restore defaults</button>
                                 <button id="saveBtn" class="menu-item menu-item-primary" type="button" role="menuitem">Save</button>
                             </div>
                         </div>
-                    </div>
-                    <div class="header-status-wrap course-status-wrap">
-                        <div class="course-status-display">
-                            <div class="semester-picker" id="semesterPickerWrap">
-                                <button id="semesterPickerBtn" type="button" class="semester-picker-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="semesterPickerMenu">
-                                    <span id="semesterPickerLabel" class="semester-picker-label course-status-semester"></span>
-                                    <svg class="semester-picker-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" d="M6 9l6 6 6-6"/></svg>
-                                </button>
-                                <ul id="semesterPickerMenu" class="semester-picker-menu hidden" role="listbox"></ul>
-                                <input type="file" id="semesterPickerFileInput" class="hidden" accept=".json,application/json">
-                            </div>
-                            <button id="courseStatusLine" type="button" class="course-status-line" aria-live="polite" aria-haspopup="listbox" aria-expanded="false" aria-controls="courseStatusDropdown">No semester file connected</button>
-                        </div>
-                        <div id="courseStatusDropdown" class="course-status-dropdown hidden" role="listbox"></div>
                     </div>
                 </div>
                 <input type="file" id="importFileInput" class="hidden">
@@ -145,19 +163,34 @@
             </header>
 
             <div id="closeoutBanner" class="closeout-banner hidden no-print" role="status"></div>
-            <nav class="nav-tabs" aria-label="Main navigation">
-                <button class="nav-tab active" data-tab="dashboard" data-shell="clinical" type="button">Dashboard</button>
-                <button class="nav-tab" data-tab="student" data-shell="clinical" type="button">Student View</button>
-                <button class="nav-tab" data-tab="roles" data-shell="clinical" type="button">Simulation Roles</button>
-                <button class="nav-tab" data-tab="makeup" data-shell="clinical" type="button">Makeup Finder</button>
-                <button class="nav-tab" data-tab="audit" data-shell="clinical" type="button">Audit</button>
-                <button class="nav-tab" data-tab="setup" data-shell="clinical" type="button">Setup</button>
-                <button class="nav-tab hidden" data-tab="playground-dashboard" data-shell="playground" type="button">Dashboard</button>
-                <button class="nav-tab hidden" data-tab="playground-setup" data-shell="playground" type="button">Setup</button>
-                <button class="nav-tab hidden" data-tab="theory-master" data-shell="theory" type="button">Master Calendar</button>
-                <button class="nav-tab hidden" data-tab="theory-lecture" data-shell="theory" type="button">Lecture Assignments</button>
-                <button class="nav-tab hidden" data-tab="theory-coordinator" data-shell="theory" type="button">Coordinator</button>
+            <nav class="workspace-subnav hidden" id="calSubnav" aria-label="Calendar views">
+                <button class="nav-tab" data-tab="theory-master" type="button">Master Calendar</button>
+                <button class="nav-tab" data-tab="faculty" type="button">Faculty Schedule</button>
+                <button class="nav-tab" data-tab="roles" type="button">Simulation Roles</button>
+                <button class="nav-tab" data-tab="student" type="button">Student View</button>
+                <button class="nav-tab" data-tab="theory-lecture" type="button">Lecture Assignments</button>
             </nav>
+            <nav class="workspace-subnav hidden" id="toolsSubnav" aria-label="Tools">
+                <button class="nav-tab" data-tab="makeup" type="button">Makeup Finder</button>
+                <button class="nav-tab" data-tab="audit" type="button">Audit</button>
+                <button class="nav-tab" data-tab="sandbox" data-action="sandbox" type="button">Sandbox</button>
+                <button class="nav-tab" data-tab="theory-coordinator" type="button">Coordinator</button>
+            </nav>
+            <nav class="workspace-subnav hidden" id="librariesSubnav" aria-label="Program libraries">
+                <button class="nav-tab" data-tab="users" type="button">Users registry</button>
+                <button class="nav-tab" data-tab="clinical-sites" type="button">Clinical sites library</button>
+            </nav>
+            <nav class="workspace-subnav hidden" id="playgroundSubnav" aria-label="Playground">
+                <button class="nav-tab" data-tab="playground-dashboard" type="button">Dashboard</button>
+                <button class="nav-tab" data-tab="playground-setup" type="button">Setup</button>
+                <button id="playgroundExitSubnavBtn" class="nav-tab nav-tab-exit" type="button">Return to semester file</button>
+            </nav>
+            <!-- Hidden legacy menu hooks kept for wiring / registry -->
+            <div class="hidden" aria-hidden="true">
+                <button id="menuUsersLibraryBtn" type="button">Users registry</button>
+                <button id="menuClinicalSitesBtn" type="button">Clinical sites library</button>
+                <button id="menuPlaygroundBtn" type="button">Course playground…</button>
+            </div>
         </div>
 
         <!-- DASHBOARD -->
@@ -168,7 +201,7 @@
                 <summary class="dashboard-panel-summary">
                     <div class="dashboard-panel-summary-text">
                         <div id="schedulePanelSemester" class="schedule-panel-semester" aria-hidden="true"></div>
-                        <h3 class="section-title" style="margin:0">Master Interactive Schedule</h3>
+                        <h3 class="section-title" style="margin:0">Practicum schedule</h3>
                         <p class="section-sub" style="margin:0.35rem 0 0">Full 18-week semester. Tap a cell to edit. Tracks <span id="reqClinLabel">10</span> clinical days &amp; <span id="reqSimLabel">5</span> simulations per student.</p>
                     </div>
                     <div class="dashboard-panel-summary-actions">
@@ -379,6 +412,14 @@
                 </div>
             </section>
             <div id="studentCalendarPrint"></div>
+        </div>
+
+        <!-- FACULTY SCHEDULE (placeholder) -->
+        <div id="view-faculty" class="view-panel">
+            <div class="card" style="padding:1.5rem" id="facultyPlaceholderPanel">
+                <h2 class="section-title" style="margin-top:0">Faculty Schedule</h2>
+                <p class="section-sub" style="margin-bottom:0">Faculty scheduling view is coming soon. Navigation is in place so this destination can ship in a later build.</p>
+            </div>
         </div>
 
         <!-- SIMULATION ROLES -->
@@ -867,7 +908,9 @@
                 <div id="theoryCoordinatorGrid"></div>
             </section>
         </div>
-    </div>
+        </div><!-- /.workspace-main -->
+        </div><!-- /.workspace-shell -->
+    </div><!-- /#appMain -->
 
     <!-- User gate modal (fullscreen sign-in) -->
     <div id="userGateModal" class="modal-overlay no-print open user-gate-modal" role="dialog" aria-modal="true" aria-labelledby="userGateTitle">

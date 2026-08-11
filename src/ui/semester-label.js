@@ -51,3 +51,18 @@ export function courseStatusAriaLabel(parts, code, phase) {
   if (phaseText) label += ', ' + phaseText;
   return label;
 }
+
+/** Friendly picker label — REGN15 / REGN15P stay separate options. */
+export function formatCourseDisplayLabel(code) {
+  var c = String(code || '').toUpperCase();
+  if (c === 'REGN15') return '1st Semester · Theory (REGN15)';
+  if (c === 'REGN15P') return '1st Semester · Practicum (REGN15P)';
+  return code || '';
+}
+
+/** Compact chip label when either 1st-semester code is active. */
+export function formatCourseCompactLabel(code) {
+  var c = String(code || '').toUpperCase();
+  if (c === 'REGN15' || c === 'REGN15P') return '1st Semester (REGN15/15P)';
+  return code || '';
+}

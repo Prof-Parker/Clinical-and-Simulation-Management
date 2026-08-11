@@ -31,6 +31,7 @@ import {
   initCourseSelector,
   renderCourseDropdown
 } from './course-selector.js';
+import { syncWorkspaceNav } from './workspace-nav.js';
 import { showAlert } from './dialogs.js';
 import { escAttr } from './setup/dom-utils.js';
 import * as Permissions from '../auth/permissions.js';
@@ -171,13 +172,20 @@ export function refresh() {
     applyNavShell(getNavShell());
     Permissions.apply();
     updatePlaygroundMenuState();
+    syncWorkspaceNav(state.currentTab);
     return;
   }
   var data = getData();
   Storage.updateStatusUI();
   updateSemesterDisplay();
   updateUserStatusLine();
-  if (!data) return;
+  if (!data) {
+    applyNavShell(getNavShell());
+    Permissions.apply();
+    updatePlaygroundMenuState();
+    syncWorkspaceNav(state.currentTab);
+    return;
+  }
   populateFilters(data);
   var tab = state.currentTab;
   if (tab === 'dashboard') renderDashboard(data);
@@ -200,6 +208,7 @@ export function refresh() {
   updateCourseStatusLine();
   updateUserStatusLine();
   updatePlaygroundMenuState();
+  syncWorkspaceNav(state.currentTab);
 }
 
 function updatePlaygroundMenuState() {
@@ -242,6 +251,10 @@ export function updateCloseoutBanner(data) {
 }
 
 export function switchTab(tabId) {
+  if (tabId === 'sandbox') {
+    import('./playground-shell.js').then(function (m) { m.enterPlaygroundShell(); });
+    return;
+  }
   if (!Permissions.canTab(tabId)) {
     showAlert('Not permitted', 'Your role cannot access this tab.');
     return;

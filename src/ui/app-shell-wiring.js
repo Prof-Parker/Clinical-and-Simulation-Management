@@ -29,6 +29,7 @@ import { init as initLectureAssignments } from './theory/lecture-assignments.js'
 import * as DateInputs from './date-inputs.js';
 import { openLibraryTab, initCourseSelector } from './course-selector.js';
 import { initSemesterPicker } from './semester-picker.js';
+import { initWorkspaceNav } from './workspace-nav.js';
 import {
   initSemesterMenu,
   refresh,
@@ -95,8 +96,10 @@ export function wireAppShell() {
     if (e.target.id === 'dialogModal') closeDialog();
   });
 
-  document.querySelectorAll('.nav-tab').forEach(function (btn) {
-    btn.addEventListener('click', function () { switchTab(btn.dataset.tab); });
+  initWorkspaceNav({
+    switchTab: switchTab,
+    onSandbox: enterPlaygroundShell,
+    onExitPlayground: exitPlaygroundShell
   });
 
   document.getElementById('menuToggle').addEventListener('click', function (e) {

@@ -44,10 +44,9 @@ export function exitPlaygroundShell() {
   state.appShell = null;
   applyNavShell(resolveNavShell());
   updateCourseStatusLabel();
-  var defaultTab = resolveNavShell() === 'theory' ? 'theory-master' : 'dashboard';
   chromeApi().then(function (m) {
     m.closeMenu();
-    m.switchTab(defaultTab);
+    m.switchTab('dashboard');
     m.refresh();
   });
 }

@@ -6,7 +6,7 @@ var ROLES = {
     program_engineer: {
       id: 'program_engineer',
       displayName: 'Program Engineer',
-      tabs: ['dashboard', 'student', 'roles', 'makeup', 'audit', 'setup',
+      tabs: ['dashboard', 'student', 'faculty', 'roles', 'makeup', 'audit', 'setup',
         'playground-dashboard', 'playground-setup',
         'theory-master', 'theory-lecture', 'theory-coordinator', 'users', 'clinical-sites'],
       actions: ['*'],
@@ -15,7 +15,7 @@ var ROLES = {
     admin_staff: {
       id: 'admin_staff',
       displayName: 'Administrative Staff',
-      tabs: ['dashboard', 'student', 'setup', 'audit', 'theory-master', 'theory-lecture', 'theory-coordinator', 'users', 'clinical-sites'],
+      tabs: ['dashboard', 'student', 'faculty', 'setup', 'audit', 'theory-master', 'theory-lecture', 'theory-coordinator', 'users', 'clinical-sites'],
       actions: [
         'setup.edit', 'setup.save', 'setup.regenerate', 'setup.importPlayground',
         'audit.admin', 'semester.batchCreate', 'semester.switch',
@@ -29,7 +29,7 @@ var ROLES = {
     lead_course_faculty: {
       id: 'lead_course_faculty',
       displayName: 'Lead Course Faculty',
-      tabs: ['dashboard', 'student', 'setup', 'roles', 'makeup',
+      tabs: ['dashboard', 'student', 'faculty', 'setup', 'roles', 'makeup',
         'playground-dashboard', 'playground-setup', 'clinical-sites',
         'theory-master', 'theory-lecture', 'theory-coordinator'],
       actions: [
@@ -44,7 +44,7 @@ var ROLES = {
     adjunct_faculty: {
       id: 'adjunct_faculty',
       displayName: 'Adjunct Faculty',
-      tabs: ['dashboard', 'student', 'roles', 'theory-lecture'],
+      tabs: ['dashboard', 'student', 'faculty', 'roles', 'theory-lecture'],
       actions: ['roles.edit', 'theory.view', 'files.downloadBackup'],
       dashboardReadOnly: true
     }
@@ -53,6 +53,7 @@ var ROLES = {
   var TAB_LABELS = {
     dashboard: 'Dashboard',
     student: 'Student View',
+    faculty: 'Faculty Schedule',
     roles: 'Simulation Roles',
     makeup: 'Makeup Finder',
     audit: 'Audit',

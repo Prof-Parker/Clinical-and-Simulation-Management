@@ -101,12 +101,13 @@ describe('ui-smoke DOM contract', () => {
     expect(missing, 'Add missing ids to index.html or fix ui-registry.js: ' + missing.join(', ')).toEqual([]);
   });
 
-  it('each clinical nav tab has matching view panel', () => {
+  it('each clinical destination has a view panel and a nav affordance', () => {
     UI_TABS.filter(function (t) { return t.shell === 'clinical'; }).forEach(function (tab) {
-      var nav = document.querySelector('.nav-tab[data-tab="' + tab.id + '"]');
       var view = document.getElementById(viewIdForTab(tab.id));
-      expect(nav, 'nav-tab for ' + tab.id).toBeTruthy();
       expect(view, 'view panel for ' + tab.id).toBeTruthy();
+      var nav = document.querySelector('.nav-tab[data-tab="' + tab.id + '"]');
+      var rail = document.querySelector('.workspace-rail-btn[data-workspace="' + (tab.workspace || '') + '"]');
+      expect(nav || rail, 'nav or rail for ' + tab.id).toBeTruthy();
     });
   });
 
@@ -146,10 +147,11 @@ describe('ui-smoke wiring and render', () => {
     vi.restoreAllMocks();
   });
 
-  it('initUI wires nav tabs (click switches active view)', function () {
+  it('initUI wires workspace rail (click switches active view)', function () {
     var target = UI_TABS.find(function (t) { return t.id === 'setup'; });
     expect(target).toBeTruthy();
-    var btn = document.querySelector('.nav-tab[data-tab="setup"]');
+    var btn = document.querySelector('.workspace-rail-btn[data-workspace="setup"]');
+    expect(btn).toBeTruthy();
     btn.click();
     expect(document.getElementById('view-setup').classList.contains('active')).toBe(true);
     expect(document.getElementById('view-dashboard').classList.contains('active')).toBe(false);

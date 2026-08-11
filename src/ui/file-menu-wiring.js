@@ -190,7 +190,7 @@ export function wireFileMenu() {
     }, { confirmLabel: 'Continue' });
   });
 
-  document.getElementById('saveBtn').addEventListener('click', function () {
+  function handleSaveClick() {
     persistSemesterFiles().then(function (result) {
       if (Storage.supportsFS() && state.fileHandle) {
         if (result && result.ok === false) {
@@ -207,7 +207,13 @@ export function wireFileMenu() {
       }
     });
     closeMenu();
-  });
+  }
+
+  document.getElementById('saveBtn').addEventListener('click', handleSaveClick);
+  var headerSaveBtn = document.getElementById('headerSaveBtn');
+  if (headerSaveBtn) {
+    headerSaveBtn.addEventListener('click', handleSaveClick);
+  }
 
   var syncOneDriveBtn = document.getElementById('syncOneDriveBtn');
   if (syncOneDriveBtn) {

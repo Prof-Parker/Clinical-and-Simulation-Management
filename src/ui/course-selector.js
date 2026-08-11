@@ -1,5 +1,5 @@
 /**
- * Header course dropdown and clinical vs theory nav shell switching.
+ * Header course dropdown and workspace nav shell helpers.
  */
 
 import { state, getData, getFileRoot, notifyChange } from '../core/state.js';
@@ -8,9 +8,15 @@ import * as TheoryData from '../core/theory-data.js';
 import * as Audit from '../audit/audit.js';
 import { showConfirm, escapeHtml } from './dialogs.js';
 import { escAttr } from './setup/dom-utils.js';
-import { buildCourseStatusHtml, courseStatusAriaLabel } from './semester-label.js';
+import {
+  buildCourseStatusHtml,
+  courseStatusAriaLabel,
+  formatCourseDisplayLabel,
+  formatCourseCompactLabel
+} from './semester-label.js';
 import { updateSemesterPickerLabel } from './semester-picker.js';
 import { resolveNavShell, isPlaygroundShell, updatePlaygroundStatusLine } from './playground-shell.js';
+import * as Permissions from '../auth/permissions.js';
 
 function chromeApi() {
   return import('./chrome.js');
@@ -47,15 +53,19 @@ export function updateCourseStatusLabel() {
   var parts = DataModel.parseSemesterDisplay(data);
   var code = getActiveCourseCode() || data.meta.courseId || '—';
   var phase = Audit.getPhase(data);
-  trigger.innerHTML = buildCourseStatusHtml(parts, code, phase);
+  var displayCode = formatCourseCompactLabel(code);
+  trigger.innerHTML = buildCourseStatusHtml(parts, displayCode, phase);
   trigger.setAttribute('aria-label', courseStatusAriaLabel(parts, code, phase));
 }
 
+/**
+ * Playground-only shell filtering. Clinical/theory destinations are unified on the rail.
+ * @param {string} shell
+ */
 export function applyNavShell(shell) {
-  document.querySelectorAll('.nav-tab[data-shell]').forEach(function (btn) {
-    var show = btn.dataset.shell === shell;
-    btn.classList.toggle('hidden', !show);
-  });
+  // Destination visibility is owned by workspace-nav + role gating.
+  // Keep hook for playground enter/exit callers.
+  void shell;
 }
 
 export function renderCourseDropdown() {
@@ -70,8 +80,8 @@ export function renderCourseDropdown() {
   var active = getActiveCourseCode();
   menu.innerHTML = options.map(function (opt) {
     return '<button type="button" class="menu-item menu-item-nested course-opt" role="option" data-course="' +
-      escAttr(opt.code) + '"' + (opt.code === active ? ' aria-selected="true"' : '') + '>' + escapeHtml(opt.label) +
-      (opt.shell === 'theory' ? ' (theory)' : '') + '</button>';
+      escAttr(opt.code) + '"' + (opt.code === active ? ' aria-current="true"' : '') + '>' +
+      escapeHtml(formatCourseDisplayLabel(opt.code)) + '</button>';
   }).join('');
 }
 
@@ -81,12 +91,17 @@ export function setActiveCourseCode(code, skipConfirm) {
   function apply() {
     fileRoot.meta.activeCourseCode = code;
     state.appShell = null;
-    var shell = TheoryData.isTheoryCourseCode(code) ? 'theory' : 'clinical';
-    applyNavShell(shell);
+    applyNavShell(resolveNavShell());
     updateCourseStatusLabel();
     renderCourseDropdown();
-    var defaultTab = shell === 'theory' ? 'theory-master' : 'dashboard';
-    chromeApi().then(function (m) { m.switchTab(defaultTab); });
+    chromeApi().then(function (m) {
+      var tab = state.currentTab;
+      if (!tab || !Permissions.canTab(tab) || tab.indexOf('playground') === 0) {
+        m.switchTab('dashboard');
+      } else {
+        m.refresh();
+      }
+    });
     notifyChange();
   }
   if (state.dirty && !skipConfirm) {

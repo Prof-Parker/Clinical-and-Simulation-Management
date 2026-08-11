@@ -5,7 +5,7 @@
 export var UI_REGISTRY_VERSION = 2;
 
 export var UI_NAV_CLINICAL = [
-  'dashboard', 'student', 'roles', 'makeup', 'audit', 'setup'
+  'dashboard', 'student', 'faculty', 'roles', 'makeup', 'audit', 'setup'
 ];
 
 export var UI_NAV_PLAYGROUND = [
@@ -25,6 +25,7 @@ export var UI_TABS = [
   {
     id: 'dashboard',
     shell: 'clinical',
+    workspace: 'dashboard',
     anchors: [
       'scheduleBody', 'scheduleHeadRow', 'scheduleExportXlsxBtn', 'scheduleFullscreenBtn',
       'week17MakeupToggleBtn', 'week17MakeupPanel', 'week17MakeupMode', 'week17MakeupApplyBtn',
@@ -35,6 +36,7 @@ export var UI_TABS = [
   {
     id: 'student',
     shell: 'clinical',
+    workspace: 'calendars',
     anchors: [
       'studentClinicalGroupFilter', 'studentSimGroupFilter', 'studentNameSearch',
       'studentViewSelect', 'studentCalendarType', 'showMarkupToggle',
@@ -42,13 +44,21 @@ export var UI_TABS = [
     ]
   },
   {
+    id: 'faculty',
+    shell: 'clinical',
+    workspace: 'calendars',
+    anchors: ['facultyPlaceholderPanel']
+  },
+  {
     id: 'roles',
     shell: 'clinical',
+    workspace: 'calendars',
     anchors: ['simFacultyBanner', 'roleSimSelect', 'roleGroupSelect', 'roleSessionMeta', 'roleTableBody']
   },
   {
     id: 'makeup',
     shell: 'clinical',
+    workspace: 'tools',
     anchors: [
       'makeupClinicalGroupFilter', 'makeupSimGroupFilter', 'makeupNameSearch',
       'makeupStudentSelect', 'makeupTypeSelect', 'makeupSimSelect', 'makeupMissedClinicalSelect', 'makeupResults'
@@ -57,11 +67,13 @@ export var UI_TABS = [
   {
     id: 'audit',
     shell: 'clinical',
+    workspace: 'tools',
     anchors: ['auditCloseout']
   },
   {
     id: 'setup',
     shell: 'clinical',
+    workspace: 'setup',
     anchors: [
       'saveSetupBtn', 'regenerateSchedulesBtn', 'setupAdvancedConfigBtn', 'finalizeSemesterBtn',
       'setupSections', 'setupFaculty', 'setupSimInstructors', 'setupFacilities', 'setupHolidays', 'setupRoster',
@@ -73,6 +85,7 @@ export var UI_TABS = [
   {
     id: 'playground-dashboard',
     shell: 'playground',
+    workspace: 'playground',
     anchors: [
       'playgroundStatus', 'playgroundLoadSemesterBtn', 'playgroundCourseSelect',
       'playgroundSaveBtn', 'playgroundSaveAsBtn', 'playgroundImportBtn',
@@ -84,11 +97,13 @@ export var UI_TABS = [
   {
     id: 'playground-setup',
     shell: 'playground',
+    workspace: 'playground',
     anchors: ['playgroundSetupRoot']
   },
   {
     id: 'theory-master',
     shell: 'theory',
+    workspace: 'calendars',
     anchors: [
       'theoryMasterGrid', 'theoryTopicLibraryPanel', 'theoryTopicLibraryList', 'theorySkillsLibraryList',
       'theoryLibraryConnectPrompt', 'theoryLibraryConnectBtn', 'theoryLibraryCreateBtn', 'theoryLibraryStatus',
@@ -104,27 +119,33 @@ export var UI_TABS = [
   {
     id: 'theory-lecture',
     shell: 'theory',
+    workspace: 'calendars',
     anchors: ['theoryLectureTableBody', 'theoryLectureMyFilter']
   },
   {
     id: 'theory-coordinator',
     shell: 'theory',
+    workspace: 'tools',
     anchors: ['theoryCoordinatorGrid', 'theoryCoordinatorStatusChip', 'theoryHourSettingsBtn', 'theorySimWarnBanner']
   },
   {
     id: 'users',
     shell: 'library',
+    workspace: 'libraries',
     anchors: ['usersAdminPanel']
   },
   {
     id: 'clinical-sites',
     shell: 'library',
+    workspace: 'libraries',
     anchors: ['clinicalSitesConnectBtn', 'clinicalSitesTabLibrary', 'clinicalSitesProposals']
   }
 ];
 
 export var UI_SHELL = [
-  'appMain', 'fileStatus', 'storageModeBadge', 'syncOneDriveBtn', 'courseStatusLine', 'courseStatusDropdown',
+  'appMain', 'workspaceRail', 'calSubnav', 'toolsSubnav', 'librariesSubnav', 'playgroundSubnav',
+  'headerSaveBtn', 'playgroundExitSubnavBtn',
+  'fileStatus', 'storageModeBadge', 'syncOneDriveBtn', 'courseStatusLine', 'courseStatusDropdown',
   'semesterPickerWrap', 'semesterPickerBtn', 'semesterPickerLabel', 'semesterPickerMenu', 'semesterPickerFileInput',
   'menuToggle', 'menuDropdown', 'closeoutBanner', 'pwaInstallBanner', 'pwaIosInstallBanner', 'pwaOnedriveBanner'
 ];
