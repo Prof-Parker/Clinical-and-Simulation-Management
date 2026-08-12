@@ -14,8 +14,48 @@ import { downloadFacultyIcs } from '../../export/faculty-calendar-ics.js';
 import { downloadFacultyPdf } from '../../export/faculty-calendar-pdf.js';
 
 var panelState = {
-  subtab: 'browse'
+  subtab: 'browse',
+  /** @type {Object.<string, boolean>} keys: "ISO-date|course|kind|hours" */
+  expandedGroups: {}
 };
+
+var outsideCollapseListener = null;
+
+function clearOutsideCollapseListener() {
+  if (!outsideCollapseListener) return;
+  document.removeEventListener('click', outsideCollapseListener, true);
+  outsideCollapseListener = null;
+}
+
+/**
+ * Collapse expanded chip groups when clicking outside their day cell.
+ */
+function wireOutsideCollapse(refreshFn) {
+  clearOutsideCollapseListener();
+  if (!Object.keys(panelState.expandedGroups).length) return;
+  outsideCollapseListener = function (e) {
+    var body = document.getElementById('facultyScheduleBody');
+    if (!body) {
+      clearOutsideCollapseListener();
+      return;
+    }
+    var expanded = body.querySelectorAll('.faculty-chip-group-expanded');
+    if (!expanded.length) {
+      clearOutsideCollapseListener();
+      return;
+    }
+    for (var i = 0; i < expanded.length; i++) {
+      var cell = expanded[i].closest('td.faculty-week-day');
+      if (cell && cell.contains(e.target)) return;
+    }
+    panelState.expandedGroups = {};
+    clearOutsideCollapseListener();
+    refreshFn();
+  };
+  setTimeout(function () {
+    document.addEventListener('click', outsideCollapseListener, true);
+  }, 0);
+}
 
 function setSubtab(id) {
   panelState.subtab = id;
@@ -59,6 +99,7 @@ function render(data) {
 }
 
 function renderBody(data, session) {
+  clearOutsideCollapseListener();
   var body = document.getElementById('facultyScheduleBody');
   if (!body) return;
   if (panelState.subtab === 'admin') {
@@ -72,7 +113,7 @@ function renderBody(data, session) {
     return;
   }
   if (panelState.subtab === 'glance') {
-    body.innerHTML = Glance.glanceHtml(data, session);
+    body.innerHTML = Glance.glanceHtml(data, session, panelState.expandedGroups);
     wireGlance(data, session);
     return;
   }
@@ -89,7 +130,7 @@ function renderBody(data, session) {
   body.innerHTML =
     Browse.filtersHtml(allForFilters, filters) +
     '<div class="faculty-browse-layout">' +
-    Browse.calendarHtml(data, slots, Cart.getCartIds()) +
+    Browse.calendarHtml(data, slots, Cart.getCartIds(), panelState.expandedGroups) +
     Cart.cartPanelHtml(data) +
     '</div>';
   wireBrowse(data, session);
@@ -118,6 +159,23 @@ function wireBrowse(data, session) {
     var el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('change', refreshBrowse);
+  });
+  body.querySelectorAll('.faculty-slot-chip-compressed[data-faculty-group]').forEach(function (chip) {
+    function onExpandGroup(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var key = (chip.getAttribute('data-date') || '') + '|' +
+        (chip.getAttribute('data-faculty-group') || '');
+      panelState.expandedGroups[key] = true;
+      refreshBrowse();
+    }
+    chip.addEventListener('click', onExpandGroup);
+    chip.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        onExpandGroup(e);
+      }
+    });
   });
   body.querySelectorAll('.faculty-slot-chip[data-slot-id]').forEach(function (chip) {
     function onToggle() {
@@ -149,9 +207,35 @@ function wireBrowse(data, session) {
       Cart.submitCart(data, function () { render(data); });
     });
   }
+  wireOutsideCollapse(refreshBrowse);
 }
 
 function wireGlance(data, session) {
+  var body = document.getElementById('facultyScheduleBody');
+  function refreshGlance() {
+    panelState.subtab = 'glance';
+    renderBody(data, session);
+  }
+  if (body) {
+    body.querySelectorAll('.faculty-slot-chip-compressed[data-faculty-group]').forEach(function (chip) {
+      function onExpandGroup(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var key = (chip.getAttribute('data-date') || '') + '|' +
+          (chip.getAttribute('data-faculty-group') || '');
+        panelState.expandedGroups[key] = true;
+        refreshGlance();
+      }
+      chip.addEventListener('click', onExpandGroup);
+      chip.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onExpandGroup(e);
+        }
+      });
+    });
+  }
+  wireOutsideCollapse(refreshGlance);
   var icsBtn = document.getElementById('facultyExportIcsBtn');
   var pdfBtn = document.getElementById('facultyExportPdfBtn');
   if (icsBtn) {

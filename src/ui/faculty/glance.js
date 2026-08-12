@@ -5,9 +5,14 @@
 import { escapeHtml } from '../dialogs.js';
 import { listAllSlots } from '../../core/faculty-schedule/slot-inventory.js';
 import { listMyAssignedSlots } from '../../proposals/substitute-proposals.js';
-import { slotChipHtml, kindLabel } from './chips.js';
+import {
+  groupSlots,
+  compressedChipHtml,
+  slotChipHtml,
+  kindLabel
+} from './chips.js';
 import { formatHhmmDisplay } from '../../core/schedule-hours.js';
-import { indexSlotsByDate, weekGridHtml } from './week-grid.js';
+import { weekGridHtml } from './week-grid.js';
 
 function esc(s) {
   return escapeHtml(s == null ? '' : String(s));
@@ -43,7 +48,35 @@ function glanceEventsForUser(semester, session) {
   return events;
 }
 
-function glanceHtml(semester, session) {
+function glanceDayHtml(ctx, subByDateSlot, expandedMap) {
+  var groups = groupSlots(ctx.slots);
+  var html = '';
+  groups.forEach(function (group) {
+    var expandKey = ctx.date + '|' + group.key;
+    var expanded = !!(expandedMap && expandedMap[expandKey]);
+    if (!expanded) {
+      html += compressedChipHtml(group, { date: ctx.date, expanded: false });
+      return;
+    }
+    html += '<div class="faculty-chip-group-expanded" data-faculty-group="' +
+      esc(group.key) + '" data-date="' + esc(ctx.date) + '">';
+    group.slots.forEach(function (slot) {
+      html += slotChipHtml(slot, {});
+      var cover = subByDateSlot[ctx.date + '|' + slot.slotId];
+      if (cover) {
+        html += '<div class="faculty-sub-marker">Sub: ' +
+          esc(shortName(cover.coveringName)) +
+          ' (' + esc(formatHhmmDisplay(cover.timeStart)) + '-' +
+          esc(formatHhmmDisplay(cover.timeEnd)) + ')</div>';
+      }
+    });
+    html += '</div>';
+  });
+  return html;
+}
+
+function glanceHtml(semester, session, expandedGroups) {
+  expandedGroups = expandedGroups || {};
   var events = glanceEventsForUser(semester, session);
   var byDate = {};
   var subByDateSlot = {};
@@ -60,24 +93,8 @@ function glanceHtml(semester, session) {
     }
   });
 
-  // Also index via list so weeks without assigned slots still render the shell.
-  if (!Object.keys(byDate).length) {
-    byDate = indexSlotsByDate([]);
-  }
-
   var grid = weekGridHtml(semester, byDate, function (ctx) {
-    var inner = '';
-    (ctx.slots || []).forEach(function (slot) {
-      inner += slotChipHtml(slot, {});
-      var cover = subByDateSlot[ctx.date + '|' + slot.slotId];
-      if (cover) {
-        inner += '<div class="faculty-sub-marker">Sub: ' +
-          esc(shortName(cover.coveringName)) +
-          ' (' + esc(formatHhmmDisplay(cover.timeStart)) + '-' +
-          esc(formatHhmmDisplay(cover.timeEnd)) + ')</div>';
-      }
-    });
-    return inner;
+    return glanceDayHtml(ctx, subByDateSlot, expandedGroups);
   });
 
   return '<div id="facultyGlancePanel" class="faculty-glance">' +

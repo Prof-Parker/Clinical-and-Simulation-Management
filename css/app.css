@@ -3533,6 +3533,15 @@ html.dark .theory-coord-semester-totals td { box-shadow: 0 -2px 8px rgba(0, 0, 0
 .faculty-browse-empty { margin: 0 0 0.5rem; color: var(--text-muted); }
 .faculty-band-label, .faculty-week-label { font-weight: 600; white-space: nowrap; }
 .faculty-slot-chip { display: block; margin: 0.25rem 0; padding: 0.35rem 0.45rem; border-radius: 0.3rem; cursor: pointer; text-align: left; border: 1px solid transparent; }
+.faculty-slot-chip-compressed { font-size: 0.8rem; }
+.faculty-chip-group-expanded {
+  margin: 0.25rem 0;
+  padding: 0.2rem 0.25rem 0.35rem;
+  border-radius: 0.35rem;
+  border: 1px dashed var(--border);
+  background: color-mix(in srgb, var(--surface-alt, var(--surface)) 70%, transparent);
+}
+.faculty-chip-group-expanded .faculty-slot-chip[data-slot-id] { margin-left: 0.15rem; }
 .faculty-slot-chip-selected { outline: 2px solid var(--accent, #2563eb); border-color: var(--accent, #2563eb); }
 .faculty-slot-chip-filled { opacity: 0.85; cursor: default; }
 .faculty-chip-title { font-weight: 600; font-size: 0.8rem; }

@@ -5,7 +5,7 @@
 import { escapeHtml } from '../dialogs.js';
 import { listOpenSlots, filterSlots, listAllSlots } from '../../core/faculty-schedule/slot-inventory.js';
 import { userCanSeeSlot } from '../../core/faculty-schedule/slot-rules.js';
-import { slotChipHtml } from './chips.js';
+import { dayCellChipsHtml } from './chips.js';
 import {
   FULL_WEEKDAYS,
   indexSlotsByDate,
@@ -90,9 +90,11 @@ function filtersHtml(slots, filters) {
 
 /**
  * 18-week Sun–Sat signup grid (Master Calendar layout). Chips land on instance dates.
+ * @param {object} [expandedGroups] map of "date|groupKey" → true for expanded cells
  */
-function calendarHtml(semester, slots, cartIds) {
+function calendarHtml(semester, slots, cartIds, expandedGroups) {
   cartIds = cartIds || {};
+  expandedGroups = expandedGroups || {};
   var list = slots || [];
   var byDate = indexSlotsByDate(list);
   var emptyNote = !list.length
@@ -100,11 +102,7 @@ function calendarHtml(semester, slots, cartIds) {
     : '';
 
   var grid = weekGridHtml(semester, byDate, function (ctx) {
-    var inner = '';
-    (ctx.slots || []).forEach(function (slot) {
-      inner += slotChipHtml(slot, { selected: !!cartIds[slot.slotId] });
-    });
-    return inner;
+    return dayCellChipsHtml(ctx.slots, cartIds, expandedGroups, ctx.date);
   });
 
   return '<section class="card faculty-browse-card" style="padding:1.25rem">' +
