@@ -210,6 +210,57 @@ describe('substitute proposals', () => {
   });
 });
 
+describe('slot inventory dates', () => {
+  it('derives clinical instances from calendar weeks when cells lack date/day', async () => {
+    var { listOpenSlots, clinicalInstances } = await import('../src/core/faculty-schedule/slot-inventory.js');
+    var { buildWeekList } = await import('../src/core/calendar-weeks.js');
+    var semester = {
+      meta: { courseId: 'REGN15P' },
+      config: {
+        clinicalGroupDays: { C1: 'Sat', C2: 'Mon' },
+        clinicalGroupFacilities: { C1: ['fac1'], C2: ['fac1'] }
+      },
+      calendar: { semesterStartDate: '2026-08-16', weeks: buildWeekList('2026-08-16') },
+      faculty: [
+        { id: 'f1', clinicalGroup: 'C1', needed: true, name: 'Faculty Needed' },
+        { id: 'f2', clinicalGroup: 'C2', needed: true, name: 'Faculty Needed' }
+      ],
+      simInstructors: [{ id: 's1', needed: true, name: 'Faculty Needed' }],
+      students: [{
+        id: 'stu1',
+        clinicalGroup: 'C1',
+        facilityId: 'fac1',
+        schedule: Array.from({ length: 18 }, function (_, i) {
+          return i === 4
+            ? { clinical: true, clinicalMissed: false, sim: 1, simDay: 'Mon', facilityId: 'fac1' }
+            : { clinical: false, sim: null };
+        })
+      }, {
+        id: 'stu2',
+        clinicalGroup: 'C2',
+        facilityId: 'fac1',
+        schedule: Array.from({ length: 18 }, function (_, i) {
+          return i === 5
+            ? { clinical: true, clinicalMissed: false, sim: null, facilityId: 'fac1' }
+            : { clinical: false, sim: null };
+        })
+      }],
+      facilities: [{
+        id: 'fac1', shortName: 'SRMC', siteId: 'srmc',
+        clinicalStart: '0600', clinicalEnd: '1830', contentTags: ['MS']
+      }]
+    };
+    var c1 = clinicalInstances(semester, 'C1');
+    expect(c1.length).toBeGreaterThan(0);
+    expect(c1[0].weekday).toBe('Saturday');
+    expect(c1[0].date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    var open = listOpenSlots(semester);
+    expect(open.some(function (s) { return s.kind === 'clinical' && s.weekday === 'Saturday'; })).toBe(true);
+    expect(open.some(function (s) { return s.kind === 'clinical' && s.weekday === 'Monday'; })).toBe(true);
+    expect(open.some(function (s) { return s.kind === 'sim' && s.instances.length > 0; })).toBe(true);
+  });
+});
+
 describe('faculty permissions', () => {
   it('grants self-schedule to adjunct and review to admin', () => {
     expect(UserTemplate.canAction('adjunct_faculty', 'faculty.selfSchedule')).toBe(true);

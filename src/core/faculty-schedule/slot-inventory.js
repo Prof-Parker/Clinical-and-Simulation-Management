@@ -4,11 +4,17 @@
 
 import * as ScheduleHours from '../schedule-hours.js';
 import * as DataModel from '../data-model/index.js';
+import { dateForWeekdayInWeekRange } from '../calendar-engine.js';
 import { FACULTY_NEEDED_NAME } from '../theory-events.js';
 import { hoursFromTimes } from '../theory-data.js';
 import { normalizeSpecialties } from './specialties.js';
 import { courseBand } from './program-bands.js';
 import * as CourseDefaults from '../course-defaults.js';
+
+var SHORT_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+var FULL_WEEKDAYS = [
+  'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
+];
 
 function isNeeded(slot) {
   return !!(slot && (slot.needed || slot.name === FACULTY_NEEDED_NAME || !String(slot.name || '').trim()));
@@ -49,16 +55,71 @@ function slotHours(start, end) {
   return hoursFromTimes(start, end) || 0;
 }
 
+/** Normalize Mon/Monday/mon → Mon (calendar-weeks short form). */
+function shortWeekday(raw) {
+  var s = String(raw || '').trim();
+  if (!s) return '';
+  var lower = s.toLowerCase();
+  for (var i = 0; i < FULL_WEEKDAYS.length; i++) {
+    if (FULL_WEEKDAYS[i].toLowerCase() === lower || SHORT_WEEKDAYS[i].toLowerCase() === lower) {
+      return SHORT_WEEKDAYS[i];
+    }
+  }
+  return '';
+}
+
+/** Normalize Mon/Monday → Monday (faculty browse grid). */
+function fullWeekday(raw) {
+  var short = shortWeekday(raw);
+  if (!short) return '';
+  return FULL_WEEKDAYS[SHORT_WEEKDAYS.indexOf(short)] || '';
+}
+
+function weekdayFromDate(iso) {
+  if (!iso) return '';
+  var d = new Date(iso + 'T12:00:00');
+  if (isNaN(d.getTime())) return '';
+  return FULL_WEEKDAYS[d.getDay()] || '';
+}
+
+function weekList(semester) {
+  return (semester.calendar && Array.isArray(semester.calendar.weeks))
+    ? semester.calendar.weeks
+    : [];
+}
+
+/**
+ * Resolve ISO date for a schedule cell. Student cells rarely store date/day;
+ * derive from instructional week + clinical/sim weekday.
+ */
+function resolveCellDate(semester, weekIndex, dayHint) {
+  var weeks = weekList(semester);
+  var week = weeks[weekIndex];
+  var short = shortWeekday(dayHint);
+  if (week && short) {
+    var iso = dateForWeekdayInWeekRange(week, short);
+    if (iso) return iso;
+  }
+  return '';
+}
+
 function clinicalInstances(semester, clinicalGroup) {
   var dates = {};
+  var groupDay = DataModel.getClinicalDayForGroup(clinicalGroup, semester.config || {});
   (semester.students || []).forEach(function (s) {
     if (s.clinicalGroup !== clinicalGroup) return;
     (s.schedule || []).forEach(function (cell, wi) {
-      if (!cell || !cell.clinical || !cell.date) return;
-      dates[cell.date] = {
-        date: cell.date,
+      if (!cell || cell.inactive) return;
+      var hasClinical = !!(cell.clinical && !cell.clinicalMissed);
+      var hasMakeup = !!cell.makeupClinical;
+      if (!hasClinical && !hasMakeup) return;
+      var dayHint = cell.day || groupDay;
+      var date = cell.date || resolveCellDate(semester, wi, dayHint);
+      if (!date) return;
+      dates[date] = {
+        date: date,
         weekIndex: wi,
-        weekday: cell.day || '',
+        weekday: fullWeekday(dayHint) || weekdayFromDate(date),
         facilityId: cell.facilityId || s.facilityId || null
       };
     });
@@ -66,10 +127,18 @@ function clinicalInstances(semester, clinicalGroup) {
   return Object.keys(dates).sort().map(function (d) { return dates[d]; });
 }
 
+function facilityIdFromConfig(raw) {
+  if (!raw) return '';
+  if (Array.isArray(raw)) return raw[0] || '';
+  return raw;
+}
+
 function facilityForGroup(semester, clinicalGroup, instances) {
   var byGroup = semester.config && semester.config.clinicalGroupFacilities;
   if (byGroup && byGroup[clinicalGroup]) {
-    return DataModel.findFacilityById(semester, byGroup[clinicalGroup]);
+    var id = facilityIdFromConfig(byGroup[clinicalGroup]);
+    var fromCfg = DataModel.findFacilityById(semester, id);
+    if (fromCfg) return fromCfg;
   }
   if (instances && instances.length && instances[0].facilityId) {
     return DataModel.findFacilityById(semester, instances[0].facilityId);
@@ -79,13 +148,6 @@ function facilityForGroup(semester, clinicalGroup, instances) {
   });
   if (student) return DataModel.findFacilityById(semester, student.facilityId);
   return (semester.facilities || [])[0] || null;
-}
-
-function weekdayFromDate(iso) {
-  if (!iso) return '';
-  var d = new Date(iso + 'T12:00:00');
-  if (isNaN(d.getTime())) return '';
-  return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getDay()];
 }
 
 function makeBase(semester, partial) {
@@ -204,17 +266,33 @@ function buildSimInstances(semester, start, end) {
   var dates = {};
   (semester.students || []).forEach(function (s) {
     (s.schedule || []).forEach(function (cell, wi) {
-      if (!cell || !cell.sim || !cell.date) return;
-      dates[cell.date] = {
-        date: cell.date,
+      if (!cell || !cell.sim) return;
+      var dayHint = cell.simDay || cell.day || 'Mon';
+      var date = cell.date || resolveCellDate(semester, wi, dayHint);
+      if (!date) return;
+      dates[date] = {
+        date: date,
         weekIndex: wi,
-        weekday: cell.day || weekdayFromDate(cell.date),
+        weekday: fullWeekday(dayHint) || weekdayFromDate(date),
         timeStart: start,
         timeEnd: end
       };
     });
   });
   return Object.keys(dates).sort().map(function (d) { return dates[d]; });
+}
+
+function eventSlotKind(ev) {
+  if (!ev) return '';
+  var type = String(ev.type || '').toLowerCase();
+  var track = String(ev.track || '').toLowerCase();
+  var cats = Array.isArray(ev.categories) ? ev.categories : [];
+  var has = function (name) {
+    return type === name || track === name || cats.indexOf(name) >= 0;
+  };
+  if (has('skills_lab') || has('skills')) return 'skills';
+  if (has('lecture') || has('guest_lecture') || track === 'theory') return 'lecture';
+  return '';
 }
 
 /**
@@ -228,14 +306,13 @@ function theorySlots(semester) {
     if (!day || !Array.isArray(day.events)) return;
     day.events.forEach(function (ev) {
       if (!ev || !Array.isArray(ev.faculty)) return;
-      var kind = ev.type === 'skills_lab' || ev.type === 'skills' ? 'skills'
-        : (ev.type === 'lecture' || ev.type === 'guest_lecture' ? 'lecture' : '');
+      var kind = eventSlotKind(ev);
       if (!kind) return;
       ev.faculty.forEach(function (slot, fi) {
         if (!isNeeded(slot)) return;
         var start = ScheduleHours.normalizeHhmm(ev.timeStart || day.timeStart, '0800');
         var end = ScheduleHours.normalizeHhmm(ev.timeEnd || day.timeEnd, '1200');
-        var wd = day.weekday || weekdayFromDate(day.date);
+        var wd = fullWeekday(day.weekday) || weekdayFromDate(day.date);
         var key = [kind, wd, start, end, ev.courseCode || ''].join('|');
         if (!groups[key]) {
           groups[key] = {

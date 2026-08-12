@@ -5,10 +5,12 @@
 import { escapeHtml } from '../dialogs.js';
 import { listOpenSlots, filterSlots, listAllSlots } from '../../core/faculty-schedule/slot-inventory.js';
 import { userCanSeeSlot } from '../../core/faculty-schedule/slot-rules.js';
-import { listBands } from '../../core/faculty-schedule/program-bands.js';
 import { slotChipHtml } from './chips.js';
-
-var WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+import {
+  FULL_WEEKDAYS,
+  indexSlotsByDate,
+  weekGridHtml
+} from './week-grid.js';
 
 function esc(s) {
   return escapeHtml(s == null ? '' : String(s));
@@ -62,7 +64,7 @@ function filtersHtml(slots, filters) {
     return '<option value="' + esc(s.id) + '"' +
       (filters.siteId === s.id ? ' selected' : '') + '>' + esc(s.label) + '</option>';
   }).join('');
-  var dayOpts = WEEKDAYS.map(function (d) {
+  var dayOpts = FULL_WEEKDAYS.map(function (d) {
     return '<option value="' + esc(d) + '"' +
       (filters.weekday === d ? ' selected' : '') + '>' + esc(d) + '</option>';
   }).join('');
@@ -86,57 +88,30 @@ function filtersHtml(slots, filters) {
     '</div>';
 }
 
-function slotsForWeekday(slots, weekday) {
-  var wd = String(weekday).toLowerCase();
-  return (slots || []).filter(function (slot) {
-    if (String(slot.weekday || '').toLowerCase() === wd) return true;
-    return (slot.instances || []).some(function (inst) {
-      return String(inst.weekday || '').toLowerCase() === wd;
-    });
-  });
-}
-
-function calendarHtml(slots, cartIds) {
+/**
+ * 18-week Sun–Sat signup grid (Master Calendar layout). Chips land on instance dates.
+ */
+function calendarHtml(semester, slots, cartIds) {
   cartIds = cartIds || {};
-  var bands = listBands();
-  var byBand = {};
-  bands.forEach(function (b) { byBand[b.id] = []; });
-  byBand[0] = [];
-  (slots || []).forEach(function (s) {
-    var id = s.bandId || 0;
-    if (!byBand[id]) byBand[id] = [];
-    byBand[id].push(s);
-  });
+  var list = slots || [];
+  var byDate = indexSlotsByDate(list);
+  var emptyNote = !list.length
+    ? '<p class="section-sub faculty-browse-empty">No open slots match the current filters.</p>'
+    : '';
 
-  var html = '<div class="faculty-browse-calendar custom-scrollbar">' +
-    '<table class="data-table faculty-browse-table">' +
-    '<thead><tr><th>Band</th>' +
-    WEEKDAYS.map(function (d) { return '<th>' + esc(d) + '</th>'; }).join('') +
-    '</tr></thead><tbody>';
-
-  bands.concat([{ id: 0, label: 'Other' }]).forEach(function (band) {
-    var bandSlots = byBand[band.id] || [];
-    if (!bandSlots.length && band.id === 0) return;
-    if (!bandSlots.length) {
-      // still show empty band row when course matches that band elsewhere? skip empty
-      return;
-    }
-    html += '<tr><td class="faculty-band-label">' + esc(band.label) + '</td>';
-    WEEKDAYS.forEach(function (wd) {
-      html += '<td class="faculty-browse-day">';
-      slotsForWeekday(bandSlots, wd).forEach(function (slot) {
-        html += slotChipHtml(slot, { selected: !!cartIds[slot.slotId] });
-      });
-      html += '</td>';
+  var grid = weekGridHtml(semester, byDate, function (ctx) {
+    var inner = '';
+    (ctx.slots || []).forEach(function (slot) {
+      inner += slotChipHtml(slot, { selected: !!cartIds[slot.slotId] });
     });
-    html += '</tr>';
+    return inner;
   });
 
-  if (html.indexOf('<tr>') < 0) {
-    html += '<tr><td colspan="6" class="text-muted">No open slots match the current filters.</td></tr>';
-  }
-  html += '</tbody></table></div>';
-  return html;
+  return '<section class="card faculty-browse-card" style="padding:1.25rem">' +
+    '<p class="section-sub" style="margin-top:0">Sun–Sat week grid — open faculty slots by instructional week.</p>' +
+    emptyNote +
+    grid +
+    '</section>';
 }
 
 function visibleSlots(semester, session, filters) {
@@ -144,13 +119,15 @@ function visibleSlots(semester, session, filters) {
   var all = filters.openOnly === false ? listAllSlots(semester) : listOpenSlots(semester);
   var filtered = filterSlots(all, filters);
   var specs = (session && session.specialties) || [];
+  // No specialties configured → show all open slots (signup still validates tags).
+  var showAll = !!filters.showAll || !specs.length;
   return filtered.filter(function (slot) {
-    return userCanSeeSlot(slot, specs, !!filters.showAll);
+    return userCanSeeSlot(slot, specs, showAll);
   });
 }
 
 export {
-  WEEKDAYS,
+  FULL_WEEKDAYS as WEEKDAYS,
   readFilters,
   filtersHtml,
   calendarHtml,

@@ -89,7 +89,7 @@ function renderBody(data, session) {
   body.innerHTML =
     Browse.filtersHtml(allForFilters, filters) +
     '<div class="faculty-browse-layout">' +
-    Browse.calendarHtml(slots, Cart.getCartIds()) +
+    Browse.calendarHtml(data, slots, Cart.getCartIds()) +
     Cart.cartPanelHtml(data) +
     '</div>';
   wireBrowse(data, session);

@@ -1,15 +1,13 @@
 /**
- * Faculty semester-at-a-glance calendar.
+ * Faculty semester-at-a-glance calendar (18-week Sun–Sat, Master Calendar layout).
  */
 
 import { escapeHtml } from '../dialogs.js';
-import * as CalendarEngine from '../../core/calendar-engine.js';
 import { listAllSlots } from '../../core/faculty-schedule/slot-inventory.js';
 import { listMyAssignedSlots } from '../../proposals/substitute-proposals.js';
 import { slotChipHtml, kindLabel } from './chips.js';
 import { formatHhmmDisplay } from '../../core/schedule-hours.js';
-
-var WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+import { indexSlotsByDate, weekGridHtml } from './week-grid.js';
 
 function esc(s) {
   return escapeHtml(s == null ? '' : String(s));
@@ -47,58 +45,50 @@ function glanceEventsForUser(semester, session) {
 
 function glanceHtml(semester, session) {
   var events = glanceEventsForUser(semester, session);
-  var byWeek = {};
-  for (var w = 0; w < 18; w++) byWeek[w] = {};
+  var byDate = {};
+  var subByDateSlot = {};
 
   events.forEach(function (ev) {
-    var wi = ev.weekIndex;
-    if (wi == null && ev.date && semester.calendar) {
-      wi = CalendarEngine.getWeekIndexForDate
-        ? CalendarEngine.getWeekIndexForDate(semester, ev.date)
-        : null;
+    if (!ev.date || !ev.slot) return;
+    if (!byDate[ev.date]) byDate[ev.date] = [];
+    var already = byDate[ev.date].some(function (s) {
+      return s.slotId === ev.slot.slotId;
+    });
+    if (!already) byDate[ev.date].push(ev.slot);
+    if (ev.substitute) {
+      subByDateSlot[ev.date + '|' + ev.slot.slotId] = ev.substitute;
     }
-    if (wi == null || wi < 0 || wi > 17) return;
-    var wd = ev.weekday || '';
-    if (!wd && ev.date) {
-      var d = new Date(ev.date + 'T12:00:00');
-      wd = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getDay()];
-    }
-    if (!byWeek[wi][wd]) byWeek[wi][wd] = [];
-    byWeek[wi][wd].push(ev);
   });
 
-  var html = '<div id="facultyGlancePanel" class="faculty-glance">' +
+  // Also index via list so weeks without assigned slots still render the shell.
+  if (!Object.keys(byDate).length) {
+    byDate = indexSlotsByDate([]);
+  }
+
+  var grid = weekGridHtml(semester, byDate, function (ctx) {
+    var inner = '';
+    (ctx.slots || []).forEach(function (slot) {
+      inner += slotChipHtml(slot, {});
+      var cover = subByDateSlot[ctx.date + '|' + slot.slotId];
+      if (cover) {
+        inner += '<div class="faculty-sub-marker">Sub: ' +
+          esc(shortName(cover.coveringName)) +
+          ' (' + esc(formatHhmmDisplay(cover.timeStart)) + '-' +
+          esc(formatHhmmDisplay(cover.timeEnd)) + ')</div>';
+      }
+    });
+    return inner;
+  });
+
+  return '<div id="facultyGlancePanel" class="faculty-glance">' +
     '<div class="faculty-glance-toolbar">' +
     '<button type="button" class="btn btn-sm" id="facultyExportIcsBtn">Export ICS</button> ' +
     '<button type="button" class="btn btn-sm" id="facultyExportPdfBtn">Export PDF</button>' +
     '</div>' +
-    '<div class="faculty-glance-calendar custom-scrollbar">' +
-    '<table class="data-table faculty-glance-table"><thead><tr><th>Week</th>' +
-    WEEKDAYS.map(function (d) { return '<th>' + esc(d) + '</th>'; }).join('') +
-    '</tr></thead><tbody>';
-
-  for (var week = 0; week < 18; week++) {
-    var label = CalendarEngine.getWeekDisplay
-      ? CalendarEngine.getWeekDisplay(semester, week, true)
-      : ('Wk ' + (week + 1));
-    html += '<tr><td class="faculty-week-label">' + esc(label) + '</td>';
-    WEEKDAYS.forEach(function (wd) {
-      html += '<td class="faculty-glance-day">';
-      (byWeek[week][wd] || []).forEach(function (ev) {
-        html += slotChipHtml(ev.slot, {});
-        if (ev.substitute) {
-          html += '<div class="faculty-sub-marker">Sub: ' +
-            esc(shortName(ev.substitute.coveringName)) +
-            ' (' + esc(formatHhmmDisplay(ev.substitute.timeStart)) + '-' +
-            esc(formatHhmmDisplay(ev.substitute.timeEnd)) + ')</div>';
-        }
-      });
-      html += '</td>';
-    });
-    html += '</tr>';
-  }
-  html += '</tbody></table></div></div>';
-  return html;
+    '<section class="card faculty-browse-card" style="padding:1.25rem">' +
+    '<p class="section-sub" style="margin-top:0">Sun–Sat week grid — your assigned faculty schedule.</p>' +
+    grid +
+    '</section></div>';
 }
 
 export {

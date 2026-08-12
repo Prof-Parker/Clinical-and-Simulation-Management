@@ -3528,8 +3528,9 @@ html.dark .theory-coord-semester-totals td { box-shadow: 0 -2px 8px rgba(0, 0, 0
 .faculty-schedule-filters { margin-bottom: 0.75rem; }
 .faculty-browse-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 280px); gap: 1rem; align-items: start; }
 @media (max-width: 900px) { .faculty-browse-layout { grid-template-columns: 1fr; } }
-.faculty-browse-calendar, .faculty-glance-calendar { overflow: auto; }
-.faculty-browse-table td, .faculty-glance-table td { vertical-align: top; min-width: 7.5rem; }
+.faculty-browse-layout .faculty-cart-panel { position: sticky; top: 0.75rem; }
+.faculty-week-grid-table .faculty-week-day { min-height: 3.5rem; }
+.faculty-browse-empty { margin: 0 0 0.5rem; color: var(--text-muted); }
 .faculty-band-label, .faculty-week-label { font-weight: 600; white-space: nowrap; }
 .faculty-slot-chip { display: block; margin: 0.25rem 0; padding: 0.35rem 0.45rem; border-radius: 0.3rem; cursor: pointer; text-align: left; border: 1px solid transparent; }
 .faculty-slot-chip-selected { outline: 2px solid var(--accent, #2563eb); border-color: var(--accent, #2563eb); }
