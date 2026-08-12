@@ -117,7 +117,7 @@ var AUDIT_APP_VERSION = formatAppVersionLabel(APP_VERSION);
       '<table class="audit-print-kv"><tbody>' +
       '<tr><th>Course</th><td>' + esc(courseName || meta.courseId || '—') + ' (' + esc(meta.courseId || '—') + ')</td></tr>' +
       '<tr><th>Semester</th><td>' + esc(meta.semesterName) + '</td></tr>' +
-      '<tr><th>Lead faculty</th><td>' + esc(lead.name || '—') + (lead.email ? ' · ' + esc(lead.email) : '') + '</td></tr>' +
+      '<tr><th>Full time faculty</th><td>' + esc(lead.name || '—') + (lead.email ? ' · ' + esc(lead.email) : '') + '</td></tr>' +
       '<tr><th>Exported</th><td>' + new Date().toLocaleString() + (adminName ? ' by ' + esc(adminName) : '') + '</td></tr>' +
       '<tr><th>Export version</th><td>v' + version + '</td></tr>' +
       '<tr><th>App version</th><td>' + esc(AUDIT_APP_VERSION) + '</td></tr>' +
@@ -186,7 +186,7 @@ var AUDIT_APP_VERSION = formatAppVersionLabel(APP_VERSION);
 
   function attestationHtml(semester) {
     var att = semester.meta.makeupAttestation || {};
-    return '<section class="audit-print-section"><h2>Lead faculty attestation</h2>' +
+    return '<section class="audit-print-section"><h2>Full time faculty attestation</h2>' +
       '<p>I attest that makeup and absence records for this semester are correct.</p>' +
       '<table class="audit-print-kv"><tbody>' +
       '<tr><th>Attested by</th><td>' + esc(att.attestedByName || '—') + '</td></tr>' +
@@ -200,7 +200,7 @@ var AUDIT_APP_VERSION = formatAppVersionLabel(APP_VERSION);
     return '<section class="audit-print-section audit-print-signatures"><h2>Signatures</h2>' +
       '<p class="audit-print-sign-note">Sign digitally in Adobe Acrobat (or print, sign, and scan) per the audit tracking operations guide.</p>' +
       '<div class="audit-print-sign-row"><span class="audit-print-sign-line"></span>' +
-      '<span class="audit-print-sign-label">Lead course faculty — signature &amp; date</span></div>' +
+      '<span class="audit-print-sign-label">Full time faculty — signature &amp; date</span></div>' +
       '<div class="audit-print-sign-row"><span class="audit-print-sign-line"></span>' +
       '<span class="audit-print-sign-label">Program director — signature &amp; date</span></div>' +
       '</section>';

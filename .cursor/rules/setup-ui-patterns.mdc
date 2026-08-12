@@ -122,10 +122,10 @@ Never use `window.alert`, `window.confirm`, or `window.prompt`.
 
 ## Read-only and auto-filled form fields
 
-Use `.setup-autofill-field` for inputs populated from registry or other sources and not edited directly (e.g. lead faculty email after picking a user).
+Use `.setup-autofill-field` for inputs populated from registry or other sources and not edited directly (e.g. full time faculty email after picking a user).
 
 ```html
-<input type="text" id="leadFacultyEmail" class="setup-autofill-field" readonly aria-label="Lead faculty email">
+<input type="text" id="leadFacultyEmail" class="setup-autofill-field" readonly aria-label="Full time faculty email">
 ```
 
 - **Always set both** `background` and `color` using theme tokens — never a hard-coded light gray alone.

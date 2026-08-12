@@ -43,7 +43,7 @@ Shared OneDrive folders usually grant full edit access to the team. The app cann
 | Role | Everyday path | Advanced / override |
 |------|---------------|---------------------|
 | Adjunct Faculty | Sync when linked; **Download backup** on iPad | No Create new, no Connect raw file, no kind override |
-| Lead Course Faculty | Sync + **Download backup**; Open copy when needed | Soft confirms; Save as only if Sync is not linked; reconnect ProgramData if already connected |
+| Full Time Faculty | Sync + **Download backup**; Open copy when needed | Soft confirms; Save as only if Sync is not linked; reconnect ProgramData if already connected |
 | Administrative Staff | ProgramData reconnect, Save as (folder/overwrite preferred), New semester | Create new demoted |
 | Program Engineer | Full File Management menu | Create new + hard-block **Overwrite anyway** |
 

@@ -33,11 +33,11 @@
 
 ## User Roles and Multi-User Workflow
 
-Standard roles: **Program Engineer**, **Administrative Staff**, **Lead Course Faculty**, **Adjunct Faculty** (simulation and clinical).
+Standard roles: **Program Engineer**, **Administrative Staff**, **Full Time Faculty**, **Adjunct Faculty** (simulation and clinical).
 
 - Roles gate tabs, menu items, and edit actions; combined with audit-phase gating for semester data.
 - **Admin / Program Engineer** edit semester setup directly and review proposed changes.
-- **Lead Course Faculty** save setup drafts and **propose changes**; changes are staged in the semester file until approved.
+- **Full Time Faculty** save setup drafts and **propose changes**; changes are staged in the semester file until approved.
 - **Adjunct Faculty** have read-only dashboard access; edit simulation roles in the semester file (Simulation Roles tab).
 - Proposals are stored in `semester.proposals[]` with line-item approve/deny; saves use reload-merge with `meta.revision` to reduce overwrite conflicts.
 - Basic tamper deterrence: each `user.json` carries a key validated against `users-registry.json` (not authentication — OneDrive ACLs remain authoritative).
@@ -56,14 +56,14 @@ See [docs/Design Docs/User_roles_design.md](docs/Design%20Docs/User_roles_design
 - Simulation roles and performance flags in the semester file (`meta.simRoles`, base64 obfuscated in JSON).
 - Makeup finder to identify and apply simulation/clinical makeup opportunities.
 - Validation and schedule status indicators (green/yellow/red) for feasibility and completion quality.
-- Audit lifecycle tab for closeout phases, lead faculty attestation, audit PDF export, and lock.
+- Audit lifecycle tab for closeout phases, full time faculty attestation, audit PDF export, and lock.
 
 ### Multi-user and program management
 
 - User gate on launch: load `user.json` and connect `users-registry.json`.
 - **Users** tab: create users, assign roles, revoke/reissue keys, download user files.
 - **New semester** wizard: shared season/year/dates, batch-create semester JSON per selected course (directory picker where supported).
-- Setup **propose / approve / deny** workflow for lead faculty and admin.
+- Setup **propose / approve / deny** workflow for full time faculty and admin.
 - **Playground** tab: copy live semester or course template into an isolated file (`user_{token}_playground.json`) for configuration trials.
 - Admin **import playground** and **create course template** export from Setup.
 - **Clinical Sites** tab with standalone `clinical-sites-library.json` (program-wide site catalog: name, short name, content tags MS/OB/PEDS/MH).
@@ -82,14 +82,14 @@ See [docs/Design Docs/User_roles_design.md](docs/Design%20Docs/User_roles_design
 
 - Custom role templates beyond the four standard roles.
 - Clinical site library proposals (same approve/deny pattern as setup).
-- Dashboard item proposals for lead course faculty.
+- Dashboard item proposals for full time faculty.
 - REGN48P practicum placement assignment logic.
 
 ## Audit / Closeout Scope
 
 - Audit phases: setup -> active -> makeup_review -> audit_exported -> locked.
 - Setup, makeup, and master calendar edits are blocked in exported/locked phases.
-- Lead faculty attestation is required before audit export.
+- Full time faculty attestation is required before audit export.
 - Audit PDF versioning and snapshot hash support closeout traceability.
 - Signed PDF stored in OneDrive repository is the official end-of-semester record.
 
@@ -116,7 +116,7 @@ See [docs/Design Docs/User_roles_design.md](docs/Design%20Docs/User_roles_design
 - **Makeup Finder:** absence/makeup workflows (admin/program engineer; gated by role).
 - **Audit:** closeout controls, attestation, export state.
 - **Setup:** semester setup, advanced configuration, proposal review, playground import.
-- **Playground:** isolated configuration trials (lead faculty, program engineer).
+- **Playground:** isolated configuration trials (full time faculty, program engineer).
 - **Users:** user and registry management (admin, program engineer).
 - **Clinical Sites:** program site library editor.
 - **Theory Scheduling:** stub tab — integration not implemented.
@@ -130,6 +130,6 @@ See [docs/Design Docs/User_roles_design.md](docs/Design%20Docs/User_roles_design
 - Change clinical and simulation start weeks.
 - Configure simulation makeup headroom reserve.
 - Apply settings to future semesters or restore program defaults.
-- Lead faculty: **Save draft** and **Propose changes**; admin: direct save and approve/deny pending proposals.
+- Full time faculty: **Save draft** and **Propose changes**; admin: direct save and approve/deny pending proposals.
 
 All configuration changes must preserve scheduler behavior so students can still be placed for required clinical/simulation counts under the configured rules.

@@ -95,7 +95,7 @@ var groupFilter = '';
       ['Course', courseName || '—'],
       ['Semester', meta.semesterName || '—'],
       ['Phase', Audit.phaseLabel(phase)],
-      ['Lead faculty', meta.leadFaculty && meta.leadFaculty.name
+      ['Full time faculty', meta.leadFaculty && meta.leadFaculty.name
         ? esc(meta.leadFaculty.name) + (meta.leadFaculty.email ? ' · ' + esc(meta.leadFaculty.email) : '')
         : '<em>Not set — enter in Setup → Course Staff</em>']
     ];
@@ -133,7 +133,7 @@ var groupFilter = '';
     if (phase === 'makeup_review') {
       buttons.push('<button id="auditReopenActiveBtn" class="btn" type="button">Return to active teaching</button>');
       buttons.push('<button id="auditExportPdfBtn" class="btn btn-primary" type="button"' +
-        (attested ? '' : ' disabled title="Lead faculty attestation required first"') +
+        (attested ? '' : ' disabled title="Full time faculty attestation required first"') +
         '>Export audit PDF</button>');
     }
     if (phase === 'audit_exported') {
@@ -180,7 +180,7 @@ var groupFilter = '';
       formHtml = '<p class="section-sub">Attestation not recorded. Reopen makeup review to attest.</p>';
     }
 
-    return '<section class="card audit-card"><h3 class="section-title">Lead faculty — makeup review &amp; attestation</h3>' +
+    return '<section class="card audit-card"><h3 class="section-title">Full time faculty — makeup review &amp; attestation</h3>' +
       '<p class="section-sub">Review all makeup records below. Corrections happen in Makeup Finder or the master schedule; return here and re-check. The in-app attestation is a workflow step, not a legal digital signature — signatures are applied to the exported PDF outside the app.</p>' +
       makeupTableHtml(data) +
       formHtml +
@@ -197,7 +197,7 @@ var groupFilter = '';
     var phase = Audit.getPhase(data);
     var emptyState = phase === 'setup'
       ? '<section class="card audit-card"><h3 class="section-title">Audit / Closeout</h3>' +
-        '<p class="section-sub">Semester not yet active for audit. Complete Setup (including lead course faculty under Course Staff), then open the semester for teaching below.</p></section>'
+        '<p class="section-sub">Semester not yet active for audit. Complete Setup (including full time faculty under Course Staff), then open the semester for teaching below.</p></section>'
       : '';
     container.innerHTML =
       emptyState +
@@ -247,7 +247,7 @@ var groupFilter = '';
   function handleExportPdf() {
     var data = getData();
     if (!Audit.isAttested(data)) {
-      showAlert('Export blocked', 'Lead faculty attestation is required before exporting the audit PDF.');
+      showAlert('Export blocked', 'Full time faculty attestation is required before exporting the audit PDF.');
       return;
     }
     if (!AuditExport) {
@@ -263,11 +263,11 @@ var groupFilter = '';
     var id = e.target.id;
     if (id === 'auditOpenSemesterBtn') {
       transitionWithConfirm('active', 'Open semester?',
-        'Open this semester for teaching? Setup should be complete and lead course faculty set.',
+        'Open this semester for teaching? Setup should be complete and full time faculty set.',
         { confirmLabel: 'Open semester' });
     } else if (id === 'auditStartReviewBtn') {
       transitionWithConfirm('makeup_review', 'Start makeup review?',
-        'Start end-of-semester makeup review? Lead faculty will review and attest makeup records.',
+        'Start end-of-semester makeup review? Full time faculty will review and attest makeup records.',
         { confirmLabel: 'Start review' });
     } else if (id === 'auditReopenActiveBtn') {
       transitionWithConfirm('active', 'Return to active teaching?',

@@ -197,7 +197,7 @@ function renderLeadFaculty(data) {
       nameEl.classList.add('hidden');
       nameEl.disabled = true;
       sel.disabled = false;
-      var html = '<option value="">Select lead faculty…</option>';
+      var html = '<option value="">Select full time faculty…</option>';
       var matched = false;
       leads.forEach(function (u) {
         var selected = lead.name === u.displayName;
@@ -218,8 +218,7 @@ function renderLeadFaculty(data) {
       emailEl.readOnly = true;
       emailEl.classList.add('setup-autofill-field');
       if (hintEl) {
-        hintEl.textContent = leads.length + ' active lead course facult' +
-          (leads.length === 1 ? 'y' : 'ies') + ' from user registry.';
+        hintEl.textContent = leads.length + ' active Full Time Faculty from user registry.';
         hintEl.classList.remove('hidden');
       }
     } else {
@@ -235,9 +234,9 @@ function renderLeadFaculty(data) {
       emailEl.classList.remove('setup-autofill-field');
       if (hintEl) {
         if (isRegistryReady()) {
-          hintEl.textContent = 'No active lead course faculty in the registry. Enter name manually.';
+          hintEl.textContent = 'No active Full Time Faculty in the registry. Enter name manually.';
         } else {
-          hintEl.textContent = 'Connect users registry to pick lead faculty from registered users.';
+          hintEl.textContent = 'Connect users registry to pick Full Time Faculty from registered users.';
         }
         hintEl.classList.remove('hidden');
       }

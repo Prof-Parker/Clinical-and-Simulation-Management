@@ -33,9 +33,9 @@ describe('user-directory.test.js', () => {
     state.usersRegistry.users.usr_revoked.status = 'revoked';
 
     var leads = UserDirectory.getLeadCourseFaculty();
-    assert(leads.length === 2, 'lists active lead course faculty only');
-    assert(leads[0].displayName === 'Lead One', 'lead faculty sorted by name');
-    assert(leads[0].email === 'lead1@example.edu', 'lead faculty includes email');
+    assert(leads.length === 2, 'lists active full time faculty only');
+    assert(leads[0].displayName === 'Lead One', 'full time faculty sorted by name');
+    assert(leads[0].email === 'lead1@example.edu', 'full time faculty includes email');
 
     var adjuncts = UserDirectory.getAdjunctFaculty();
     assert(adjuncts.length === 1, 'lists active adjunct faculty only');

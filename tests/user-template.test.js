@@ -12,9 +12,9 @@ describe('user-template.test.js', () => {
     }
 
     assert(UserTemplate.canTab('lead_course_faculty', 'makeup'),
-      'lead course faculty can access makeup tab');
+      'full time faculty can access makeup tab');
     assert(UserTemplate.canAction('lead_course_faculty', 'makeup.edit'),
-      'lead course faculty can apply makeup');
+      'full time faculty can apply makeup');
     assert(!UserTemplate.canTab('adjunct_faculty', 'makeup'),
       'adjunct faculty cannot access makeup tab');
     assert(!UserTemplate.canTab('admin_staff', 'makeup'),

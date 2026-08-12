@@ -288,7 +288,7 @@ function applyRoleMode() {
     if (templateBtn) templateBtn.classList.toggle('hidden', !isEngineer);
     var readOnly = !canEdit && !canDraft;
     // Only toggle controls this gate disabled, so widget-owned states
-    // (lead faculty name/select) survive a later re-apply.
+    // (full time faculty name/select) survive a later re-apply.
     document.querySelectorAll('#view-setup input, #view-setup select, #view-setup textarea').forEach(function (el) {
       if (el.closest('.setup-actions-sticky')) return;
       if (readOnly) {

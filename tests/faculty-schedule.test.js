@@ -30,7 +30,7 @@ describe('specialties', () => {
     expect(matchesSiteTag('OB', 'MS')).toBe(false);
   });
 
-  it('ensures Lec for lead course faculty', () => {
+  it('ensures Lec for full time faculty', () => {
     expect(ensureLeadLectureTag('lead_course_faculty', ['MS'])).toContain('Lec');
     expect(ensureLeadLectureTag('adjunct_faculty', ['MS'])).toEqual(['MS']);
   });

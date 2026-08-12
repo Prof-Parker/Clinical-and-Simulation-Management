@@ -55,12 +55,16 @@ Uses a DEV-only virtual folder (Vite middleware) so you do not have to click thr
 
 ### Demo accounts (permanent passwords for local testing)
 
-| Email | Role | Password |
-|------|------|----------|
-| `engineer@example.edu` | Program Engineer | `engineer-pass` |
-| `admin@example.edu` | Admin Staff | `admin-pass` |
-| `lead@example.edu` | Lead Course Faculty | `lead-pass` |
-| `adjunct@example.edu` | Adjunct Faculty | `adjunct-pass` |
+| Email | Role | Specialties | Password |
+|------|------|-------------|----------|
+| `engineer@example.edu` | Program Engineer | — | `engineer-pass` |
+| `admin@example.edu` | Admin Staff | — | `admin-pass` |
+| `lead@example.edu` | Full Time Faculty | MS, Lec | `lead-pass` |
+| `lead-ob@example.edu` | Full Time Faculty | OB, Lec | `lead-ob-pass` |
+| `lead-ped@example.edu` | Full Time Faculty | PED, Lec | `lead-ped-pass` |
+| `adjunct@example.edu` | Adjunct Faculty | MS | `adjunct-pass` |
+| `adjunct-ob@example.edu` | Adjunct Faculty | OB | `adjunct-ob-pass` |
+| `adjunct-ped@example.edu` | Adjunct Faculty | PED | `adjunct-ped-pass` |
 
 Seeded demo accounts are **not** temporary passwords (`mustChangePassword: false`). Users created or reset in the Users tab get generated temporary passwords (72-hour expiry + forced change).
 

@@ -29,18 +29,18 @@ flowchart TB
 
     subgraph End_of_Semester["End of Semester"]
         direction TB
-        C1["Lead Faculty Review<br>Makeup Days"]:::faculty
+        C1["Full Time Faculty Review<br>Makeup Days"]:::faculty
         B1 --> C1
-        C2{"Lead Faculty Mark<br>Makeup Info Correct?"}:::decision
+        C2{"Full Time Faculty Mark<br>Makeup Info Correct?"}:::decision
         C1 --> C2
         C2 -- No --> B1
         C2 -- Yes --> C3["Attestation Flag<br>on Semester"]:::process
         C3 --> C4["Admin Staff<br>Exports PDF File"]:::admin
-        C4 -- Via Email --> C5["Lead Faculty Review PDF"]:::faculty
+        C4 -- Via Email --> C5["Full Time Faculty Review PDF"]:::faculty
         C6{"PDF Correct?"}:::decision
         C5 --> C6
         C6 -- No --> C1
-        C6 -- Yes --> C7["Lead Faculty Digitally Sign PDF"]:::faculty
+        C6 -- Yes --> C7["Full Time Faculty Digitally Sign PDF"]:::faculty
         C7 --> C8["Admin Staff Sign PDF"]:::admin
         C8 --> C9["Save in Master<br>Repository Folder"]:::admin
         C9 --> C10(["Semester Complete"]):::endpoint
@@ -56,6 +56,6 @@ flowchart TB
 
 ## Notes
 
-- **Lead course faculty** (set in Setup) attests makeup records at closeout. This is separate from **clinical group faculty** listed per cohort (C1–C5).
+- **Full time faculty** (set in Setup) attests makeup records at closeout. This is separate from **clinical group faculty** listed per cohort (C1–C5).
 - In-app attestation is a workflow step; **digital signatures on the PDF** (outside the app) provide the official audit trail.
 - Working semester data lives in `regn-tracker.json` on OneDrive during the semester; see [docs/ONEDRIVE-SETUP.md](docs/ONEDRIVE-SETUP.md).

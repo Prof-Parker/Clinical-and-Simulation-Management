@@ -52,17 +52,17 @@ var PHASES = ['setup', 'active', 'makeup_review', 'audit_exported', 'locked'];
     var meta = semester.meta;
     if (nextPhase === 'active' && current === 'setup') {
       if (!meta.leadFaculty || !meta.leadFaculty.name) {
-        return 'Set the lead course faculty name in Setup before opening the semester.';
+        return 'Set the full time faculty name in Setup before opening the semester.';
       }
     }
     if (nextPhase === 'makeup_review') {
       if (!meta.leadFaculty || !meta.leadFaculty.name) {
-        return 'Set the lead course faculty name in Setup before starting makeup review.';
+        return 'Set the full time faculty name in Setup before starting makeup review.';
       }
     }
     if (nextPhase === 'audit_exported') {
       if (!meta.makeupAttestation || !meta.makeupAttestation.attestedAt) {
-        return 'Lead faculty attestation is required before exporting the audit PDF.';
+        return 'Full time faculty attestation is required before exporting the audit PDF.';
       }
     }
     if (nextPhase === 'locked') {

@@ -40,7 +40,7 @@ var SENTINEL = {
     semesterSeason: 'Semester season',
     semesterYear: 'Semester year',
     semesterName: 'Semester name',
-    leadFaculty: 'Lead course faculty'
+    leadFaculty: 'Full time faculty'
   };
   var CALENDAR_LABELS = {
     semesterStartDate: 'Semester start date'

@@ -29,7 +29,7 @@ var ROLES = {
     },
     lead_course_faculty: {
       id: 'lead_course_faculty',
-      displayName: 'Lead Course Faculty',
+      displayName: 'Full Time Faculty',
       tabs: ['dashboard', 'student', 'faculty', 'setup', 'roles', 'makeup',
         'playground-dashboard', 'playground-setup', 'clinical-sites',
         'theory-master', 'theory-lecture', 'theory-coordinator'],

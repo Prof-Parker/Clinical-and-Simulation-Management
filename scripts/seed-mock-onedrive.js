@@ -25,6 +25,7 @@ import {
 import * as RosterBalance from '../src/core/roster-balance.js';
 import * as Scheduler from '../src/core/scheduler/index.js';
 import { hashPassword } from '../src/auth/password.js';
+import { ensureLeadLectureTag } from '../src/core/faculty-schedule/specialties.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..', 'mock-onedrive');
@@ -89,10 +90,14 @@ async function main() {
   };
 
   var roles = [
-    { role: 'program_engineer', firstName: 'Program', lastName: 'Engineer', email: 'engineer@example.edu', password: 'engineer-pass' },
-    { role: 'admin_staff', firstName: 'Admin', lastName: 'Staff', email: 'admin@example.edu', password: 'admin-pass' },
-    { role: 'lead_course_faculty', firstName: 'Lead', lastName: 'Faculty', email: 'lead@example.edu', password: 'lead-pass' },
-    { role: 'adjunct_faculty', firstName: 'Adjunct', lastName: 'Faculty', email: 'adjunct@example.edu', password: 'adjunct-pass' }
+    { role: 'program_engineer', firstName: 'Program', lastName: 'Engineer', email: 'engineer@example.edu', password: 'engineer-pass', specialties: [] },
+    { role: 'admin_staff', firstName: 'Admin', lastName: 'Staff', email: 'admin@example.edu', password: 'admin-pass', specialties: [] },
+    { role: 'lead_course_faculty', firstName: 'Lead', lastName: 'Faculty', email: 'lead@example.edu', password: 'lead-pass', specialties: ['MS', 'Lec'] },
+    { role: 'adjunct_faculty', firstName: 'Adjunct', lastName: 'Faculty', email: 'adjunct@example.edu', password: 'adjunct-pass', specialties: ['MS'] },
+    { role: 'adjunct_faculty', firstName: 'Adjunct', lastName: 'OB', email: 'adjunct-ob@example.edu', password: 'adjunct-ob-pass', specialties: ['OB'] },
+    { role: 'adjunct_faculty', firstName: 'Adjunct', lastName: 'PED', email: 'adjunct-ped@example.edu', password: 'adjunct-ped-pass', specialties: ['PED'] },
+    { role: 'lead_course_faculty', firstName: 'Lead', lastName: 'OB', email: 'lead-ob@example.edu', password: 'lead-ob-pass', specialties: ['OB', 'Lec'] },
+    { role: 'lead_course_faculty', firstName: 'Lead', lastName: 'PED', email: 'lead-ped@example.edu', password: 'lead-ped-pass', specialties: ['PED', 'Lec'] }
   ];
 
   var helpDeskEngineerUserId = '';
@@ -110,7 +115,9 @@ async function main() {
       lastName: r.lastName,
       email: r.email,
       mustChangePassword: false,
-      temporaryPasswordExpiresAt: ''
+      temporaryPasswordExpiresAt: '',
+      specialties: ensureLeadLectureTag(r.role, r.specialties),
+      messages: []
     };
     if (r.role === 'program_engineer' && !helpDeskEngineerUserId) {
       helpDeskEngineerUserId = userId;
@@ -120,7 +127,8 @@ async function main() {
 
   writeJson(path.join('users', 'users-registry.json'), registry);
 
-  console.log('  demo passwords (permanent, not temporary): engineer-pass, admin-pass, lead-pass, adjunct-pass');
+  console.log('  demo passwords (permanent, not temporary): engineer-pass, admin-pass, lead-pass, adjunct-pass,');
+  console.log('    adjunct-ob-pass, adjunct-ped-pass, lead-ob-pass, lead-ped-pass');
 
   var siteLibrary = {
     meta: { version: 1 },

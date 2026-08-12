@@ -92,7 +92,7 @@ function userMatchesAnySpecialty(userSpecialties, requiredList) {
 }
 
 /**
- * Lead course faculty always receive the Lecture tag.
+ * Full time faculty always receive the Lecture tag.
  */
 function ensureLeadLectureTag(role, specialties) {
   var tags = normalizeSpecialties(specialties);

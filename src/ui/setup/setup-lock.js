@@ -20,7 +20,7 @@ function allowWhileLocked(el) {
  * After setup render: when finalized, disable editable controls in #view-setup
  * (except Finalize/Unlock and Advanced Configuration toggle).
  * On unlock, re-enable only controls this lock disabled so widget-owned
- * disabled states (lead faculty name/select, faculty "needed" slots) survive.
+ * disabled states (full time faculty name/select, faculty "needed" slots) survive.
  */
 export function applySetupFinalizedLock(data) {
   var root = document.getElementById('view-setup');
