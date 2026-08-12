@@ -2,7 +2,7 @@
  * Dashboard Excel export.
  */
 
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import * as CalendarEngine from '../core/calendar-engine.js';
 import * as ClinicalSites from '../core/clinical-sites.js';
 import * as DataModel from '../core/data-model/index.js';
@@ -11,6 +11,7 @@ import * as Orientation from '../core/orientation.js';
 import * as ScheduleHolidayLabel from '../core/schedule-holiday-label.js';
 import * as Validator from '../core/validator.js';
 import { showAlert } from '../ui/dialogs.js';
+import { addPrototypeScheduleSheet } from './dashboard-export-prototype.js';
 
 var DISCLAIMER = 'For reference only, refer to app for most current schedule.';
 
@@ -131,11 +132,6 @@ var DISCLAIMER = 'For reference only, refer to app for most current schedule.';
     return 'Filters: ' + bits.join(' · ');
   }
 
-  function applyTopRowMerge(ws, colCount) {
-    if (!ws['!merges']) ws['!merges'] = [];
-    ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: Math.max(0, colCount - 1) } });
-  }
-
   function buildMasterScheduleSheet(data, students, validation, filterSummary) {
     var rows = [];
     rows.push([DISCLAIMER]);
@@ -210,18 +206,48 @@ var DISCLAIMER = 'For reference only, refer to app for most current schedule.';
     return rows;
   }
 
+  function appendAoaSheet(workbook, name, rows, mergeCols) {
+    var ws = workbook.addWorksheet(name);
+    (rows || []).forEach(function (row, ri) {
+      (row || []).forEach(function (val, ci) {
+        var cell = ws.getCell(ri + 1, ci + 1);
+        cell.value = val == null || val === '' ? null : val;
+        if (typeof val === 'string' && val.indexOf('\n') >= 0) {
+          cell.alignment = { wrapText: true, vertical: 'top' };
+        }
+      });
+    });
+    if (mergeCols && mergeCols > 1) {
+      ws.mergeCells(1, 1, 1, mergeCols);
+    }
+    return ws;
+  }
+
   function buildWorkbook(data, students, validation, filterSummary) {
-    var masterRows = buildMasterScheduleSheet(data, students, validation, filterSummary);
-    var simRows = buildSimProgressionSheet(data, students, filterSummary);
-    var wb = XLSX.utils.book_new();
+    var summary = filterSummary != null ? filterSummary : '';
+    var masterRows = buildMasterScheduleSheet(data, students, validation, summary);
+    var simRows = buildSimProgressionSheet(data, students, summary);
+    var wb = new ExcelJS.Workbook();
+    wb.creator = 'Clinical and Simulation Management';
+    wb.created = new Date();
 
-    var wsMaster = XLSX.utils.aoa_to_sheet(masterRows);
-    applyTopRowMerge(wsMaster, masterRows[3] ? masterRows[3].length : 1);
-    XLSX.utils.book_append_sheet(wb, wsMaster, 'Master Schedule');
+    addPrototypeScheduleSheet(wb, data, students, {
+      disclaimer: DISCLAIMER,
+      metaLine: buildMetadataRow(data, summary)
+    });
 
-    var wsSim = XLSX.utils.aoa_to_sheet(simRows);
-    applyTopRowMerge(wsSim, simRows[3] ? simRows[3].length : 1);
-    XLSX.utils.book_append_sheet(wb, wsSim, 'Sim Progression');
+    appendAoaSheet(
+      wb,
+      'Master Schedule',
+      masterRows,
+      masterRows[3] ? masterRows[3].length : 1
+    );
+    appendAoaSheet(
+      wb,
+      'Sim Progression',
+      simRows,
+      simRows[3] ? simRows[3].length : 1
+    );
 
     return wb;
   }
@@ -238,21 +264,25 @@ var DISCLAIMER = 'For reference only, refer to app for most current schedule.';
   }
 
   function download(data, students, validation, filterSummary) {
-    if (typeof XLSX === 'undefined') {
+    if (typeof ExcelJS === 'undefined') {
       showAlert('Export failed', 'Excel export library failed to load. Please refresh the page and try again.');
-      return;
+      return Promise.resolve();
     }
     var summary = filterSummary != null ? filterSummary : buildFilterSummaryFromDom();
     var wb = buildWorkbook(data, students, validation, summary);
-    var buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    var blob = new Blob([buf], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    return wb.xlsx.writeBuffer().then(function (buf) {
+      var blob = new Blob([buf], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = exportFilename(data);
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }).catch(function (err) {
+      console.error(err);
+      showAlert('Export failed', 'Could not build the Excel file. Please try again.');
     });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = exportFilename(data);
-    a.click();
-    URL.revokeObjectURL(a.href);
   }
 
 export {

@@ -9,9 +9,15 @@ import {
   DashboardExport,
   Orientation
 } from './_harness.js';
+import {
+  prototypeLayoutMeta,
+  dayCellSpec,
+  TITLE
+} from '../src/export/dashboard-export-prototype.js';
+import ExcelJS from 'exceljs';
 
 describe('dashboard-export.test.js', () => {
-  it('runs assertions', () => {
+  it('runs assertions', async () => {
     let failed = 0;
 
     function assert(condition, message) {
@@ -90,6 +96,67 @@ describe('dashboard-export.test.js', () => {
       student1.schedule[ow], student1, data, ow
     );
     assert(orientText.indexOf('Orient SRMC') >= 0, 'export includes Orient SRMC (got ' + orientText + ')');
+
+    // Prototype-style primary sheet
+    var layout = prototypeLayoutMeta(data, students);
+    assert(layout.weekdays.length >= 2, 'prototype weekdays collected (got ' + layout.weekdays.join(',') + ')');
+    assert(layout.weekdays.indexOf('Sat') >= 0, 'default semester includes Sat clinical day');
+    assert(layout.dayColCount === layout.weekdays.length * 18, 'day columns = weekdays × 18');
+
+    if (wiWithSim >= 0) {
+      var simDay = student1.schedule[wiWithSim].simDay || 'Mon';
+      var simNum = student1.schedule[wiWithSim].sim;
+      var simSpec = dayCellSpec(data, student1, wiWithSim, simDay);
+      assert(
+        simSpec.text.indexOf('SIM ' + simNum) >= 0,
+        'prototype sim day cell includes sim number (got ' + simSpec.text + ')'
+      );
+    }
+
+    var inactive = DataModel.emptyCell();
+    inactive.inactive = true;
+    var saved = student1.schedule[0];
+    student1.schedule[0] = inactive;
+    var graySpec = dayCellSpec(data, student1, 0, layout.weekdays[0]);
+    student1.schedule[0] = saved;
+    assert(graySpec.gray === true && graySpec.text === '', 'inactive day cells are gray/empty');
+
+    var wb = DashboardExport.buildWorkbook(data, students, validation, filterSummary);
+    assert(wb.worksheets[0].name === 'Schedule', 'primary sheet is Schedule');
+    assert(!!wb.getWorksheet('Master Schedule'), 'legacy Master Schedule retained');
+    assert(!!wb.getWorksheet('Sim Progression'), 'Sim Progression retained');
+
+    var proto = wb.getWorksheet('Schedule');
+    assert(proto.getCell(2, 1).value === TITLE, 'prototype title row');
+    assert(proto.getCell(5, 1).value === 'Registration Section Number', 'prototype identity header');
+    assert(proto.getCell(3, layout.totalsCol).value === 'HOSPITALS', 'hospitals total header');
+    assert(proto.getCell(3, layout.totalsCol + 1).value === 'SIM', 'sim total header');
+    assert(proto.getCell(3, layout.totalsCol + 2).value == null, 'Vet-R column removed');
+
+    var firstStudentRow = 6;
+    var g1Font = proto.getCell(firstStudentRow, 3).font;
+    assert(
+      g1Font && g1Font.color && /507A2D/i.test(String(g1Font.color.argb || '')),
+      'group 1 row text uses 507A2D'
+    );
+    var g1DayFont = proto.getCell(firstStudentRow, layout.firstDayCol).font;
+    assert(
+      g1DayFont && g1DayFont.color && /507A2D/i.test(String(g1DayFont.color.argb || '')),
+      'group 1 day cells also use 507A2D text color'
+    );
+
+    var buf = await wb.xlsx.writeBuffer();
+    assert(buf && buf.byteLength > 1000, 'excel buffer written');
+
+    var wb2 = new ExcelJS.Workbook();
+    await wb2.xlsx.load(buf);
+    var reloaded = wb2.getWorksheet('Schedule');
+    assert(!!reloaded, 'reloaded Schedule sheet');
+    var titleFill = reloaded.getCell(2, 1).fill;
+    assert(
+      titleFill && titleFill.fgColor && /D0D0D0/i.test(String(titleFill.fgColor.argb || '')),
+      'title has gray fill'
+    );
 
     expect(failed).toBe(0);
   });

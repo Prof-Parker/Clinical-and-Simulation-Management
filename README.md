@@ -4,7 +4,7 @@ Browser-based app for REGN 15P cohort scheduling, clinical and simulation requir
 
 **Live app (PWA):** https://prof-parker.github.io/Clinical-and-Simulation-Management/
 
-On the **Dashboard**, use **Export to Excel** on the Master Interactive Schedule panel to download a filtered `.xlsx` workbook (master schedule + sim progression sheets). The same summary area hosts **Makeup clinicals week N** (clinical clustering modes) and **Consolidate thin sim sessions** (multi-pass thin-sim post-pass)—both are explicit actions, not part of regenerate.
+On the **Dashboard**, use **Export to Excel** on the Master Interactive Schedule panel to download a filtered `.xlsx` workbook (prototype-style **Schedule** sheet plus legacy Master Schedule and Sim Progression tabs). The same summary area hosts **Makeup clinicals week N** (clinical clustering modes) and **Consolidate thin sim sessions** (multi-pass thin-sim post-pass)—both are explicit actions, not part of regenerate.
 
 On **Student View**, use **Export .ics** for one student, or **Batch export…** to download a ZIP of per-student calendar PDFs, Outlook/iCal `.ics` files, and a Power Automate JSON file (see [docs/POWER_AUTOMATE_STUDENT_CALENDARS.md](docs/POWER_AUTOMATE_STUDENT_CALENDARS.md)).
 
@@ -46,13 +46,9 @@ npm run build         # Production bundle → dist/
 npm run check:line-limit  # Enforce 500-line cap per src module
 ```
 
-### Dependencies note (SheetJS)
+### Dependencies note (Excel export)
 
-Excel export uses [SheetJS Community Edition](https://cdn.sheetjs.com/) `xlsx@0.20.3` installed from the official CDN tarball (not the unmaintained npm registry build). If you reinstall from scratch and `xlsx` is missing, run:
-
-```powershell
-npm install https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
-```
+Dashboard Excel export uses [ExcelJS](https://github.com/exceljs/exceljs) so cell fills, merges, and column widths can match the clinical schedule prototype workbook.
 
 `package.json` also pins patched transitive build tooling via `overrides` (`fast-uri@3.1.5`, `postcss@^8.5.26`).
 
@@ -124,7 +120,7 @@ Before every commit or push:
 
 ```
 index.html              Vite entry (loads src/main.js)
-package.json            npm scripts and dependencies (Chart.js, SheetJS CE via CDN tarball)
+package.json            npm scripts and dependencies (Chart.js, ExcelJS, etc.)
 vite.config.js          Vite + PWA plugin
 src/
   main.js               Boot, menu, tab routing
