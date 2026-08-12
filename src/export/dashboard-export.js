@@ -1,8 +1,10 @@
 /**
  * Dashboard Excel export.
+ *
+ * ExcelJS is dynamically imported so it stays out of the main app chunk
+ * (Workbox precache fails when any asset exceeds ~2 MiB by default).
  */
 
-import ExcelJS from 'exceljs';
 import * as CalendarEngine from '../core/calendar-engine.js';
 import * as ClinicalSites from '../core/clinical-sites.js';
 import * as DataModel from '../core/data-model/index.js';
@@ -14,6 +16,12 @@ import { showAlert } from '../ui/dialogs.js';
 import { addPrototypeScheduleSheet } from './dashboard-export-prototype.js';
 
 var DISCLAIMER = 'For reference only, refer to app for most current schedule.';
+
+function loadExcelJS() {
+  return import('exceljs').then(function (mod) {
+    return mod && mod.default ? mod.default : mod;
+  });
+}
 
   function cellToExportText(cell, student, data, weekIndex) {
     if (!cell) return '-';
@@ -227,29 +235,31 @@ var DISCLAIMER = 'For reference only, refer to app for most current schedule.';
     var summary = filterSummary != null ? filterSummary : '';
     var masterRows = buildMasterScheduleSheet(data, students, validation, summary);
     var simRows = buildSimProgressionSheet(data, students, summary);
-    var wb = new ExcelJS.Workbook();
-    wb.creator = 'Clinical and Simulation Management';
-    wb.created = new Date();
+    return loadExcelJS().then(function (ExcelJS) {
+      var wb = new ExcelJS.Workbook();
+      wb.creator = 'Clinical and Simulation Management';
+      wb.created = new Date();
 
-    addPrototypeScheduleSheet(wb, data, students, {
-      disclaimer: DISCLAIMER,
-      metaLine: buildMetadataRow(data, summary)
+      addPrototypeScheduleSheet(wb, data, students, {
+        disclaimer: DISCLAIMER,
+        metaLine: buildMetadataRow(data, summary)
+      });
+
+      appendAoaSheet(
+        wb,
+        'Master Schedule',
+        masterRows,
+        masterRows[3] ? masterRows[3].length : 1
+      );
+      appendAoaSheet(
+        wb,
+        'Sim Progression',
+        simRows,
+        simRows[3] ? simRows[3].length : 1
+      );
+
+      return wb;
     });
-
-    appendAoaSheet(
-      wb,
-      'Master Schedule',
-      masterRows,
-      masterRows[3] ? masterRows[3].length : 1
-    );
-    appendAoaSheet(
-      wb,
-      'Sim Progression',
-      simRows,
-      simRows[3] ? simRows[3].length : 1
-    );
-
-    return wb;
   }
 
   function exportFilename(data) {
@@ -264,21 +274,18 @@ var DISCLAIMER = 'For reference only, refer to app for most current schedule.';
   }
 
   function download(data, students, validation, filterSummary) {
-    if (typeof ExcelJS === 'undefined') {
-      showAlert('Export failed', 'Excel export library failed to load. Please refresh the page and try again.');
-      return Promise.resolve();
-    }
     var summary = filterSummary != null ? filterSummary : buildFilterSummaryFromDom();
-    var wb = buildWorkbook(data, students, validation, summary);
-    return wb.xlsx.writeBuffer().then(function (buf) {
-      var blob = new Blob([buf], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    return buildWorkbook(data, students, validation, summary).then(function (wb) {
+      return wb.xlsx.writeBuffer().then(function (buf) {
+        var blob = new Blob([buf], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = exportFilename(data);
+        a.click();
+        URL.revokeObjectURL(a.href);
       });
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = exportFilename(data);
-      a.click();
-      URL.revokeObjectURL(a.href);
     }).catch(function (err) {
       console.error(err);
       showAlert('Export failed', 'Could not build the Excel file. Please try again.');

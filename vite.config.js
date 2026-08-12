@@ -26,6 +26,9 @@ export default defineConfig(({ command }) => ({
         ]
       },
       workbox: {
+        // ExcelJS / PDF export chunks can exceed Workbox's 2 MiB default;
+        // without this the production build fails at SW generation.
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: 'index.html',
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
         runtimeCaching: [],

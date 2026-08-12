@@ -121,7 +121,7 @@ describe('dashboard-export.test.js', () => {
     student1.schedule[0] = saved;
     assert(graySpec.gray === true && graySpec.text === '', 'inactive day cells are gray/empty');
 
-    var wb = DashboardExport.buildWorkbook(data, students, validation, filterSummary);
+    var wb = await DashboardExport.buildWorkbook(data, students, validation, filterSummary);
     assert(wb.worksheets[0].name === 'Schedule', 'primary sheet is Schedule');
     assert(!!wb.getWorksheet('Master Schedule'), 'legacy Master Schedule retained');
     assert(!!wb.getWorksheet('Sim Progression'), 'Sim Progression retained');
