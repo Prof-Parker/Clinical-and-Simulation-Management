@@ -107,7 +107,8 @@ describe('ui-smoke DOM contract', () => {
       expect(view, 'view panel for ' + tab.id).toBeTruthy();
       var nav = document.querySelector('.nav-tab[data-tab="' + tab.id + '"]');
       var rail = document.querySelector('.workspace-rail-btn[data-workspace="' + (tab.workspace || '') + '"]');
-      expect(nav || rail, 'nav or rail for ' + tab.id).toBeTruthy();
+      var setupBtn = tab.id === 'setup' ? document.getElementById('practicumOpenSetupBtn') : null;
+      expect(nav || rail || setupBtn, 'nav, rail, or setup affordance for ' + tab.id).toBeTruthy();
     });
   });
 
@@ -148,13 +149,20 @@ describe('ui-smoke wiring and render', () => {
   });
 
   it('initUI wires workspace rail (click switches active view)', function () {
-    var target = UI_TABS.find(function (t) { return t.id === 'setup'; });
-    expect(target).toBeTruthy();
-    var btn = document.querySelector('.workspace-rail-btn[data-workspace="setup"]');
+    var btn = document.querySelector('.workspace-rail-btn[data-workspace="calendars"]');
     expect(btn).toBeTruthy();
     btn.click();
-    expect(document.getElementById('view-setup').classList.contains('active')).toBe(true);
     expect(document.getElementById('view-dashboard').classList.contains('active')).toBe(false);
+    expect(document.querySelector('.workspace-shell').classList.contains('rail-expanded')).toBe(true);
+    expect(document.getElementById('railFlyout').classList.contains('hidden')).toBe(false);
+  });
+
+  it('practicum setup button opens setup modal', function () {
+    switchTab('practicum');
+    expect(document.getElementById('practicumOpenSetupBtn')).toBeTruthy();
+    switchTab('setup');
+    expect(document.getElementById('setupModal').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('view-setup').classList.contains('active')).toBe(true);
   });
 
   it('switchTab activates each tab view without throwing', function () {

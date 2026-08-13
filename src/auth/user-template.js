@@ -6,16 +6,20 @@ var ROLES = {
     program_engineer: {
       id: 'program_engineer',
       displayName: 'Program Engineer',
-      tabs: ['dashboard', 'student', 'faculty', 'roles', 'makeup', 'audit', 'setup',
+      tabs: ['dashboard', 'practicum', 'student', 'faculty', 'roles', 'makeup', 'audit', 'setup',
+        'curriculum-crosswalk',
         'playground-dashboard', 'playground-setup',
-        'theory-master', 'theory-lecture', 'theory-coordinator', 'users', 'clinical-sites'],
+        'theory-master', 'theory-lecture', 'theory-coordinator', 'users', 'clinical-sites',
+        'theory-content-search'],
       actions: ['*'],
       dashboardReadOnly: false
     },
     admin_staff: {
       id: 'admin_staff',
       displayName: 'Administrative Staff',
-      tabs: ['dashboard', 'student', 'faculty', 'setup', 'audit', 'theory-master', 'theory-lecture', 'theory-coordinator', 'users', 'clinical-sites'],
+      tabs: ['dashboard', 'practicum', 'student', 'faculty', 'setup', 'audit', 'curriculum-crosswalk',
+        'theory-master', 'theory-lecture', 'theory-coordinator', 'users', 'clinical-sites',
+        'theory-content-search'],
       actions: [
         'setup.edit', 'setup.save', 'setup.regenerate', 'setup.importPlayground',
         'audit.admin', 'semester.batchCreate', 'semester.switch',
@@ -30,7 +34,7 @@ var ROLES = {
     lead_course_faculty: {
       id: 'lead_course_faculty',
       displayName: 'Full Time Faculty',
-      tabs: ['dashboard', 'student', 'faculty', 'setup', 'roles', 'makeup',
+      tabs: ['dashboard', 'practicum', 'student', 'faculty', 'setup', 'roles', 'makeup',
         'playground-dashboard', 'playground-setup', 'clinical-sites',
         'theory-master', 'theory-lecture', 'theory-coordinator'],
       actions: [
@@ -46,7 +50,7 @@ var ROLES = {
     adjunct_faculty: {
       id: 'adjunct_faculty',
       displayName: 'Adjunct Faculty',
-      tabs: ['dashboard', 'student', 'faculty', 'roles', 'theory-lecture'],
+      tabs: ['dashboard', 'practicum', 'student', 'faculty', 'roles', 'theory-lecture'],
       actions: [
         'roles.edit', 'theory.view', 'files.downloadBackup',
         'faculty.selfSchedule', 'faculty.requestSub', 'faculty.claimSub', 'faculty.export'
@@ -57,16 +61,19 @@ var ROLES = {
 
   var TAB_LABELS = {
     dashboard: 'Dashboard',
+    practicum: 'Practicum Calendar',
     student: 'Student View',
     faculty: 'Faculty Schedule',
     roles: 'Simulation Roles',
     makeup: 'Makeup Finder',
-    audit: 'Audit',
+    audit: 'Clinical Hours',
+    'curriculum-crosswalk': 'Curriculum Cross Walk',
     setup: 'Setup',
     'playground-dashboard': 'Dashboard',
     'playground-setup': 'Setup',
     users: 'Users',
     'clinical-sites': 'Clinical Sites',
+    'theory-content-search': 'Theory Content Search',
     'theory-master': 'Master Calendar',
     'theory-lecture': 'Lecture Assignments',
     'theory-coordinator': 'Coordinator'
@@ -100,6 +107,7 @@ var ROLES = {
     return role.actions.indexOf(action) >= 0;
   }
 
+  /** Read-only applies to the editable practicum schedule (legacy name kept). */
   function isDashboardReadOnly(roleId) {
     var role = getRole(roleId);
     return role ? !!role.dashboardReadOnly : true;

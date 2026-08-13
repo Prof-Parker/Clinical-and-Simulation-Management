@@ -28,8 +28,9 @@ import * as Theory from './theory/index.js';
 import { init as initLectureAssignments } from './theory/lecture-assignments.js';
 import * as DateInputs from './date-inputs.js';
 import { openLibraryTab, initCourseSelector } from './course-selector.js';
-import { initSemesterPicker } from './semester-picker.js';
+import { initContextChip } from './context-chip.js';
 import { initWorkspaceNav } from './workspace-nav.js';
+import { initSetupModal } from './setup-modal.js';
 import {
   initSemesterMenu,
   refresh,
@@ -53,6 +54,7 @@ export function wireAppShell() {
   SetupConfig.init();
   Setup.init();
   ConfigModal.init();
+  initSetupModal();
   SetupProposals.init();
   Playground.init();
   initToolbar();
@@ -63,7 +65,7 @@ export function wireAppShell() {
   Theory.init();
   initLectureAssignments();
   initCourseSelector();
-  initSemesterPicker();
+  initContextChip();
   initSemesterMenu();
 
   var menuUsersBtn = document.getElementById('menuUsersLibraryBtn');

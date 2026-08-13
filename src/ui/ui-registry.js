@@ -2,10 +2,10 @@
  * UI surface registry — contract between index.html, tab routing, and smoke tests.
  */
 
-export var UI_REGISTRY_VERSION = 2;
+export var UI_REGISTRY_VERSION = 3;
 
 export var UI_NAV_CLINICAL = [
-  'dashboard', 'student', 'faculty', 'roles', 'makeup', 'audit', 'setup'
+  'dashboard', 'practicum', 'student', 'faculty', 'roles', 'makeup', 'audit', 'setup'
 ];
 
 export var UI_NAV_PLAYGROUND = [
@@ -17,16 +17,29 @@ export var UI_NAV_THEORY = [
 ];
 
 export var UI_NAV_LIBRARY = [
-  'users', 'clinical-sites'
+  'users', 'clinical-sites', 'theory-content-search'
 ];
 
-/** Nav tabs: id must match .nav-tab[data-tab] and #view-{id}. */
+export var UI_NAV_AUDIT = [
+  'audit', 'curriculum-crosswalk'
+];
+
+/** Nav tabs: id must match .nav-tab[data-tab] and #view-{id} (setup uses modal host). */
 export var UI_TABS = [
   {
     id: 'dashboard',
     shell: 'clinical',
     workspace: 'dashboard',
     anchors: [
+      'dashOverviewConflicts', 'dashOverviewTheory', 'dashOverviewPracticum'
+    ]
+  },
+  {
+    id: 'practicum',
+    shell: 'clinical',
+    workspace: 'calendars',
+    anchors: [
+      'practicumOpenSetupBtn',
       'scheduleBody', 'scheduleHeadRow', 'scheduleExportXlsxBtn', 'scheduleFullscreenBtn',
       'week17MakeupToggleBtn', 'week17MakeupPanel', 'week17MakeupMode', 'week17MakeupApplyBtn',
       'thinSimConsolidateBtn',
@@ -36,7 +49,7 @@ export var UI_TABS = [
   {
     id: 'student',
     shell: 'clinical',
-    workspace: 'calendars',
+    workspace: 'student',
     anchors: [
       'studentClinicalGroupFilter', 'studentSimGroupFilter', 'studentNameSearch',
       'studentViewSelect', 'studentCalendarType', 'showMarkupToggle',
@@ -52,13 +65,13 @@ export var UI_TABS = [
   {
     id: 'roles',
     shell: 'clinical',
-    workspace: 'calendars',
+    workspace: 'student',
     anchors: ['simFacultyBanner', 'roleSimSelect', 'roleGroupSelect', 'roleSessionMeta', 'roleTableBody']
   },
   {
     id: 'makeup',
     shell: 'clinical',
-    workspace: 'tools',
+    workspace: 'student',
     anchors: [
       'makeupClinicalGroupFilter', 'makeupSimGroupFilter', 'makeupNameSearch',
       'makeupStudentSelect', 'makeupTypeSelect', 'makeupSimSelect', 'makeupMissedClinicalSelect', 'makeupResults'
@@ -67,13 +80,19 @@ export var UI_TABS = [
   {
     id: 'audit',
     shell: 'clinical',
-    workspace: 'tools',
+    workspace: 'audit',
     anchors: ['auditCloseout']
+  },
+  {
+    id: 'curriculum-crosswalk',
+    shell: 'clinical',
+    workspace: 'audit',
+    anchors: ['curriculumCrosswalkStub']
   },
   {
     id: 'setup',
     shell: 'clinical',
-    workspace: 'setup',
+    workspace: 'calendars',
     anchors: [
       'saveSetupBtn', 'regenerateSchedulesBtn', 'setupAdvancedConfigBtn', 'finalizeSemesterBtn',
       'setupSections', 'setupFaculty', 'setupSimInstructors', 'setupFacilities', 'setupHolidays', 'setupRoster',
@@ -125,7 +144,7 @@ export var UI_TABS = [
   {
     id: 'theory-coordinator',
     shell: 'theory',
-    workspace: 'tools',
+    workspace: 'calendars',
     anchors: ['theoryCoordinatorGrid', 'theoryCoordinatorStatusChip', 'theoryHourSettingsBtn', 'theorySimWarnBanner']
   },
   {
@@ -139,14 +158,22 @@ export var UI_TABS = [
     shell: 'library',
     workspace: 'libraries',
     anchors: ['clinicalSitesConnectBtn', 'clinicalSitesTabLibrary', 'clinicalSitesProposals']
+  },
+  {
+    id: 'theory-content-search',
+    shell: 'library',
+    workspace: 'libraries',
+    anchors: ['theoryContentSearchStub']
   }
 ];
 
 export var UI_SHELL = [
-  'appMain', 'workspaceRail', 'calSubnav', 'toolsSubnav', 'librariesSubnav', 'playgroundSubnav',
-  'headerSaveBtn', 'playgroundExitSubnavBtn',
-  'fileStatus', 'storageModeBadge', 'syncOneDriveBtn', 'courseStatusLine', 'courseStatusDropdown',
-  'semesterPickerWrap', 'semesterPickerBtn', 'semesterPickerLabel', 'semesterPickerMenu', 'semesterPickerFileInput',
+  'appMain', 'workspaceRail', 'railFlyout', 'railFlyoutHead', 'theoryViewToggle',
+  'headerSaveBtn', 'playgroundExitFlyoutBtn', 'playgroundExitSubnavBtn',
+  'fileStatus', 'storageModeBadge', 'syncOneDriveBtn',
+  'contextChipWrap', 'contextChip', 'contextChipStrong', 'contextChipPhase', 'contextPop',
+  'contextSemSelect', 'contextCourseSelect', 'contextPhaseValue',
+  'contextSearchSemestersBtn', 'contextOpenSemesterFileBtn', 'semesterPickerFileInput',
   'menuToggle', 'menuDropdown', 'closeoutBanner', 'pwaInstallBanner', 'pwaIosInstallBanner', 'pwaOnedriveBanner'
 ];
 
@@ -184,7 +211,8 @@ export var UI_MODALS = {
     'userGateStep3', 'userGateSemesterFileInput', 'userGateUserName'
   ],
   config: ['configModal', 'configModalClose', 'configModalCancel', 'configModalSave', 'configModalBody'],
-  dialog: ['dialogModal', 'dialogTitle', 'dialogBody', 'dialogCancel', 'dialogExtra', 'dialogSave']
+  dialog: ['dialogModal', 'dialogTitle', 'dialogBody', 'dialogCancel', 'dialogExtra', 'dialogSave'],
+  setup: ['setupModal', 'setupModalTitle', 'setupModalClose']
 };
 
 export function viewIdForTab(tabId) {
@@ -196,7 +224,7 @@ export function tabIds() {
 }
 
 export function flattenModalIds() {
-  return UI_MODALS.userGate.concat(UI_MODALS.config, UI_MODALS.dialog);
+  return UI_MODALS.userGate.concat(UI_MODALS.config, UI_MODALS.dialog, UI_MODALS.setup || []);
 }
 
 export function allRegisteredElementIds() {

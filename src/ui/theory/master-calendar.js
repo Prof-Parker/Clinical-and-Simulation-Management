@@ -3,9 +3,6 @@
  */
 
 import * as TheoryData from '../../core/theory-data.js';
-import * as TheoryLibrary from '../../storage/theory-library-storage.js';
-import * as SkillPlacements from '../../core/skill-placements.js';
-import { formatDisplayDate } from '../../core/calendar-engine.js';
 import { notifyChange } from '../../core/state.js';
 import * as Permissions from '../../auth/permissions.js';
 import { openEventEditor } from './event-editor.js';
@@ -13,149 +10,10 @@ import { render as renderSetup } from './master-setup.js';
 import { render as renderContentLibrary } from './content-library.js';
 import { renderSkillCoveragePanel } from './skill-coverage-panel.js';
 import { refresh } from '../chrome.js';
-import { WEEK_COLS, buildMasterCalendarWeeks } from './master-calendar-layout.js';
+import { buildMasterCalendarHtml } from './master-calendar-html.js';
 
 var dragEventId = null;
 var suppressClick = false;
-
-function esc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function clinicalFacultyName(data, group) {
-  var f = (data.faculty || []).find(function (x) { return x.clinicalGroup === group; });
-  return f && f.name ? f.name : '';
-}
-
-function eventFacultyNames(data, ev, settings) {
-  var showLecturers = settings.showLecturers !== false;
-  var showPracticum = settings.showPracticumFaculty !== false;
-  var parts = [];
-  if (ev.track === 'theory' || ev.track === 'exam') {
-    if (showLecturers) {
-      (ev.faculty || []).forEach(function (slot) {
-        parts.push(TheoryData.facultyDisplayName(slot));
-      });
-    }
-  } else if (ev.track === 'skills' || ev.track === 'simulation' || ev.track === 'clinical' || ev.track === 'orientation') {
-    if (showPracticum) {
-      (ev.faculty || []).forEach(function (slot) {
-        parts.push(TheoryData.facultyDisplayName(slot));
-      });
-      if (ev.track === 'simulation' && (!ev.faculty || !ev.faculty.length)) {
-        (data.simInstructors || []).forEach(function (s) {
-          if (s.name) parts.push(s.name);
-        });
-      }
-      if (ev.track === 'clinical' && (!ev.faculty || !ev.faculty.length) && ev.groups && ev.groups[0]) {
-        var cn = clinicalFacultyName(data, ev.groups[0]);
-        if (cn) parts.push(cn);
-      }
-    }
-  }
-  return parts.filter(Boolean);
-}
-
-function renderFacultyBlock(data, ev, settings) {
-  var names = eventFacultyNames(data, ev, settings);
-  if (!names.length) return '';
-  if (TheoryData.isPracticumTrackEvent(ev)) {
-    return '<ol class="theory-ev-faculty theory-ev-faculty-list">' +
-      names.map(function (name) {
-        return '<li>' + esc(name) + '</li>';
-      }).join('') +
-      '</ol>';
-  }
-  return '<div class="theory-ev-faculty">' + esc(names.join(', ')) + '</div>';
-}
-
-/**
- * Group skills-lab chip lines by placement kind.
- * @returns {{ untagged: string[], introPractice: string[], testout: string[] }}
- */
-function eventSkillsLabGroups(ev) {
-  var groups = { untagged: [], introPractice: [], testout: [] };
-  var seen = { untagged: {}, introPractice: {}, testout: {} };
-
-  function add(groupKey, title) {
-    var t = String(title || '').trim();
-    if (!t) return;
-    var key = t.toLowerCase();
-    if (seen[groupKey][key]) return;
-    seen[groupKey][key] = true;
-    groups[groupKey].push(t);
-  }
-
-  SkillPlacements.migrateEventSkillPlacements(ev);
-  var placements = ev.skillPlacements || [];
-  var addedFromPlacements = false;
-  placements.forEach(function (p) {
-    if (!p || !p.skillId) return;
-    var skill = TheoryLibrary.getSkillById(p.skillId);
-    if (!skill) return;
-    addedFromPlacements = true;
-    if (p.kind === 'testout') {
-      add('testout', skill.title);
-      return;
-    }
-    if (p.kind === 'introduction' || p.kind === 'practice') {
-      var label = SkillPlacements.skillKindLabel(p.kind);
-      add('introPractice', skill.title + ' (' + label + ')');
-      return;
-    }
-    add('untagged', skill.title);
-  });
-
-  if (!addedFromPlacements) {
-    (ev.skillRefs || []).forEach(function (id) {
-      var skill = TheoryLibrary.getSkillById(id);
-      if (skill) add('untagged', skill.title);
-    });
-  }
-  if (!groups.untagged.length && !groups.introPractice.length && !groups.testout.length &&
-      ev.description) {
-    String(ev.description).split(/[;|]/).forEach(function (part) { add('untagged', part); });
-  }
-  return groups;
-}
-
-function renderSkillsGroup(heading, items) {
-  if (!items || !items.length) return '';
-  return '<div class="theory-ev-skills-group">' +
-    '<div class="theory-ev-skills-heading">' + esc(heading) + '</div>' +
-    '<ul class="theory-ev-skills-content">' +
-    items.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') +
-    '</ul></div>';
-}
-
-function renderSkillsLabContent(ev, settings) {
-  if (ev.track !== 'skills' || settings.showSkillsLabContent === false) return '';
-  var groups = eventSkillsLabGroups(ev);
-  var html = renderSkillsGroup('Clinical Learning Activities', groups.untagged) +
-    renderSkillsGroup('Skills Intro/Practice', groups.introPractice) +
-    renderSkillsGroup('Skills test', groups.testout);
-  if (!html) return '';
-  return '<div class="theory-ev-skills-groups">' + html + '</div>';
-}
-
-function renderEventChip(data, ev, settings) {
-  var html = '<div class="' + TheoryData.trackCssClass(ev) + '" data-event-id="' + esc(ev.id) + '" draggable="true">' +
-    '<strong>' + esc(ev.title || ev.track) + '</strong>';
-  if (ev.timeStart) {
-    html += '<div class="theory-ev-time">' + ev.timeStart + '–' + (ev.timeEnd || '') + '</div>';
-  }
-  if (ev.track === 'skills' && ev.notes) {
-    html += '<div class="theory-ev-note"><strong>Note</strong> ' + esc(ev.notes) + '</div>';
-  }
-  html += renderSkillsLabContent(ev, settings);
-  html += renderFacultyBlock(data, ev, settings);
-  html += '</div>';
-  return html;
-}
 
 export function render(data) {
   renderSetup(data);
@@ -163,60 +21,7 @@ export function render(data) {
   var grid = document.getElementById('theoryMasterGrid');
   if (!grid || !data.theory) return;
   var theory = data.theory;
-  var settings = theory.settings || {};
-  var weeks = buildMasterCalendarWeeks(data);
-
-  var html = '<div class="theory-master-wrap"><table class="data-table theory-master-table"><thead><tr>' +
-    '<th>Week</th>' + WEEK_COLS.map(function (d) { return '<th>' + d + '</th>'; }).join('') + '</tr></thead><tbody>';
-
-  weeks.forEach(function (week) {
-    var dayMeta = week.days.map(function (cell) {
-      var theoryHtml = '';
-      var practicumHtml = '';
-      (cell.events || []).forEach(function (ev) {
-        var chip = renderEventChip(data, ev, settings);
-        if (TheoryData.isPracticumTrackEvent(ev)) practicumHtml += chip;
-        else theoryHtml += chip;
-      });
-      return {
-        wd: cell.wd,
-        day: cell.day,
-        date: cell.date,
-        theoryHtml: theoryHtml,
-        practicumHtml: practicumHtml
-      };
-    });
-
-    // Theory + practicum share one zebra class so the whole week block reads as a unit.
-    var zebra = (week.weekLabel % 2 === 0) ? ' theory-week-even' : ' theory-week-odd';
-
-    // Theory band row — height shared across the week so the divider aligns.
-    html += '<tr class="theory-week-theory-row' + zebra + '">';
-    html += '<td class="theory-week-label" rowspan="3">Wk ' + week.weekLabel + '</td>';
-    dayMeta.forEach(function (meta) {
-      html += '<td class="theory-day-cell theory-day-theory-cell" data-date="' + meta.date + '">';
-      if (meta.date) {
-        html += '<div class="theory-day-date">' + formatDisplayDate(meta.date) + '</div>';
-      }
-      html += '<div class="theory-day-theory-band">' + meta.theoryHtml + '</div></td>';
-    });
-    html += '</tr>';
-
-    // Continuous week divider (one cell spanning all day columns).
-    html += '<tr class="theory-week-divider-row' + zebra + '" aria-hidden="true">' +
-      '<td colspan="' + WEEK_COLS.length + '" class="theory-week-divider-cell">' +
-      '<div class="theory-week-divider"></div></td></tr>';
-
-    // Practicum band row.
-    html += '<tr class="theory-week-practicum-row' + zebra + '">';
-    dayMeta.forEach(function (meta) {
-      html += '<td class="theory-day-cell theory-day-practicum-cell" data-date="' + meta.date + '">' +
-        '<div class="theory-day-practicum-band">' + meta.practicumHtml + '</div></td>';
-    });
-    html += '</tr>';
-  });
-  html += '</tbody></table></div>';
-  grid.innerHTML = html;
+  grid.innerHTML = buildMasterCalendarHtml(data, { readOnly: false });
 
   grid.querySelectorAll('.theory-day-cell').forEach(function (cell) {
     cell.addEventListener('click', function (e) {

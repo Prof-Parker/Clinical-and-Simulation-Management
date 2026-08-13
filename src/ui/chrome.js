@@ -13,6 +13,7 @@ import * as DataModel from '../core/data-model/index.js';
 import * as CourseDefaults from '../core/course-defaults.js';
 import { regenerateAll } from '../core/scheduler/index.js';
 import { populateFilters, render as renderDashboard, setScheduleFullscreen } from './dashboard/index.js';
+import { render as renderDashboardOverview } from './dashboard/overview.js';
 import { render as renderSetup } from './setup/index.js';
 import { render as renderStudentView } from './student-view.js';
 import { render as renderSimRoles } from './sim-roles.js';
@@ -33,6 +34,7 @@ import {
   renderCourseDropdown
 } from './course-selector.js';
 import { syncWorkspaceNav } from './workspace-nav.js';
+import { openSetupModal, isSetupModalOpen, hideSetupModalShell } from './setup-modal.js';
 import { showAlert } from './dialogs.js';
 import { escAttr } from './setup/dom-utils.js';
 import * as Permissions from '../auth/permissions.js';
@@ -189,7 +191,8 @@ export function refresh() {
   }
   populateFilters(data);
   var tab = state.currentTab;
-  if (tab === 'dashboard') renderDashboard(data);
+  if (tab === 'dashboard') renderDashboardOverview(data);
+  if (tab === 'practicum') renderDashboard(data);
   if (tab === 'student') renderStudentView(data);
   if (tab === 'roles') renderSimRoles(data);
   if (tab === 'makeup') renderMakeupFinder(data);
@@ -257,11 +260,21 @@ export function switchTab(tabId) {
     import('./playground-shell.js').then(function (m) { m.enterPlaygroundShell(); });
     return;
   }
+  if (tabId === 'setup') {
+    if (!openSetupModal({ returnTab: state.currentTab === 'setup' ? 'practicum' : state.currentTab })) {
+      return;
+    }
+    refresh();
+    return;
+  }
+  if (isSetupModalOpen() && tabId !== 'setup') {
+    hideSetupModalShell();
+  }
   if (!Permissions.canTab(tabId)) {
     showAlert('Not permitted', 'Your role cannot access this tab.');
     return;
   }
-  if (tabId !== 'dashboard' && tabId !== 'theory-master' && tabId !== 'playground-dashboard' && setScheduleFullscreen) {
+  if (tabId !== 'practicum' && tabId !== 'theory-master' && tabId !== 'playground-dashboard' && setScheduleFullscreen) {
     setScheduleFullscreen(false);
   }
   state.currentTab = tabId;

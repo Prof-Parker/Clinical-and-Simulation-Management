@@ -63,6 +63,6 @@ export function formatCourseDisplayLabel(code) {
 /** Compact chip label when either 1st-semester code is active. */
 export function formatCourseCompactLabel(code) {
   var c = String(code || '').toUpperCase();
-  if (c === 'REGN15' || c === 'REGN15P') return '1st Semester (REGN15/15P)';
+  if (c === 'REGN15' || c === 'REGN15P') return '1st Semester';
   return code || '';
 }

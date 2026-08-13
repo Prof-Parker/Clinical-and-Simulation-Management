@@ -44,28 +44,58 @@
         <aside id="workspaceRail" class="workspace-rail no-print" aria-label="Primary workspaces">
             <div class="workspace-rail-brand" title="Shasta College ADN">SC</div>
             <div class="workspace-rail-group" id="workspaceRailPrimary">
-                <button type="button" class="workspace-rail-btn active" data-workspace="dashboard" title="Dashboard">
+                <button type="button" class="workspace-rail-btn active" data-workspace="dashboard" title="Dashboard — read-only calendars">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
                     <span>Dash</span>
                 </button>
-                <button type="button" class="workspace-rail-btn" data-workspace="calendars" title="Calendar views">
+                <button type="button" class="workspace-rail-btn" data-workspace="calendars" title="Calendar workspaces" aria-expanded="false" aria-controls="railFlyout">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
                     <span>Cal</span>
                 </button>
-                <button type="button" class="workspace-rail-btn" data-workspace="tools" title="Tools">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-                    <span>Tools</span>
+                <button type="button" class="workspace-rail-btn" data-workspace="audit" title="Audit" aria-expanded="false" aria-controls="railFlyout">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+                    <span>Audit</span>
                 </button>
-                <button type="button" class="workspace-rail-btn" data-workspace="setup" title="Setup">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                    <span>Setup</span>
+                <button type="button" class="workspace-rail-btn" data-workspace="student" title="Student tools" aria-expanded="false" aria-controls="railFlyout">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span>Student</span>
                 </button>
             </div>
             <div class="workspace-rail-spacer"></div>
-            <button type="button" class="workspace-rail-btn" data-workspace="libraries" title="Program libraries">
+            <button type="button" class="workspace-rail-btn" data-workspace="libraries" title="Program libraries" aria-expanded="false" aria-controls="railFlyout">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h5v14H4zM10 4h5v16h-5zM16 8h4v12h-4z"/></svg>
                 <span>Libs</span>
             </button>
+        </aside>
+
+        <aside id="railFlyout" class="workspace-rail-flyout hidden no-print" aria-label="Workspace views">
+            <div class="rail-flyout-head" id="railFlyoutHead">Cal</div>
+            <nav class="rail-flyout-nav" data-flyout-workspace="calendars" aria-label="Calendar views">
+                <button type="button" class="rail-flyout-item nav-tab" data-tab="theory-master">Theory/Skills Calendar</button>
+                <button type="button" class="rail-flyout-item nav-tab" data-tab="practicum">Practicum Calendar</button>
+                <button type="button" class="rail-flyout-item nav-tab" data-tab="faculty">Faculty Calendar</button>
+                <button type="button" class="rail-flyout-item nav-tab" data-tab="sandbox" data-action="sandbox">Sandbox</button>
+                <button type="button" class="rail-flyout-item nav-tab" data-tab="theory-coordinator">Coordinator View</button>
+            </nav>
+            <nav class="rail-flyout-nav hidden" data-flyout-workspace="audit" aria-label="Audit">
+                <button type="button" class="rail-flyout-item nav-tab" data-tab="audit">Clinical Hours</button>
+                <button type="button" class="rail-flyout-item nav-tab" data-tab="curriculum-crosswalk">Curriculum Cross Walk <span class="rail-flyout-stub">Stub</span></button>
+            </nav>
+            <nav class="rail-flyout-nav hidden" data-flyout-workspace="student" aria-label="Student tools">
+                <button type="button" class="rail-flyout-item nav-tab" data-tab="student">Student View</button>
+                <button type="button" class="rail-flyout-item nav-tab" data-tab="makeup">Makeup Finder</button>
+                <button type="button" class="rail-flyout-item nav-tab" data-tab="roles">Simulation Roles</button>
+            </nav>
+            <nav class="rail-flyout-nav hidden" data-flyout-workspace="libraries" aria-label="Program libraries">
+                <button type="button" class="rail-flyout-item nav-tab" data-tab="users">Users</button>
+                <button type="button" class="rail-flyout-item nav-tab" data-tab="clinical-sites">Clinical Sites</button>
+                <button type="button" class="rail-flyout-item nav-tab" data-tab="theory-content-search">Theory Content Search <span class="rail-flyout-stub">Stub</span></button>
+            </nav>
+            <nav class="rail-flyout-nav hidden" data-flyout-workspace="playground" aria-label="Playground">
+                <button type="button" class="rail-flyout-item nav-tab" data-tab="playground-dashboard">Dashboard</button>
+                <button type="button" class="rail-flyout-item nav-tab" data-tab="playground-setup">Setup</button>
+                <button type="button" class="rail-flyout-item rail-flyout-item-exit" id="playgroundExitFlyoutBtn">Return to semester file</button>
+            </nav>
         </aside>
 
         <div class="workspace-main">
@@ -84,19 +114,28 @@
                     </div>
                 </div>
                 <div class="header-right">
-                    <div class="header-status-wrap course-status-wrap context-chip-wrap">
-                        <div class="course-status-display context-chip-display">
-                            <div class="semester-picker" id="semesterPickerWrap">
-                                <button id="semesterPickerBtn" type="button" class="semester-picker-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="semesterPickerMenu">
-                                    <span id="semesterPickerLabel" class="semester-picker-label course-status-semester"></span>
-                                    <svg class="semester-picker-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" d="M6 9l6 6 6-6"/></svg>
-                                </button>
-                                <ul id="semesterPickerMenu" class="semester-picker-menu hidden" role="listbox"></ul>
-                                <input type="file" id="semesterPickerFileInput" class="hidden" accept=".json,application/json">
+                    <div class="header-status-wrap context-chip-wrap" id="contextChipWrap">
+                        <button type="button" class="context-chip" id="contextChip" aria-expanded="false" aria-controls="contextPop" aria-haspopup="dialog">
+                            <span class="status-dot" aria-hidden="true"></span>
+                            <span class="context-chip-text">
+                                <strong id="contextChipStrong">No semester file connected</strong>
+                                <small id="contextChipPhase"></small>
+                            </span>
+                            <svg class="context-chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <div id="contextPop" class="context-pop hidden" role="dialog" aria-label="Semester and course">
+                            <label for="contextSemSelect">Semester</label>
+                            <select id="contextSemSelect" class="select-control" aria-label="Semester"></select>
+                            <label for="contextCourseSelect">Course</label>
+                            <select id="contextCourseSelect" class="select-control" aria-label="Course"></select>
+                            <label id="contextPhaseLabel">Course Status</label>
+                            <div class="context-phase" id="contextPhaseValue" aria-labelledby="contextPhaseLabel">—</div>
+                            <div class="context-pop-footer">
+                                <button type="button" class="btn btn-sm" id="contextSearchSemestersBtn">Search other semesters…</button>
+                                <button type="button" class="btn btn-sm" id="contextOpenSemesterFileBtn">Open semester file…</button>
                             </div>
-                            <button id="courseStatusLine" type="button" class="course-status-line" aria-live="polite" aria-haspopup="listbox" aria-expanded="false" aria-controls="courseStatusDropdown">No semester file connected</button>
                         </div>
-                        <div id="courseStatusDropdown" class="course-status-dropdown hidden" role="listbox"></div>
+                        <input type="file" id="semesterPickerFileInput" class="hidden" accept=".json,application/json">
                     </div>
                     <div class="header-right-controls">
                         <button id="headerSaveBtn" class="btn btn-primary btn-sm" type="button">Save</button>
@@ -163,38 +202,47 @@
             </header>
 
             <div id="closeoutBanner" class="closeout-banner hidden no-print" role="status"></div>
-            <nav class="workspace-subnav hidden" id="calSubnav" aria-label="Calendar views">
-                <button class="nav-tab" data-tab="theory-master" type="button">Master Calendar</button>
-                <button class="nav-tab" data-tab="faculty" type="button">Faculty Schedule</button>
-                <button class="nav-tab" data-tab="roles" type="button">Simulation Roles</button>
-                <button class="nav-tab" data-tab="student" type="button">Student View</button>
-                <button class="nav-tab" data-tab="theory-lecture" type="button">Lecture Assignments</button>
-            </nav>
-            <nav class="workspace-subnav hidden" id="toolsSubnav" aria-label="Tools">
-                <button class="nav-tab" data-tab="makeup" type="button">Makeup Finder</button>
-                <button class="nav-tab" data-tab="audit" type="button">Audit</button>
-                <button class="nav-tab" data-tab="sandbox" data-action="sandbox" type="button">Sandbox</button>
-                <button class="nav-tab" data-tab="theory-coordinator" type="button">Coordinator</button>
-            </nav>
-            <nav class="workspace-subnav hidden" id="librariesSubnav" aria-label="Program libraries">
-                <button class="nav-tab" data-tab="users" type="button">Users registry</button>
-                <button class="nav-tab" data-tab="clinical-sites" type="button">Clinical sites library</button>
-            </nav>
-            <nav class="workspace-subnav hidden" id="playgroundSubnav" aria-label="Playground">
-                <button class="nav-tab" data-tab="playground-dashboard" type="button">Dashboard</button>
-                <button class="nav-tab" data-tab="playground-setup" type="button">Setup</button>
-                <button id="playgroundExitSubnavBtn" class="nav-tab nav-tab-exit" type="button">Return to semester file</button>
-            </nav>
+            <div id="theoryViewToggle" class="theory-view-toggle hidden no-print" role="group" aria-label="Theory calendar mode">
+                <button type="button" class="theory-view-toggle-btn active" data-theory-view="master" aria-pressed="true">Master calendar</button>
+                <button type="button" class="theory-view-toggle-btn" data-theory-view="lecture" aria-pressed="false">Lecture assignments</button>
+            </div>
             <!-- Hidden legacy menu hooks kept for wiring / registry -->
             <div class="hidden" aria-hidden="true">
                 <button id="menuUsersLibraryBtn" type="button">Users registry</button>
                 <button id="menuClinicalSitesBtn" type="button">Clinical sites library</button>
                 <button id="menuPlaygroundBtn" type="button">Course playground…</button>
+                <button id="playgroundExitSubnavBtn" type="button">Return to semester file</button>
             </div>
         </div>
 
-        <!-- DASHBOARD -->
+        <!-- DASHBOARD (read-only overview) -->
         <div id="view-dashboard" class="view-panel active">
+            <div id="dashOverviewConflicts" class="conflicts-panel hidden no-print"></div>
+            <section class="card" style="padding:1.25rem;margin-bottom:1rem">
+                <h3 class="section-title" style="margin:0">Course overview</h3>
+                <p class="section-sub" style="margin:0.35rem 0 0">Read-only master and practicum calendars for the open course. Open chips for details; editing lives under Cal.</p>
+            </section>
+            <div class="dash-overview-stack">
+                <section class="card dash-overview-panel" style="padding:1.25rem;margin-bottom:1rem">
+                    <h3 class="section-title">Master Calendar</h3>
+                    <p class="section-sub">Sun–Sat week grid — theory tracks, skills labs, assignments, and holidays. Read-only preview (no content library).</p>
+                    <div id="dashOverviewTheory" class="dash-overview-calendar"></div>
+                </section>
+                <section class="card dash-overview-panel" style="padding:1.25rem;margin-bottom:1rem">
+                    <h3 class="section-title">Practicum schedule</h3>
+                    <p class="section-sub">Full 18-week semester. Read-only preview — open Cal → Practicum to edit.</p>
+                    <div id="dashOverviewPracticum" class="dash-overview-calendar"></div>
+                </section>
+            </div>
+        </div>
+
+        <!-- PRACTICUM CALENDAR (editable schedule) -->
+        <div id="view-practicum" class="view-panel">
+            <div class="setup-actions-sticky card no-print">
+                <div class="setup-actions">
+                    <button id="practicumOpenSetupBtn" class="btn btn-primary" type="button">Setup…</button>
+                </div>
+            </div>
             <div id="conflictsPanel" class="conflicts-panel hidden no-print"></div>
 
             <details id="masterSchedulePanel" class="card no-print dashboard-panel-details" open>
@@ -493,8 +541,15 @@
             <div id="auditCloseout"></div>
         </div>
 
-        <!-- SETUP -->
-        <div id="view-setup" class="view-panel">
+        <!-- SETUP (modal host — opened from Practicum) -->
+        <div id="setupModal" class="setup-modal-overlay no-print hidden" role="dialog" aria-modal="true" aria-labelledby="setupModalTitle" aria-hidden="true">
+            <div class="setup-modal-shell">
+                <div class="setup-modal-head">
+                    <h2 id="setupModalTitle" class="section-title" style="margin:0">Practicum setup</h2>
+                    <button id="setupModalClose" class="btn btn-sm" type="button">Close</button>
+                </div>
+                <div class="setup-modal-body">
+        <div id="view-setup" class="view-panel setup-modal-panel">
             <div class="setup-actions-sticky card no-print">
                 <div class="setup-actions">
                     <button id="saveSetupBtn" class="btn btn-primary" type="button">Save Setup</button>
@@ -662,6 +717,27 @@
                     </div>
                 </div>
                 <div id="setupRoster"></div>
+            </section>
+        </div>
+                </div><!-- /.setup-modal-body -->
+            </div><!-- /.setup-modal-shell -->
+        </div><!-- /#setupModal -->
+
+        <!-- STUB: Curriculum Cross Walk -->
+        <div id="view-curriculum-crosswalk" class="view-panel">
+            <section class="card" style="padding:1.25rem">
+                <h3 class="section-title">Curriculum Cross Walk</h3>
+                <p class="section-sub">Stub — future curriculum crosswalk against scheduled content.</p>
+                <div id="curriculumCrosswalkStub" class="fake-tile" style="padding:1rem;background:var(--surface-alt);border-radius:0.75rem">Coming soon</div>
+            </section>
+        </div>
+
+        <!-- STUB: Theory Content Search -->
+        <div id="view-theory-content-search" class="view-panel">
+            <section class="card" style="padding:1.25rem">
+                <h3 class="section-title">Theory Content Search</h3>
+                <p class="section-sub">Stub — search across the theory content library.</p>
+                <div id="theoryContentSearchStub" class="fake-tile" style="padding:1rem;background:var(--surface-alt);border-radius:0.75rem">Coming soon</div>
             </section>
         </div>
 

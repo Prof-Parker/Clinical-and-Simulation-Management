@@ -101,6 +101,12 @@ function currentRole() {
   function apply() {
     applyNavGating();
     applyMenuGating();
+    var setupBtn = document.getElementById('practicumOpenSetupBtn');
+    if (setupBtn) {
+      var setupOk = canTab('setup');
+      setupBtn.classList.toggle('hidden', !setupOk);
+      setupBtn.disabled = !setupOk;
+    }
     if (SetupConfig && SetupConfig.applyRoleMode) {
       SetupConfig.applyRoleMode();
     }

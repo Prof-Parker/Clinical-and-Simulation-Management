@@ -34,13 +34,13 @@ export function useClassicSemesterPicker() {
   return !ProgramData.supportsDirectoryPicker() || !ProgramData.isProgramDataConnected();
 }
 
-function currentParts() {
+export function currentParts() {
   var data = getData();
   if (!data) return null;
   return DataModel.parseSemesterDisplay(data);
 }
 
-function preferredCourseId() {
+export function preferredCourseId() {
   var fileRoot = getFileRoot();
   if (fileRoot && fileRoot.meta && fileRoot.meta.activeCourseCode) {
     return fileRoot.meta.activeCourseCode;
@@ -49,7 +49,7 @@ function preferredCourseId() {
   return data && data.meta ? data.meta.courseId : '';
 }
 
-function pickBestFile(files, season, year, courseId) {
+export function pickBestFile(files, season, year, courseId) {
   var matches = files.filter(function (f) {
     return f.season === season && f.year === year;
   });
@@ -63,7 +63,7 @@ function pickBestFile(files, season, year, courseId) {
   return matches[0];
 }
 
-function findInFileSemester(season, year) {
+export function findInFileSemester(season, year) {
   var fileRoot = getFileRoot();
   if (!fileRoot || !fileRoot.semesters) return null;
   return fileRoot.semesters.find(function (sem) {
@@ -119,7 +119,7 @@ function openClassicFilePicker() {
   input.click();
 }
 
-function switchToTarget(target) {
+export function switchToTarget(target) {
   if (!target) return;
   function go() {
     var currentName = state.fileName || '';
@@ -175,7 +175,7 @@ function buildOptionHtml(opt) {
     '</li>';
 }
 
-function listInFileOptions(parts) {
+export function listInFileOptions(parts) {
   var fileRoot = getFileRoot();
   var activeId = getData() && getData().id;
   if (!fileRoot || !fileRoot.semesters) return [];
@@ -381,6 +381,24 @@ export function initSemesterPicker() {
   var btn = document.getElementById('semesterPickerBtn');
   var menu = document.getElementById('semesterPickerMenu');
   var fileInput = document.getElementById('semesterPickerFileInput');
+
+  if (fileInput && !fileInput.dataset.semesterPickerBound) {
+    fileInput.dataset.semesterPickerBound = '1';
+    fileInput.addEventListener('change', function (e) {
+      var file = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      loadClassicFile(file).catch(function (err) {
+        if (err && err.guard && err.guard.detected === 'playground') {
+          showAlert('Playground file', 'This is a playground file. Open it from the Playground tab instead.');
+        } else {
+          showAlert('Invalid file', (err && err.message) || 'Invalid semester file.');
+        }
+      });
+    });
+  }
+
+  // Legacy dropdown UI (removed in favor of context chip pop). Keep wiring if markup returns.
   if (!wrap || !btn || !menu) return;
 
   updateSemesterPickerLabel();
@@ -393,10 +411,6 @@ export function initSemesterPicker() {
       closeMenu();
       return;
     }
-    var courseMenu = document.getElementById('courseStatusDropdown');
-    var courseBtn = document.getElementById('courseStatusLine');
-    if (courseMenu) courseMenu.classList.add('hidden');
-    if (courseBtn) courseBtn.setAttribute('aria-expanded', 'false');
     refreshMenuThenOpen();
   });
 
@@ -406,16 +420,7 @@ export function initSemesterPicker() {
     e.stopPropagation();
     if (opt.getAttribute('data-classic') === '1') {
       closeMenu();
-      function pick() {
-        openClassicFilePicker();
-      }
-      if (state.dirty) {
-        showConfirm('Unsaved changes', 'Save or discard changes before opening another semester?', pick, {
-          confirmLabel: 'Open anyway'
-        });
-        return;
-      }
-      pick();
+      openSemesterFileFallback();
       return;
     }
     if (opt.getAttribute('data-search') === '1') {
@@ -437,22 +442,27 @@ export function initSemesterPicker() {
     });
   });
 
-  if (fileInput) {
-    fileInput.addEventListener('change', function (e) {
-      var file = e.target.files && e.target.files[0];
-      e.target.value = '';
-      if (!file) return;
-      loadClassicFile(file).catch(function (err) {
-        if (err && err.guard && err.guard.detected === 'playground') {
-          showAlert('Playground file', 'This is a playground file. Open it from the Playground tab instead.');
-        } else {
-          showAlert('Invalid file', (err && err.message) || 'Invalid semester file.');
-        }
-      });
-    });
-  }
-
   document.addEventListener('click', function (e) {
     if (!wrap.contains(e.target)) closeMenu();
   });
+}
+
+
+/** Open year/season search dialog (ProgramData or in-file resolve). */
+export function openSemesterSearchDialog() {
+  openSearchDialog();
+}
+
+/** Classic fallback: pick a semester JSON from the device / OneDrive. */
+export function openSemesterFileFallback() {
+  function pick() {
+    openClassicFilePicker();
+  }
+  if (state.dirty) {
+    showConfirm("Unsaved changes", "Save or discard changes before opening another semester?", pick, {
+      confirmLabel: "Open anyway"
+    });
+    return;
+  }
+  pick();
 }

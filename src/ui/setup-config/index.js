@@ -10,7 +10,8 @@ import * as Setup from '../setup/index.js';
 import * as CourseDefaults from '../../core/course-defaults.js';
 import * as SetupDraft from '../../proposals/setup-draft.js';
 import { canAction } from '../../auth/permissions.js';
-import { refresh, switchTab } from '../chrome.js';
+import { refresh } from '../chrome.js';
+import { openSetupModal } from '../setup-modal.js';
 import {
   LIVE, PLAYGROUND, getSetupScope, setSetupScope, setupEl, setupQueryAll, resolveScopeFileRoot
 } from '../setup/scope.js';
@@ -258,13 +259,13 @@ function saveAndAddSemester() {
     notifyChange();
     maybeRegenerateAfterChange(data, before);
     addSemester(undefined, undefined, courseId);
-    switchTab('setup');
+    openSetupModal({ returnTab: 'practicum' });
     refresh();
   }
 
 function beginNewSemesterFlow() {
     pendingNewSemester = true;
-    switchTab('setup');
+    openSetupModal({ returnTab: 'practicum' });
     openAdvanced();
     render(getData());
   }

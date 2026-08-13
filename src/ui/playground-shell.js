@@ -7,7 +7,7 @@ import * as TheoryData from '../core/theory-data.js';
 import { applyNavShell, updateCourseStatusLabel } from './course-selector.js';
 import { getPlaygroundData } from './playground/index.js';
 import * as DataModel from '../core/data-model/index.js';
-import { buildCourseStatusHtml, courseStatusAriaLabel } from './semester-label.js';
+import { courseStatusAriaLabel } from './semester-label.js';
 
 function chromeApi() {
   return import('./chrome.js');
@@ -52,22 +52,37 @@ export function exitPlaygroundShell() {
 }
 
 export function updatePlaygroundStatusLine() {
-  var trigger = document.getElementById('courseStatusLine');
-  if (!trigger || !isPlaygroundShell()) return;
+  var strong = document.getElementById('contextChipStrong');
+  var phaseEl = document.getElementById('contextChipPhase');
+  var chip = document.getElementById('contextChip');
+  var phaseValue = document.getElementById('contextPhaseValue');
   var data = getPlaygroundData();
+  if (!strong) return;
+  if (!isPlaygroundShell()) return;
   if (!data || !data.meta) {
-    trigger.textContent = 'Playground — no file loaded';
-    trigger.removeAttribute('aria-label');
+    strong.textContent = 'Playground — no file loaded';
+    if (phaseEl) phaseEl.textContent = '';
+    if (phaseValue) phaseValue.textContent = 'playground';
+    if (chip) {
+      chip.setAttribute('aria-label', 'Playground, no file loaded');
+      chip.removeAttribute('title');
+    }
     return;
   }
   var parts = DataModel.parseSemesterDisplay(data);
   var fileBit = state.playgroundFileName ? ' · ' + state.playgroundFileName : '';
-  var code = 'Playground · ' + (data.meta.courseId || 'Course');
-  trigger.innerHTML = buildCourseStatusHtml(parts, code, '');
-  trigger.setAttribute('aria-label', 'Playground, ' + courseStatusAriaLabel(parts, data.meta.courseId, '') + fileBit);
-  if (fileBit) {
-    trigger.title = 'playground file: ' + state.playgroundFileName;
-  } else {
-    trigger.removeAttribute('title');
+  var code = data.meta.courseId || 'Course';
+  var seasonLabel = parts.season === 'fall' ? 'Fall' : (parts.season === 'spring' ? 'Spring' : '');
+  var semesterText = seasonLabel ? seasonLabel + ' ' + (parts.year || '') : (parts.name || 'Semester');
+  strong.textContent = 'Playground · ' + semesterText + ' · ' + code;
+  if (phaseEl) phaseEl.textContent = '';
+  if (phaseValue) phaseValue.textContent = 'playground';
+  if (chip) {
+    chip.setAttribute(
+      'aria-label',
+      'Playground, ' + courseStatusAriaLabel(parts, data.meta.courseId, '') + fileBit
+    );
+    if (fileBit) chip.title = 'playground file: ' + state.playgroundFileName;
+    else chip.removeAttribute('title');
   }
 }

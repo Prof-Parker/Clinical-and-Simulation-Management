@@ -3,24 +3,24 @@
  */
 
 import * as SetupConfig from './setup-config/index.js';
-import { switchTab } from './chrome.js';
+import { openSetupModal } from './setup-modal.js';
 
 function init() {
-    /* Scheduling configuration lives in Setup tab (SetupConfig module). */
-  }
+  /* Scheduling configuration lives in Setup tab (SetupConfig module). */
+}
 
-  function open() {
-    switchTab('setup');
-    if (SetupConfig) SetupConfig.openAdvanced();
-  }
+function open() {
+  openSetupModal({ returnTab: 'practicum' });
+  if (SetupConfig) SetupConfig.openAdvanced();
+}
 
-  function openForNewSemester() {
-    if (SetupConfig) SetupConfig.beginNewSemesterFlow();
-  }
+function openForNewSemester() {
+  if (SetupConfig) SetupConfig.beginNewSemesterFlow();
+}
 
-  function close() {}
+function close() {}
 
-  function save() {}
+function save() {}
 
 export {
   open,
