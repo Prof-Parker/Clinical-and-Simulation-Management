@@ -20,7 +20,8 @@ mock-onedrive/
 │   └── users-registry.json
 ├── semesters/
 │   └── F2026_REGN_program.json   ← consolidated term file (theory + REGN15P)
-├── theory-content-library_REGN15.json
+├── program-content-library.json  ← preferred program-wide topics/skills (courseIds tags)
+├── theory-content-library_REGN15.json  ← legacy seed; still loads as migration fallback
 ├── playgrounds/
 │   └── user_F2026_REGN15P_playground.json
 └── clinical-sites-library.json
@@ -50,7 +51,7 @@ Uses a DEV-only virtual folder (Vite middleware) so you do not have to click thr
 2. **Connect ProgramData:** pick the `mock-onedrive/` folder (or classic **Connect users registry…** → `mock-onedrive/users/users-registry.json`).
 3. **Sign in** with a demo email/password from the table below.
 4. **Semester:** open from ProgramData `semesters/` or classic load of `mock-onedrive/semesters/F2026_REGN_program.json`.
-5. **Theory library (optional):** Connect `mock-onedrive/theory-content-library_REGN15.json` when the app supports it.
+5. **Program content library (optional):** Connect `mock-onedrive/program-content-library.json` if seeded, or legacy `theory-content-library_REGN15.json` (migrates to `courseIds` tags).
 6. **Playground:** Playground tab → Import `mock-onedrive/playgrounds/user_F2026_REGN15P_playground.json`. Saving over `F2026_REGN_program.json` should be blocked.
 
 ### Demo accounts (permanent passwords for local testing)

@@ -22,8 +22,11 @@ export function escAttr(s) {
     .replace(/</g, '&lt;');
 }
 
-export function topicOptionsHtml(selectedId) {
-  var html = TheoryLibrary.listTopics().map(function (t) {
+export function topicOptionsHtml(selectedId, courseCode) {
+  var topics = courseCode
+    ? TheoryLibrary.listTopicsForCourse(courseCode)
+    : TheoryLibrary.listTopics();
+  var html = topics.map(function (t) {
     var sel = t.id === selectedId ? ' selected' : '';
     return '<option value="' + escAttr(t.id) + '"' + sel + '>' + esc(t.title) + '</option>';
   }).join('');
@@ -31,8 +34,11 @@ export function topicOptionsHtml(selectedId) {
   return html;
 }
 
-export function skillOptionsHtml(selectedId) {
-  var html = TheoryLibrary.listSkills().map(function (s) {
+export function skillOptionsHtml(selectedId, courseCode) {
+  var skills = courseCode
+    ? TheoryLibrary.listSkillsForCourse(courseCode)
+    : TheoryLibrary.listSkills();
+  var html = skills.map(function (s) {
     var sel = s.id === selectedId ? ' selected' : '';
     return '<option value="' + escAttr(s.id) + '"' + sel + '>' + esc(s.title) + '</option>';
   }).join('');

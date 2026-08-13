@@ -166,6 +166,28 @@ export function normalizeConfig(cfg) {
   cfg.clinicalDaysRequired = (isNaN(clinDays) || clinDays < 1) ? 10 : clinDays;
   var simDaysReq = parseInt(cfg.simDaysRequired, 10);
   cfg.simDaysRequired = (isNaN(simDaysReq) || simDaysReq < 1) ? 5 : simDaysReq;
+  if (cfg.simContentTags == null || typeof cfg.simContentTags !== 'object') {
+    cfg.simContentTags = {};
+  } else {
+    var tagMap = {};
+    Object.keys(cfg.simContentTags).forEach(function (key) {
+      var n = parseInt(key, 10);
+      if (isNaN(n) || n < 1) return;
+      var tags = cfg.simContentTags[key];
+      if (!Array.isArray(tags)) tags = [];
+      var cleaned = [];
+      var seen = {};
+      tags.forEach(function (t) {
+        var tag = String(t || '').trim().toUpperCase();
+        if (tag === 'PED') tag = 'PEDS';
+        if (['MS', 'OB', 'PEDS', 'MH'].indexOf(tag) < 0 || seen[tag]) return;
+        seen[tag] = true;
+        cleaned.push(tag);
+      });
+      tagMap[String(n)] = cleaned.length ? cleaned : ['MS'];
+    });
+    cfg.simContentTags = tagMap;
+  }
   if (cfg.studentEmailDomain == null) cfg.studentEmailDomain = '';
   else {
     var domain = String(cfg.studentEmailDomain).trim();

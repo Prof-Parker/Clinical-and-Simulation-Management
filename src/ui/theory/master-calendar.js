@@ -3,6 +3,8 @@
  */
 
 import * as TheoryData from '../../core/theory-data.js';
+import * as CourseVisibility from '../../core/course-visibility.js';
+import * as UserSession from '../../auth/user-session.js';
 import { notifyChange } from '../../core/state.js';
 import * as Permissions from '../../auth/permissions.js';
 import { openEventEditor } from './event-editor.js';
@@ -11,17 +13,22 @@ import { render as renderContentLibrary } from './content-library.js';
 import { renderSkillCoveragePanel } from './skill-coverage-panel.js';
 import { refresh } from '../chrome.js';
 import { buildMasterCalendarHtml } from './master-calendar-html.js';
+import { buildStackedMasterHtml, bindStackExpandCollapse } from './master-calendar-stack.js';
 
 var dragEventId = null;
 var suppressClick = false;
 
-export function render(data) {
-  renderSetup(data);
-  renderSkillCoveragePanel(data && data.theory);
-  var grid = document.getElementById('theoryMasterGrid');
-  if (!grid || !data.theory) return;
+function visibleTheoryCodes(data) {
+  var session = UserSession.getSession && UserSession.getSession();
+  if (CourseVisibility.isThirdSemester(data && data.meta && data.meta.courseId)) {
+    return CourseVisibility.theoryCodesForSession(session, data);
+  }
+  return [null];
+}
+
+function bindGridInteractions(grid, data) {
+  if (!grid || !data || !data.theory) return;
   var theory = data.theory;
-  grid.innerHTML = buildMasterCalendarHtml(data, { readOnly: false });
 
   grid.querySelectorAll('.theory-day-cell').forEach(function (cell) {
     cell.addEventListener('click', function (e) {
@@ -31,12 +38,15 @@ export function render(data) {
       }
       var date = cell.dataset.date;
       if (!date) return;
+      var courseCode = cell.getAttribute('data-course-code') || null;
       var chip = e.target.closest('[data-event-id]');
       if (chip) {
-        openEventEditor(data, date, chip.getAttribute('data-event-id'));
+        openEventEditor(data, date, chip.getAttribute('data-event-id'), {
+          defaultCourseCode: courseCode
+        });
         return;
       }
-      openEventEditor(data, date);
+      openEventEditor(data, date, null, { defaultCourseCode: courseCode });
     });
     cell.addEventListener('dragover', function (e) {
       e.preventDefault();
@@ -75,7 +85,37 @@ export function render(data) {
       dragEventId = null;
     });
   });
+}
 
+export function render(data) {
+  renderSetup(data);
+  renderSkillCoveragePanel(data && data.theory);
+  var grid = document.getElementById('theoryMasterGrid');
+  if (!grid || !data.theory) return;
+
+  var codes = visibleTheoryCodes(data);
+  var isThird = CourseVisibility.isThirdSemester(data.meta && data.meta.courseId);
+
+  if (isThird && codes.length > 1) {
+    grid.innerHTML = buildStackedMasterHtml(codes, function (code) {
+      return buildMasterCalendarHtml(data, {
+        readOnly: false,
+        courseCode: code,
+        showCourseBadge: true
+      });
+    });
+    bindStackExpandCollapse(grid);
+  } else {
+    var singleCode = isThird ? (codes[0] || 'REGN35') : null;
+    grid.innerHTML = buildMasterCalendarHtml(data, {
+      readOnly: false,
+      courseCode: singleCode,
+      showCourseBadge: isThird
+    });
+  }
+
+  bindGridInteractions(grid, data);
+  renderContentLibrary();
   renderTopicLibraryPanel();
 }
 

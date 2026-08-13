@@ -18,6 +18,8 @@ import {
   isUsableSkillTitle,
   normalizeSkill,
   normalizeTopic,
+  normalizeCourseIds,
+  itemsForCourse,
   createEmptyLibrary,
   migrateLibrary,
   skillKindLabel
@@ -60,7 +62,7 @@ function readFromHandle(handle) {
   return handle.getFile().then(function (f) { return f.text(); }).then(function (t) {
     return assertKindOrThrow(migrateLibrary(JSON.parse(t)), KIND, {
       fileName: handle.name,
-      suggestedName: 'theory-content-library_REGN15.json'
+      suggestedName: 'program-content-library.json'
     });
   });
 }
@@ -74,9 +76,8 @@ export function saveCurrent() {
     });
   }
   if (ProgramData.isProgramDataConnected()) {
-    var courseId = (root.meta && root.meta.courseId) || 'REGN15';
     return ProgramData.writeRelative(
-      ProgramData.theoryLibraryPath(courseId),
+      ProgramData.theoryLibraryPath(),
       KIND,
       function () { return serialize(root); }
     ).then(function (result) {
@@ -119,7 +120,7 @@ function importViaInput() {
           var root = migrateLibrary(JSON.parse(reader.result));
           assertKindOrThrow(root, KIND, {
             fileName: file.name,
-            suggestedName: 'theory-content-library_REGN15.json'
+            suggestedName: 'program-content-library.json'
           });
           state.theoryLibraryFileHandle = null;
           setRoot(root);
@@ -134,8 +135,8 @@ function importViaInput() {
 }
 
 export function createFilePicker(courseId) {
-  var root = createEmptyLibrary(courseId);
-  var suggested = 'theory-content-library_' + (courseId || 'REGN15') + '.json';
+  var root = createEmptyLibrary(courseId || null);
+  var suggested = 'program-content-library.json';
   if (!supportsFS()) {
     var blob = new Blob([serialize(root)], { type: 'application/json' });
     var a = document.createElement('a');
@@ -177,7 +178,7 @@ export function createFilePicker(courseId) {
     }
   }, {
     forceChooser: true,
-    title: 'Theory content library',
+    title: 'Program content library',
     message: 'Create, overwrite (validated before write), save to a folder, or download.'
   }).then(function () { return root; });
 }
@@ -193,6 +194,10 @@ export function listTopics() {
   return root && root.topics ? root.topics.slice() : [];
 }
 
+export function listTopicsForCourse(courseCode) {
+  return itemsForCourse(listTopics(), courseCode);
+}
+
 export function getSkillById(skillId) {
   var root = getLibrary();
   if (!root || !root.skills) return null;
@@ -202,6 +207,10 @@ export function getSkillById(skillId) {
 export function listSkills() {
   var root = getLibrary();
   return root && root.skills ? root.skills.slice() : [];
+}
+
+export function listSkillsForCourse(courseCode) {
+  return itemsForCourse(listSkills(), courseCode);
 }
 
 export function setSkillKinds(skillId, kinds) {
@@ -247,9 +256,14 @@ export function addSkill(title, opts) {
     recommendedPracticeCount: opts.recommendedPracticeCount,
     learningObjectives: opts.learningObjectives || [],
     curriculumMeta: opts.curriculumMeta,
-    courseId: (root.meta && root.meta.courseId) || 'REGN15'
+    courseIds: opts.courseIds || (opts.courseId ? [opts.courseId] : []),
+    courseId: opts.courseId || null
   });
   if (!skill) return null;
+  if (!skill.courseIds.length && opts.courseId) {
+    skill.courseIds = normalizeCourseIds(null, opts.courseId);
+    skill.courseId = skill.courseIds[0];
+  }
   var existing = root.skills.find(function (s) {
     return s.title.toLowerCase() === skill.title.toLowerCase();
   });
@@ -331,8 +345,9 @@ export function addTopic(title, opts) {
     tags: opts.tags || [],
     learningObjectives: opts.learningObjectives || [],
     curriculumMeta: opts.curriculumMeta,
-    courseId: (root.meta && root.meta.courseId) || 'REGN15'
-  }, root.meta.courseId);
+    courseIds: opts.courseIds || (opts.courseId ? [opts.courseId] : []),
+    courseId: opts.courseId || null
+  }, opts.courseId || null);
   if (!topic) return null;
   root.topics.push(topic);
   return saveCurrent().then(function () { return topic; }).catch(function () { return topic; });
@@ -393,7 +408,7 @@ export function getConnectionLabel() {
   if (state.theoryLibraryFileHandle && state.theoryLibraryFileHandle.name) {
     return state.theoryLibraryFileHandle.name;
   }
-  return 'Theory content library (on this device)';
+  return 'Program content library (on this device)';
 }
 
 export function init() {

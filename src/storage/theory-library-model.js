@@ -99,6 +99,50 @@ function normalizeSkillTestoutSettings(raw) {
   };
 }
 
+function normalizeCourseIds(raw, fallbackCourseId) {
+  var out = [];
+  var seen = {};
+  function push(code) {
+    var c = String(code || '').toUpperCase().replace(/\s+/g, '');
+    if (!c || seen[c]) return;
+    seen[c] = true;
+    out.push(c);
+  }
+  if (Array.isArray(raw)) {
+    raw.forEach(push);
+  } else if (raw) {
+    push(raw);
+  }
+  if (!out.length && fallbackCourseId) push(fallbackCourseId);
+  return out;
+}
+
+function itemBelongsToCourse(item, courseCode) {
+  if (!courseCode) return true;
+  var code = String(courseCode).toUpperCase().replace(/\s+/g, '');
+  var ids = normalizeCourseIds(
+    (item && item.courseIds) || (item && item.courseId),
+    null
+  );
+  if (!ids.length) return true;
+  return ids.indexOf(code) >= 0;
+}
+
+function itemsForCourse(list, courseCode) {
+  return (list || []).filter(function (item) {
+    return itemBelongsToCourse(item, courseCode);
+  });
+}
+
+function filterLibraryForCourse(root, courseCode) {
+  if (!root) return null;
+  return {
+    meta: root.meta,
+    topics: itemsForCourse(root.topics, courseCode),
+    skills: itemsForCourse(root.skills, courseCode)
+  };
+}
+
 function normalizeSkill(raw) {
   if (!raw) return null;
   if (typeof raw === 'string') {
@@ -115,12 +159,14 @@ function normalizeSkill(raw) {
       recommendedPracticeCount: inferred.recommendedPracticeCount,
       learningObjectives: [],
       curriculumMeta: emptyCurriculumMeta(),
-      courseId: null
+      courseId: null,
+      courseIds: []
     };
   }
   var skillTitle = String(raw.title || '').trim();
   if (!isUsableSkillTitle(skillTitle)) return null;
   var settings = normalizeSkillTestoutSettings(raw);
+  var courseIds = normalizeCourseIds(raw.courseIds || raw.courseId, null);
   return {
     id: raw.id || skillIdFromTitle(skillTitle),
     title: skillTitle,
@@ -133,7 +179,8 @@ function normalizeSkill(raw) {
     recommendedPracticeCount: settings.recommendedPracticeCount,
     learningObjectives: normalizeLearningObjectives(raw.learningObjectives),
     curriculumMeta: normalizeCurriculumMeta(raw.curriculumMeta),
-    courseId: raw.courseId || null
+    courseId: courseIds[0] || raw.courseId || null,
+    courseIds: courseIds
   };
 }
 
@@ -141,6 +188,7 @@ function normalizeTopic(raw, courseId) {
   if (!raw) return null;
   var title = String(raw.title || '').trim();
   if (!title) return null;
+  var courseIds = normalizeCourseIds(raw.courseIds || raw.courseId || courseId, courseId);
   return {
     id: raw.id || ('topic_' + Date.now().toString(36)),
     title: title,
@@ -153,7 +201,8 @@ function normalizeTopic(raw, courseId) {
     tags: Array.isArray(raw.tags) ? raw.tags.slice() : [],
     learningObjectives: normalizeLearningObjectives(raw.learningObjectives),
     curriculumMeta: normalizeCurriculumMeta(raw.curriculumMeta),
-    courseId: raw.courseId || courseId || null
+    courseId: courseIds[0] || courseId || null,
+    courseIds: courseIds
   };
 }
 
@@ -165,7 +214,12 @@ function buildSkillsFromTopics(topics, courseId) {
       if (!skill) return;
       var key = skill.title.toLowerCase();
       if (!byKey[key]) {
-        skill.courseId = courseId || skill.courseId;
+        var ids = normalizeCourseIds(
+          skill.courseIds.length ? skill.courseIds : (courseId || skill.courseId),
+          courseId
+        );
+        skill.courseIds = ids;
+        skill.courseId = ids[0] || courseId || skill.courseId;
         byKey[key] = skill;
         return;
       }
@@ -181,8 +235,9 @@ function buildSkillsFromTopics(topics, courseId) {
 function createEmptyLibrary(courseId) {
   return {
     meta: {
-      version: 2,
-      courseId: courseId || 'REGN15',
+      version: 3,
+      scope: 'program',
+      courseId: courseId || null,
       fileKind: KIND,
       lastModified: new Date().toISOString(),
       curriculumMeta: emptyCurriculumMeta()
@@ -194,14 +249,15 @@ function createEmptyLibrary(courseId) {
 
 function migrateLibrary(raw) {
   if (!raw || !Array.isArray(raw.topics)) return createEmptyLibrary();
-  if (!raw.meta || typeof raw.meta !== 'object') raw.meta = { version: 2 };
-  if (!raw.meta.courseId) raw.meta.courseId = 'REGN15';
-  if (raw.meta.version == null || raw.meta.version < 2) raw.meta.version = 2;
+  if (!raw.meta || typeof raw.meta !== 'object') raw.meta = { version: 3 };
+  var legacyCourse = raw.meta.courseId || 'REGN15';
+  if (!raw.meta.scope) raw.meta.scope = 'program';
+  if (raw.meta.version == null || raw.meta.version < 3) raw.meta.version = 3;
   raw.meta.curriculumMeta = normalizeCurriculumMeta(raw.meta.curriculumMeta);
   raw.topics = raw.topics.filter(function (t) { return t && typeof t === 'object'; });
 
   // One-time extract: legacy topic.defaultSkills → skills bank, then detach from topics.
-  var extracted = buildSkillsFromTopics(raw.topics, raw.meta.courseId);
+  var extracted = buildSkillsFromTopics(raw.topics, legacyCourse);
   if (!Array.isArray(raw.skills) || !raw.skills.length) {
     raw.skills = extracted;
   } else {
@@ -212,9 +268,23 @@ function migrateLibrary(raw) {
       if (!have[s.title.toLowerCase()]) raw.skills.push(s);
     });
   }
-  raw.skills = raw.skills.map(normalizeSkill).filter(Boolean);
+  raw.skills = raw.skills.map(function (s) {
+    var skill = normalizeSkill(s);
+    if (!skill) return null;
+    if (!skill.courseIds.length) {
+      skill.courseIds = normalizeCourseIds(null, legacyCourse);
+      skill.courseId = skill.courseIds[0] || legacyCourse;
+    }
+    return skill;
+  }).filter(Boolean);
   raw.topics = raw.topics.map(function (t) {
-    return normalizeTopic(t, raw.meta.courseId);
+    var topic = normalizeTopic(t, legacyCourse);
+    if (!topic) return null;
+    if (!topic.courseIds.length) {
+      topic.courseIds = normalizeCourseIds(null, legacyCourse);
+      topic.courseId = topic.courseIds[0] || legacyCourse;
+    }
+    return topic;
   }).filter(Boolean);
   return raw;
 }
@@ -236,6 +306,10 @@ export {
   isUsableSkillTitle,
   normalizeSkill,
   normalizeTopic,
+  normalizeCourseIds,
+  itemsForCourse,
+  filterLibraryForCourse,
+  itemBelongsToCourse,
   createEmptyLibrary,
   migrateLibrary,
   skillKindLabel

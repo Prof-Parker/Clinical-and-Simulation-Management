@@ -81,13 +81,15 @@ existing imports stable while isolating persistence, presentation, and model log
 | **Users registry** | `users-registry.json` | Authoritative roles + key hashes |
 | **Clinical sites library** | `clinical-sites-library.json` | Program-wide site catalog |
 | **Playground** | `user_{token}_playground.json` | Isolated semester experiments |
-| **Theory content library** | `theory-content-library_REGN15.json` | Topic bank (`moduleRef`, title) — no dates |
+| **Theory content library** | `program-content-library.json` (legacy `theory-content-library_REGN15.json` still loads) | Program-wide topic + skills bank; items tagged with `courseIds` (e.g. REGN15, REGN35, REGN36) for Theory Master filtering and future curriculum crosswalk |
 | **Semester file** | `{S\|F}{year}_{courseId}.json` (e.g. `F2026_REGN15P.json`); consolidated `F2026_REGN_program.json` for REGN15+15P; legacy `regn-tracker.json` | Roster, schedule, config, calendar, facilities, faculty, audit meta, **theory** (`semester.theory`), **proposals**, and **simulation roles** (`meta.simRoles`, base64 obfuscated) |
 | **Audit PDF** | `{Season}-{Year}-{courseId}-Audit-v{n}.pdf` (e.g. `Fall-2026-REGN15P-Audit-v1.pdf`) | Signed end-of-semester audit record (official record after closeout) |
 
 **Breaking change (fileVersion 4):** Separate `{token}_Faculty.json` files are no longer supported. Simulation role assignments must be stored in the semester file. Legacy plain `semester.roles` / `_legacySimRoles` embedded in old semester exports still migrate on load.
 
 **Breaking change (fileVersion 5):** Adds `semester.theory` (REGN15 calendar data), `meta.activeCourseCode` (theory vs clinical shell), and optional consolidated program semester files. Theory is excluded from audit hash snapshots initially. Seed: `npm run seed:mock-onedrive` imports prototype docx via `npm run import:theory-prototypes`.
+
+**3rd semester (`REGN35P-36P`):** One practicum semester file shared by REGN 35P and 36P. `theory.courseCodes` is `['REGN35','REGN36','REGN35P','REGN36P']`. Lecture/skills events carry `courseCode` (`REGN35` or `REGN36`). Dashboard Master Calendar shows the union with course badges. Theory Master filters by faculty specialty (OB/PED → REGN36; otherwise REGN35); admin/program engineer see both as stacked expandable sections. Content lives in `program-content-library.json` filtered by `courseIds`. Audit PDF/closeout shows merged clinical hours plus MS/OB/PEDS specialty subtotals (`config.simContentTags` for sims; facility `contentTags` for clinical).
 
 Course-aware names are suggested automatically when `meta.courseId` and semester season/year are set. Sim role edits remain allowed after audit export/lock — the audit lifecycle covers the semester file only.
 

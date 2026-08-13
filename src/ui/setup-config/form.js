@@ -5,7 +5,7 @@
 import * as DataModel from '../../core/data-model/index.js';
 import * as ClinicalSites from '../../core/clinical-sites.js';
 import { setupEl, setupQueryAll } from '../setup/scope.js';
-import { collectSimTimesIntoConfig } from './sim-groups.js';
+import { collectSimTimesIntoConfig, collectSimContentTagsIntoConfig } from './sim-groups.js';
 
 function readOptionalWeekInput(id) {
   var el = setupEl(id);
@@ -96,6 +96,7 @@ export function readFormIntoConfig(cfg, data) {
   });
 
   collectSimTimesIntoConfig(cfg);
+  collectSimContentTagsIntoConfig(cfg);
 
   var normalized = DataModel.normalizeConfig(cfg);
   if (data && ClinicalSites) {

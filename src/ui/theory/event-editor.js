@@ -6,6 +6,7 @@ import * as TheoryData from '../../core/theory-data.js';
 import * as TheoryLibrary from '../../storage/theory-library-storage.js';
 import * as ScheduleHours from '../../core/schedule-hours.js';
 import * as SkillPlacements from '../../core/skill-placements.js';
+import * as CourseVisibility from '../../core/course-visibility.js';
 import { uid } from '../../core/data-model/students.js';
 import { notifyChange } from '../../core/state.js';
 import { showDialog, showAlert } from '../dialogs.js';
@@ -25,9 +26,12 @@ import {
 
 var editingEventId = null;
 var guestExpanded = false;
+var editorDefaultCourseCode = null;
 
-export function openEventEditor(data, date, eventId) {
+export function openEventEditor(data, date, eventId, opts) {
   if (!Permissions.canAction('theory.edit') && !Permissions.canAction('*')) return;
+  opts = opts || {};
+  editorDefaultCourseCode = opts.defaultCourseCode || null;
   var theory = data.theory;
   var day = TheoryData.findDay(theory, date) || TheoryData.ensureDay(theory, data, date);
   editingEventId = eventId || null;
@@ -61,7 +65,7 @@ export function openEventEditor(data, date, eventId) {
       var track = 'theory';
       var trackEl = document.getElementById('theoryEvTrack');
       if (trackEl) track = trackEl.value;
-      var ev = blankEvent(track, settings, day.weekday);
+      var ev = blankEvent(track, settings, day.weekday, data);
       TheoryData.insertEventOnDay(day, ev);
       editingEventId = ev.id;
       TheoryData.renumberWeekModules(theory, day.weekLabel);
@@ -72,7 +76,7 @@ export function openEventEditor(data, date, eventId) {
   }
 }
 
-function blankEvent(track, settings, weekday) {
+function blankEvent(track, settings, weekday, data) {
   var isSkills = track === 'skills';
   var required = isSkills
     ? (settings.defaultSkillsFacultyRequired != null ? settings.defaultSkillsFacultyRequired : 2)
@@ -85,6 +89,10 @@ function blankEvent(track, settings, weekday) {
     }));
   }
   var session = sessionForWeekday(settings, isSkills ? 'skills' : 'lecture', weekday);
+  var courseCode = null;
+  if (track !== 'holiday' && CourseVisibility.isThirdSemester(data && data.meta && data.meta.courseId)) {
+    courseCode = editorDefaultCourseCode || 'REGN35';
+  }
   return {
     id: uid(),
     track: track,
@@ -101,6 +109,7 @@ function blankEvent(track, settings, weekday) {
     faculty: faculty,
     facultyRequired: isSkills ? required : null,
     contentArea: track === 'assignment' ? 'theory' : null,
+    courseCode: courseCode,
     categories: categoriesForTrack(track),
     allDay: track === 'holiday'
   };
@@ -186,7 +195,24 @@ function renderForm(data, day) {
     return '<option value="' + t + '"' + (t === ev.track ? ' selected' : '') + '>' + t + '</option>';
   }).join('');
 
+  var isThird = CourseVisibility.isThirdSemester(data.meta && data.meta.courseId);
+  var courseCode = ev.courseCode || editorDefaultCourseCode || (isThird ? 'REGN35' : null);
+
   var html = '<label>Track <select id="theoryEvTrack" class="select-control">' + trackOpts + '</select></label>';
+
+  if (isThird && ev.track !== 'holiday') {
+    var locked = !!editorDefaultCourseCode;
+    if (locked) {
+      html += '<input type="hidden" id="theoryEvCourseCode" value="' + escAttr(courseCode) + '">' +
+        '<p class="section-sub">Course: <strong>' +
+        esc(CourseVisibility.formatCourseBadge(courseCode)) + '</strong></p>';
+    } else {
+      html += '<label>Course <select id="theoryEvCourseCode" class="select-control">' +
+        '<option value="REGN35"' + (courseCode === 'REGN35' ? ' selected' : '') + '>REGN 35</option>' +
+        '<option value="REGN36"' + (courseCode === 'REGN36' ? ' selected' : '') + '>REGN 36</option>' +
+        '</select></label>';
+    }
+  }
 
   if (ev.track === 'assignment') {
     html += '<label>Title <input type="text" id="theoryEvTitle" class="select-control" value="' +
@@ -206,7 +232,7 @@ function renderForm(data, day) {
     html += '<p class="section-sub">Setup holidays sync automatically; manual holiday titles can override display.</p>';
   } else if (ev.track === 'theory') {
     html += '<label>Topic library <select id="theoryEvModuleRef" class="select-control"><option value="">—</option>' +
-      topicOptionsHtml(ev.moduleRef) + '</select></label>';
+      topicOptionsHtml(ev.moduleRef, courseCode) + '</select></label>';
     html += '<p class="section-sub">Choose a topic from the content library. Use New Topic to add one.</p>';
     html += timeFields(ev, settings, false, day.weekday);
     html += lecturerFields(ev, settings, guestExpanded);
@@ -229,7 +255,7 @@ function renderForm(data, day) {
   updateHoursHint();
   wireFormHandlers(data, day, ev);
   if (ev.track === 'skills') {
-    renderSkillsTopics(ev);
+    renderSkillsTopics(ev, courseCode);
     wireSkillSelectHandlers(data, day);
   }
 }
@@ -387,6 +413,14 @@ function saveFormToEvent(data, day, options) {
   if (!ev) return true;
   var trackEl = document.getElementById('theoryEvTrack');
   if (trackEl) ev.track = trackEl.value;
+  var courseEl = document.getElementById('theoryEvCourseCode');
+  if (courseEl) {
+    ev.courseCode = courseEl.value || null;
+  } else if (ev.track === 'holiday') {
+    ev.courseCode = null;
+  } else if (!ev.courseCode && editorDefaultCourseCode) {
+    ev.courseCode = editorDefaultCourseCode;
+  }
   var titleEl = document.getElementById('theoryEvTitle');
   if (titleEl) ev.title = titleEl.value.trim() || ev.track;
   var areaEl = document.getElementById('theoryEvContentArea');

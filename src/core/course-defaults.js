@@ -23,8 +23,17 @@ var COURSES = [
       courseId: 'REGN35P-36P',
       displayName: 'REGN 35P/36P',
       description: 'Two half-semester clinical courses sharing groups and scheduling (one file per term)',
-      configOverrides: { holidayBlocksFullWeek: true },
-      contentAreas: ['MS', 'PEDS', 'MH']
+      configOverrides: {
+        holidayBlocksFullWeek: true,
+        simContentTags: {
+          '1': ['MS'],
+          '2': ['MS'],
+          '3': ['MS'],
+          '4': ['OB', 'PEDS'],
+          '5': ['OB', 'PEDS']
+        }
+      },
+      contentAreas: ['MS', 'OB', 'PEDS', 'MH']
     },
     {
       courseId: 'REGN48P',

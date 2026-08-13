@@ -11,7 +11,7 @@ describe('program-data paths', () => {
   });
 
   it('builds relative paths', () => {
-    expect(theoryLibraryPath('REGN15')).toBe('theory-content-library_REGN15.json');
+    expect(theoryLibraryPath('REGN15')).toBe('program-content-library.json');
     expect(playgroundPath('user_F2026_REGN15P_playground.json'))
       .toBe('playgrounds/user_F2026_REGN15P_playground.json');
     expect(semesterPath('F2026_REGN_program.json')).toBe('semesters/F2026_REGN_program.json');

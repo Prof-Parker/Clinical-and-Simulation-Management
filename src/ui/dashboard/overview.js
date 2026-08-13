@@ -33,7 +33,10 @@ function bindTheoryChipDetails(root, data) {
 function renderTheoryPreview(data) {
   var el = document.getElementById('dashOverviewTheory');
   if (!el) return;
-  el.innerHTML = buildMasterCalendarHtml(data, { readOnly: true });
+  el.innerHTML = buildMasterCalendarHtml(data, {
+    readOnly: true,
+    showCourseBadge: true
+  });
   bindTheoryChipDetails(el, data);
 }
 

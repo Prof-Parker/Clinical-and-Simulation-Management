@@ -93,6 +93,58 @@ function renderSimTimeOverrides(cfg) {
       '</div>';
   }
 
+var SIM_CONTENT_TAG_OPTIONS = ['MS', 'OB', 'PEDS', 'MH'];
+
+function renderSimContentTags(cfg) {
+    var required = cfg.simDaysRequired || 5;
+    var map = cfg.simContentTags && typeof cfg.simContentTags === 'object'
+      ? cfg.simContentTags
+      : {};
+    var rows = [];
+    for (var i = 1; i <= required; i++) {
+      var key = String(i);
+      var selected = Array.isArray(map[key]) ? map[key] : ['MS'];
+      var checks = SIM_CONTENT_TAG_OPTIONS.map(function (tag) {
+        var checked = selected.indexOf(tag) >= 0 ? ' checked' : '';
+        return '<label class="filter-check filter-check-compact site-lib-tag">' +
+          '<input type="checkbox" data-sim-content-tag="' + escAttr(tag) + '"' + checked + '> ' +
+          escHtml(tag) + '</label>';
+      }).join(' ');
+      rows.push(
+        '<div class="config-list-row" data-sim-content-tag-row="' + key + '">' +
+        '<span class="config-group-label">Sim ' + key + '</span>' +
+        '<div class="site-lib-tags" role="group" aria-label="Sim ' + key + ' content tags">' +
+        checks + '</div></div>'
+      );
+    }
+    return rows.join('');
+  }
+
+function collectSimContentTagsIntoConfig(cfg) {
+    var required = cfg.simDaysRequired || 5;
+    var map = {};
+    setupQueryAll('cfgSimContentTags', '[data-sim-content-tag-row]').forEach(function (row) {
+      var num = row.getAttribute('data-sim-content-tag-row');
+      var tags = [];
+      row.querySelectorAll('[data-sim-content-tag]:checked').forEach(function (el) {
+        tags.push(el.getAttribute('data-sim-content-tag'));
+      });
+      if (!tags.length) tags = ['MS'];
+      map[String(num)] = tags;
+    });
+    // Ensure every required sim has an entry even if DOM not rendered yet.
+    for (var i = 1; i <= required; i++) {
+      var key = String(i);
+      if (!map[key]) {
+        map[key] = (cfg.simContentTags && cfg.simContentTags[key])
+          ? cfg.simContentTags[key].slice()
+          : ['MS'];
+      }
+    }
+    cfg.simContentTags = map;
+    return cfg;
+  }
+
 function collectSimTimesIntoConfig(cfg) {
     var simStartEl = setupEl('cfgSimDefaultStart');
     var simEndEl = setupEl('cfgSimDefaultEnd');
@@ -138,6 +190,8 @@ export {
   renderSimDaysList,
   renderSimGroupsList,
   renderSimTimeOverrides,
+  renderSimContentTags,
+  collectSimContentTagsIntoConfig,
   collectSimTimesIntoConfig,
   daySelectHtml
 };

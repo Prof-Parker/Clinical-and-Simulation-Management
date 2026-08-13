@@ -142,6 +142,7 @@ export function syncHolidaysFromSemester(semester) {
       faculty: [],
       categories: ['synced_holiday'],
       contentArea: null,
+      courseCode: null,
       facultyRequired: null
     });
   }

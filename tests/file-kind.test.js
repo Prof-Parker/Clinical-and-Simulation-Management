@@ -83,6 +83,7 @@ describe('file-kind', () => {
 
     assert(FileKind.filenameMatchesKind('clinical-sites-library.json', K.CLINICAL_SITES_LIBRARY), 'sites');
     assert(FileKind.filenameMatchesKind('theory-content-library_REGN15.json', K.THEORY_CONTENT_LIBRARY), 'theory');
+    assert(FileKind.filenameMatchesKind('program-content-library.json', K.THEORY_CONTENT_LIBRARY), 'program theory');
   });
 
   it('blocks high-risk playground → program_semester', () => {

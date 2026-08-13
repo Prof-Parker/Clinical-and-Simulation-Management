@@ -196,6 +196,12 @@ function migrateEventFields(ev) {
       ev.title = 'Skills lab';
     }
   }
+  if (ev.courseCode == null) {
+    // Holidays stay untagged; other events may be stamped by the caller / editor.
+    ev.courseCode = null;
+  } else if (ev.courseCode) {
+    ev.courseCode = String(ev.courseCode).toUpperCase().replace(/\s+/g, '');
+  }
   (ev.faculty || []).forEach(function (slot) {
     if (!slot || typeof slot !== 'object') return;
     if (slot.needed == null) {
@@ -256,7 +262,9 @@ export function migrateTheory(semester) {
     ? String(semester.meta.courseId)
     : '';
   if (courseId.indexOf('REGN') === 0) {
-    if (/P$/i.test(courseId) && courseId !== 'REGN35P-36P') {
+    if (courseId === 'REGN35P-36P') {
+      codes = ['REGN35', 'REGN36', 'REGN35P', 'REGN36P'];
+    } else if (/P$/i.test(courseId)) {
       codes = [courseId.replace(/P$/i, ''), courseId];
     }
   }
@@ -270,6 +278,14 @@ export function migrateTheory(semester) {
   var t = semester.theory;
   if (!t.version) t.version = THEORY_VERSION;
   if (!t.courseCodes || !t.courseCodes.length) t.courseCodes = codes;
+  // Upgrade legacy REGN15-only codes when this is a 3rd-semester file.
+  if (courseId === 'REGN35P-36P') {
+    var has35 = t.courseCodes.some(function (c) {
+      return String(c).toUpperCase().indexOf('REGN35') === 0 ||
+        String(c).toUpperCase().indexOf('REGN36') === 0;
+    });
+    if (!has35) t.courseCodes = codes.slice();
+  }
   if (!t.displayWeekStart) t.displayWeekStart = 'sunday';
   if (!t.instructionalWeekdays) t.instructionalWeekdays = ['Wed', 'Thu', 'Fri'];
   if (!t.settings) t.settings = defaultTheorySettings(t.courseCodes);

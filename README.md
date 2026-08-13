@@ -1,8 +1,10 @@
 # Clinical & Simulation Management
 
-Browser-based app for REGN 15P cohort scheduling, clinical and simulation requirement tracking, role assignments, and printable student calendars.
+Browser-based app for ADN clinical and simulation cohort scheduling (REGN 15P through shared 3rd-semester REGN 35P/36P), requirement tracking, role assignments, and printable student calendars.
 
 **Live app (PWA):** https://prof-parker.github.io/Clinical-and-Simulation-Management/
+
+ProgramData typically includes semester JSON files, `users-registry.json`, `clinical-sites-library.json`, and **`program-content-library.json`** (theory topics + skills tagged by course; legacy `theory-content-library_REGN15.json` still connects). Course picker labels include 1st- and 3rd-semester theory/practicum codes when present on the open file.
 
 On the **Dashboard**, use **Export to Excel** on the Master Interactive Schedule panel to download a filtered `.xlsx` workbook (prototype-style **Schedule** sheet plus legacy Master Schedule and Sim Progression tabs). The same summary area hosts **Makeup clinicals week N** (clinical clustering modes) and **Consolidate thin sim sessions** (multi-pass thin-sim post-pass)—both are explicit actions, not part of regenerate.
 

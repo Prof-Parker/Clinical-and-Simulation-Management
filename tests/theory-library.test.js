@@ -11,7 +11,8 @@ describe('theory-library.test.js', () => {
   it('creates and migrates empty library', () => {
     var lib = TheoryLibrary.createEmptyLibrary('REGN15');
     expect(lib.meta.courseId).toBe('REGN15');
-    expect(lib.meta.version).toBe(2);
+    expect(lib.meta.scope).toBe('program');
+    expect(lib.meta.version).toBe(3);
     expect(lib.meta.curriculumMeta).toEqual(TheoryLibrary.emptyCurriculumMeta());
     expect(lib.topics).toEqual([]);
     expect(lib.skills).toEqual([]);
@@ -21,6 +22,30 @@ describe('theory-library.test.js', () => {
     expect(migrated.topics[0].description).toBe('');
     expect(migrated.topics[0].curriculumMeta).toEqual(TheoryLibrary.emptyCurriculumMeta());
     expect(migrated.topics[0].defaultSkills).toBeUndefined();
+    expect(migrated.topics[0].courseIds).toContain('REGN15');
+    expect(migrated.meta.scope).toBe('program');
+    expect(migrated.meta.version).toBe(3);
+  });
+
+  it('filters topics and skills by courseIds', () => {
+    state.theoryLibraryRoot = TheoryLibrary.migrateLibrary({
+      meta: { courseId: 'REGN15', scope: 'program', version: 3 },
+      topics: [
+        { id: 't35', title: 'MS Topic', courseIds: ['REGN35'] },
+        { id: 't36', title: 'OB Topic', courseIds: ['REGN36'] },
+        { id: 't15', title: 'Shared', courseIds: ['REGN15', 'REGN35'] }
+      ],
+      skills: [
+        { id: 's35', title: 'MS Skill', courseIds: ['REGN35'] },
+        { id: 's36', title: 'PEDS Skill', courseIds: ['REGN36'] }
+      ]
+    });
+    expect(TheoryLibrary.listTopicsForCourse('REGN35').map(function (t) { return t.id; }))
+      .toEqual(['t35', 't15']);
+    expect(TheoryLibrary.listTopicsForCourse('REGN36').map(function (t) { return t.id; }))
+      .toEqual(['t36']);
+    expect(TheoryLibrary.listSkillsForCourse('REGN36').map(function (s) { return s.id; }))
+      .toEqual(['s36']);
   });
 
   it('builds skills bank from topic defaultSkills with inferred kinds', () => {

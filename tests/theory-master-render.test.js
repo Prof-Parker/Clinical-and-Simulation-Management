@@ -27,6 +27,7 @@ var mockSemesterPath = join(__dirname, '..', 'mock-onedrive', 'semesters', 'F202
 var mockLibraryPath = join(__dirname, '..', 'mock-onedrive', 'theory-content-library_REGN15.json');
 
 var sessionStub = mockEngineerSession();
+sessionStub.specialties = [];
 
 vi.mock('../src/auth/user-session.js', () => ({
   init: vi.fn(function () {
@@ -150,6 +151,8 @@ describe('theory master calendar render (mock-onedrive / synthetic)', () => {
   afterEach(function () {
     vi.restoreAllMocks();
     state.theoryLibraryRoot = null;
+    sessionStub.role = 'program_engineer';
+    sessionStub.specialties = [];
   });
 
   it('Master Calendar paints week grid and event chips', function () {
@@ -195,5 +198,113 @@ describe('theory master calendar render (mock-onedrive / synthetic)', () => {
     expect(grid).toBeTruthy();
     expect(grid.innerHTML.length).toBeGreaterThan(0);
     expect(grid.textContent).toMatch(/Wk|Week|Lecture/i);
+  });
+
+  it('3rd-semester Theory Master stacks REGN35 and REGN36 for engineer', function () {
+    var fileRoot = DataModel.createDefaultFile();
+    var sem = fileRoot.semesters[0];
+    sem.meta.courseId = 'REGN35P-36P';
+    sem.calendar.semesterStartDate = '2026-08-16';
+    CalendarEngine.rebuildWeeks(sem);
+    DataModel.migrateSemester(sem);
+    TheoryData.migrateTheory(sem);
+    sem.theory.days = [{
+      date: '2026-08-19',
+      weekIndex: 0,
+      weekday: 'Wed',
+      weekLabel: 1,
+      events: [
+        {
+          id: 'ev35',
+          track: 'theory',
+          courseCode: 'REGN35',
+          title: 'MS Module',
+          timeStart: '0800',
+          timeEnd: '1050',
+          faculty: [],
+          categories: ['lecture'],
+          moduleRefs: [],
+          skillRefs: []
+        },
+        {
+          id: 'ev36',
+          track: 'theory',
+          courseCode: 'REGN36',
+          title: 'OB Module',
+          timeStart: '0800',
+          timeEnd: '1050',
+          faculty: [],
+          categories: ['lecture'],
+          moduleRefs: [],
+          skillRefs: []
+        }
+      ]
+    }];
+    TheoryData.migrateTheory(sem);
+    fileRoot.meta.activeSemesterId = sem.id;
+    fileRoot.meta.activeCourseCode = 'REGN35';
+    setFileRoot(fileRoot);
+    sessionStub.role = 'program_engineer';
+    sessionStub.specialties = [];
+
+    expect(function () { switchTab('theory-master'); }).not.toThrow();
+    var grid = document.getElementById('theoryMasterGrid');
+    expect(grid.querySelectorAll('.theory-master-course-panel').length).toBe(2);
+    expect(grid.textContent).toMatch(/REGN35|REGN 35/);
+    expect(grid.textContent).toMatch(/REGN36|REGN 36/);
+    expect(grid.querySelector('#theoryMasterExpandAll')).toBeTruthy();
+  });
+
+  it('3rd-semester Theory Master shows only REGN36 for OB faculty', function () {
+    var fileRoot = DataModel.createDefaultFile();
+    var sem = fileRoot.semesters[0];
+    sem.meta.courseId = 'REGN35P-36P';
+    sem.calendar.semesterStartDate = '2026-08-16';
+    CalendarEngine.rebuildWeeks(sem);
+    DataModel.migrateSemester(sem);
+    TheoryData.migrateTheory(sem);
+    sem.theory.days = [{
+      date: '2026-08-19',
+      weekIndex: 0,
+      weekday: 'Wed',
+      weekLabel: 1,
+      events: [
+        {
+          id: 'ev35b',
+          track: 'theory',
+          courseCode: 'REGN35',
+          title: 'MS Only',
+          timeStart: '0800',
+          timeEnd: '1050',
+          faculty: [],
+          categories: ['lecture'],
+          moduleRefs: [],
+          skillRefs: []
+        },
+        {
+          id: 'ev36b',
+          track: 'theory',
+          courseCode: 'REGN36',
+          title: 'OB Only',
+          timeStart: '0800',
+          timeEnd: '1050',
+          faculty: [],
+          categories: ['lecture'],
+          moduleRefs: [],
+          skillRefs: []
+        }
+      ]
+    }];
+    TheoryData.migrateTheory(sem);
+    fileRoot.meta.activeSemesterId = sem.id;
+    setFileRoot(fileRoot);
+    sessionStub.role = 'lead_course_faculty';
+    sessionStub.specialties = ['OB'];
+
+    expect(function () { switchTab('theory-master'); }).not.toThrow();
+    var grid = document.getElementById('theoryMasterGrid');
+    expect(grid.querySelectorAll('.theory-master-course-panel').length).toBe(0);
+    expect(grid.textContent).toMatch(/OB Only/);
+    expect(grid.textContent).not.toMatch(/MS Only/);
   });
 });

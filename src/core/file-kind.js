@@ -74,7 +74,8 @@ export function filenameMatchesKind(name, kind) {
     case FILE_KINDS.CLINICAL_SITES_LIBRARY:
       return /^clinical-sites-library\.json$/i.test(n);
     case FILE_KINDS.THEORY_CONTENT_LIBRARY:
-      return /^theory-content-library_.+\.json$/i.test(n);
+      return /^theory-content-library_.+\.json$/i.test(n) ||
+        /^program-content-library\.json$/i.test(n);
     default:
       return true;
   }
@@ -92,7 +93,8 @@ export function filenameConflictsWithKind(name, kind) {
         /\.user\.json$/i.test(n) ||
         /^users-registry\.json$/i.test(n) ||
         /^clinical-sites-library\.json$/i.test(n) ||
-        /^theory-content-library_/i.test(n);
+        /^theory-content-library_/i.test(n) ||
+        /^program-content-library\.json$/i.test(n);
     case FILE_KINDS.USERS_REGISTRY:
       return !/^users-registry\.json$/i.test(n);
     case FILE_KINDS.USER_CREDENTIAL:
@@ -100,7 +102,8 @@ export function filenameConflictsWithKind(name, kind) {
         /^[FS]20\d{2}_/i.test(n) ||
         /_playground\.json$/i.test(n) ||
         /^clinical-sites-library\.json$/i.test(n) ||
-        /^theory-content-library_/i.test(n);
+        /^theory-content-library_/i.test(n) ||
+        /^program-content-library\.json$/i.test(n);
     case FILE_KINDS.CLINICAL_SITES_LIBRARY:
       return /^[FS]20\d{2}_/i.test(n) || /_playground\.json$/i.test(n) ||
         /\.user\.json$/i.test(n) || /^users-registry\.json$/i.test(n);

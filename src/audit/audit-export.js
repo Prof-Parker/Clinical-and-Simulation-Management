@@ -7,6 +7,8 @@ import * as AuditSnapshot from './audit-snapshot.js';
 import * as CourseDefaults from '../core/course-defaults.js';
 import * as DataModel from '../core/data-model/index.js';
 import * as ScheduleHours from '../core/schedule-hours.js';
+import * as HoursBySpecialty from '../core/hours-by-specialty.js';
+import * as CourseVisibility from '../core/course-visibility.js';
 import * as Validator from '../core/validator.js';
 import { notifyChange } from '../core/state.js';
 import { showAlert, showDialog } from '../ui/dialogs.js';
@@ -69,11 +71,13 @@ var AUDIT_APP_VERSION = formatAppVersionLabel(APP_VERSION);
    */
   function buildRequirementsSummary(semester) {
     var validation = Validator.validateAll(semester);
+    var isThird = CourseVisibility.isThirdSemester(semester.meta && semester.meta.courseId);
     return (semester.students || []).slice().sort(function (a, b) {
       return a.name.localeCompare(b.name);
     }).map(function (s) {
       var stats = DataModel.countStats(s);
       var hours = ScheduleHours.studentHoursSummary(s, semester);
+      var bySpec = isThird ? HoursBySpecialty.studentHoursBySpecialty(s, semester) : null;
       var v = validation.students[s.id];
       return {
         studentName: s.name,
@@ -84,6 +88,8 @@ var AUDIT_APP_VERSION = formatAppVersionLabel(APP_VERSION);
         clinicalHours: hours.clinicalHours,
         simHours: hours.simHours,
         orientationHours: hours.orientationHours,
+        clinicalByTag: bySpec ? bySpec.clinicalByTag : null,
+        simByTag: bySpec ? bySpec.simByTag : null,
         clinicalsRequired: semester.config.clinicalDaysRequired,
         simsRequired: semester.config.simDaysRequired,
         makeupCount: (s.makeups || []).length,
@@ -111,6 +117,9 @@ var AUDIT_APP_VERSION = formatAppVersionLabel(APP_VERSION);
   function coverHtml(semester, hash, version, adminName) {
     var meta = semester.meta;
     var courseName = CourseDefaults ? CourseDefaults.displayName(meta.courseId) : meta.courseId;
+    if (CourseVisibility.isThirdSemester(meta.courseId)) {
+      courseName = 'REGN 35P/36P (merged)';
+    }
     var lead = meta.leadFaculty || {};
     return '<section class="audit-print-cover">' +
       '<h1>Clinical &amp; Simulation Audit Record</h1>' +
@@ -125,21 +134,46 @@ var AUDIT_APP_VERSION = formatAppVersionLabel(APP_VERSION);
       '</tbody></table></section>';
   }
 
+  function tagCell(map, tag) {
+    if (!map) return '—';
+    return ScheduleHours.roundHours(map[tag] || 0);
+  }
+
   function requirementsHtml(semester) {
     var rows = buildRequirementsSummary(semester);
+    var isThird = CourseVisibility.isThirdSemester(semester.meta && semester.meta.courseId);
     var totClinH = 0;
     var totSimH = 0;
     var totOrientH = 0;
+    var totMS = 0;
+    var totOB = 0;
+    var totPEDS = 0;
     var body = rows.map(function (r) {
       totClinH += r.clinicalHours || 0;
       totSimH += r.simHours || 0;
       totOrientH += r.orientationHours || 0;
+      if (r.clinicalByTag) {
+        totMS += (r.clinicalByTag.MS || 0) + (r.simByTag && r.simByTag.MS || 0);
+        totOB += (r.clinicalByTag.OB || 0) + (r.simByTag && r.simByTag.OB || 0);
+        totPEDS += (r.clinicalByTag.PEDS || 0) + (r.simByTag && r.simByTag.PEDS || 0);
+      }
+      var extra = '';
+      if (isThird) {
+        extra =
+          '<td>' + tagCell(r.clinicalByTag, 'MS') + '</td>' +
+          '<td>' + tagCell(r.clinicalByTag, 'OB') + '</td>' +
+          '<td>' + tagCell(r.clinicalByTag, 'PEDS') + '</td>' +
+          '<td>' + tagCell(r.simByTag, 'MS') + '</td>' +
+          '<td>' + tagCell(r.simByTag, 'OB') + '</td>' +
+          '<td>' + tagCell(r.simByTag, 'PEDS') + '</td>';
+      }
       return '<tr>' +
         '<td>' + esc(r.studentName) + '</td>' +
         '<td>' + esc(r.clinicalGroup) + '</td>' +
         '<td>' + esc(r.simGroup) + '</td>' +
         '<td>' + r.clinicals + ' / ' + r.clinicalsRequired + '</td>' +
         '<td>' + r.clinicalHours + '</td>' +
+        extra +
         '<td>' + r.sims + ' / ' + r.simsRequired + '</td>' +
         '<td>' + r.simHours + '</td>' +
         '<td>' + r.orientationHours + '</td>' +
@@ -147,19 +181,38 @@ var AUDIT_APP_VERSION = formatAppVersionLabel(APP_VERSION);
         '<td>' + (r.met ? 'Met' : 'NOT MET') + '</td>' +
         '</tr>';
     }).join('');
+    var colSpanLead = isThird ? 4 : 4;
+    var totalsExtra = '';
+    if (isThird) {
+      totalsExtra =
+        '<td><strong>' + ScheduleHours.roundHours(totMS) + '</strong></td>' +
+        '<td><strong>' + ScheduleHours.roundHours(totOB) + '</strong></td>' +
+        '<td><strong>' + ScheduleHours.roundHours(totPEDS) + '</strong></td>' +
+        '<td colspan="3"></td>';
+    }
     body += '<tr class="audit-print-totals">' +
-      '<td colspan="4"><strong>Cohort hours</strong></td>' +
+      '<td colspan="' + colSpanLead + '"><strong>Cohort hours</strong></td>' +
       '<td><strong>' + ScheduleHours.roundHours(totClinH) + '</strong></td>' +
+      totalsExtra +
       '<td></td>' +
       '<td><strong>' + ScheduleHours.roundHours(totSimH) + '</strong></td>' +
       '<td><strong>' + ScheduleHours.roundHours(totOrientH) + '</strong></td>' +
       '<td colspan="2"></td></tr>';
+    var headExtra = isThird
+      ? '<th>Clin MS</th><th>Clin OB</th><th>Clin PEDS</th>' +
+        '<th>Sim MS</th><th>Sim OB</th><th>Sim PEDS</th>'
+      : '';
+    var note = isThird
+      ? 'Merged REGN 35P/36P clinical hours. Specialty subtotals use facility content tags (clinical) and sim content tags (simulation). '
+      : '';
     return '<section class="audit-print-section"><h2>Requirements summary</h2>' +
-      '<p class="audit-print-hours-note">Hours derived from Setup clinical site times, simulation times, and orientation times. ' +
+      '<p class="audit-print-hours-note">' + note +
+      'Hours derived from Setup clinical site times, simulation times, and orientation times. ' +
       'Met / NOT MET is based on required clinical and simulation <em>days</em>.</p>' +
       '<table class="audit-print-table"><thead><tr>' +
       '<th>Student</th><th>Clin group</th><th>Sim group</th>' +
-      '<th>Clin days</th><th>Clin hours</th><th>Sim days</th><th>Sim hours</th>' +
+      '<th>Clin days</th><th>Clin hours</th>' + headExtra +
+      '<th>Sim days</th><th>Sim hours</th>' +
       '<th>Orient hours</th><th>Makeups</th><th>Status</th>' +
       '</tr></thead><tbody>' + body + '</tbody></table></section>';
   }

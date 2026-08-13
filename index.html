@@ -706,6 +706,11 @@
                                 </div>
                                 <div id="cfgSimTimeOverrides" class="config-list" style="margin-top:0.65rem"></div>
                             </div>
+                            <div class="setup-sim-content-tags-block" style="margin-top:1rem">
+                                <h4 style="margin:0">Simulation content tags</h4>
+                                <p class="section-sub">Specialty tags per sim number (MS → REGN 35P; OB/PEDS → REGN 36P). Used for audit hour subtotals and student calendar labels.</p>
+                                <div id="cfgSimContentTags" class="config-list"></div>
+                            </div>
                             <h4 style="margin:0">Simulation days</h4>
                             <p class="section-sub">Days of the week when simulation sessions may be scheduled.</p>
                             <div id="cfgSimDaysList" class="config-list"></div>
@@ -940,7 +945,7 @@
                     <div class="theory-library-header">
                         <div>
                             <h4 class="section-sub">Content library</h4>
-                            <p class="section-sub theory-library-hint">Topic and skills banks for the event editor — separate from the semester program file.</p>
+                            <p class="section-sub theory-library-hint">Program topic and skills banks for the event editor — tagged by course for filtering and curriculum crosswalk.</p>
                         </div>
                         <div class="theory-library-lock-actions">
                             <button id="theoryLibraryUnlockBtn" class="btn btn-sm hidden" type="button">Unlock editing</button>
@@ -948,8 +953,8 @@
                         </div>
                     </div>
                     <div id="theoryLibraryConnectPrompt" class="clinical-sites-connect-prompt">
-                        <button id="theoryLibraryConnectBtn" class="btn btn-sm" type="button">Connect theory content library</button>
-                        <button id="theoryLibraryCreateBtn" class="btn btn-sm" type="button">New theory content library</button>
+                        <button id="theoryLibraryConnectBtn" class="btn btn-sm" type="button">Connect program content library</button>
+                        <button id="theoryLibraryCreateBtn" class="btn btn-sm" type="button">New program content library</button>
                     </div>
                     <p id="theoryLibraryStatus" class="theory-library-status hidden" role="status"></p>
                     <p id="theoryLibraryUnlockedBanner" class="theory-library-unlocked-banner hidden" role="status">

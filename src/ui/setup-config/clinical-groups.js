@@ -5,7 +5,7 @@ import * as ClinicalSites from '../../core/clinical-sites.js';
 import { getCohortFacilityIdForGroup, cohortFacilitySelectHtml } from '../setup/roster.js';
 import { weekSelectHtml, semesterWeekHintForIndex } from '../setup/holidays-orientations.js';
 import {
-  daySelectHtml, renderSimGroupsList, renderSimDaysList, renderSimTimeOverrides
+  daySelectHtml, renderSimGroupsList, renderSimDaysList, renderSimTimeOverrides, renderSimContentTags
 } from './sim-groups.js';
 import { setupEl, setupQueryAll } from '../setup/scope.js';
 import { escAttr, escHtml } from '../setup/dom-utils.js';
@@ -254,12 +254,14 @@ function refreshDynamicLists(data) {
     var simGroupsList = setupEl('cfgSimGroupsList');
     var simList = setupEl('cfgSimDaysList');
     var simOverrides = setupEl('cfgSimTimeOverrides');
+    var simContentTags = setupEl('cfgSimContentTags');
     var cfg = data.config;
     ScheduleHours.ensureSimTimes(cfg);
     if (clinList) clinList.innerHTML = renderClinicalGroupsList(data);
     if (simGroupsList) simGroupsList.innerHTML = renderSimGroupsList(cfg);
     if (simList) simList.innerHTML = renderSimDaysList(cfg);
     if (simOverrides) simOverrides.innerHTML = renderSimTimeOverrides(cfg);
+    if (simContentTags) simContentTags.innerHTML = renderSimContentTags(cfg);
     var startEl = setupEl('cfgSimDefaultStart');
     var endEl = setupEl('cfgSimDefaultEnd');
     var lunchEl = setupEl('cfgSimLunchBreakMinutes');

@@ -8,6 +8,8 @@ import * as Orientation from '../core/orientation.js';
 import * as ScheduleHours from '../core/schedule-hours.js';
 import * as Validator from '../core/validator.js';
 import * as TheoryData from '../core/theory-data.js';
+import * as CourseVisibility from '../core/course-visibility.js';
+import * as HoursBySpecialty from '../core/hours-by-specialty.js';
 
 var WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -196,9 +198,19 @@ function trackLabel(ev) {
   return ev.track || 'Event';
 }
 
-function renderStudentEventChip(ev) {
+function renderStudentEventChip(ev, semester) {
+  var badge = '';
+  if (semester && CourseVisibility.isThirdSemester(semester.meta && semester.meta.courseId)) {
+    var label = CourseVisibility.eventCourseBadge(ev, semester);
+    if (!label && ev.courseCode) {
+      label = CourseVisibility.formatCourseBadge(ev.courseCode);
+    }
+    if (label) {
+      badge = '<span class="student-cal-chip-course">' + esc(label) + '</span> ';
+    }
+  }
   var html = '<div class="student-cal-chip student-cal-chip-' + esc(ev.track || 'other') + '">' +
-    '<strong>' + esc(ev.title || trackLabel(ev)) + '</strong>';
+    badge + '<strong>' + esc(ev.title || trackLabel(ev)) + '</strong>';
   if (ev.timeStart && ev.timeEnd) {
     html += '<div class="student-cal-chip-time">' +
       esc(ScheduleHours.formatTimeRange(ev.timeStart, ev.timeEnd)) + '</div>';
@@ -231,9 +243,10 @@ function studentDayBands(data, student, weekIndex, weekday, dateIso, showMarkup)
   var week = data.calendar.weeks[weekIndex];
   var hol = holidayLabelForWeek(week);
   var clinDay = DataModel.getClinicalDayForGroup(student.clinicalGroup, data.config);
+  var isThird = CourseVisibility.isThirdSemester(data.meta && data.meta.courseId);
 
   theoryEventsForDate(data.theory, dateIso).forEach(function (ev) {
-    var chip = renderStudentEventChip(ev);
+    var chip = renderStudentEventChip(ev, data);
     if (TheoryData.isPracticumTrackEvent(ev) || ev.track === 'clinical' ||
         ev.track === 'simulation' || ev.track === 'orientation') {
       practicumHtml += chip;
@@ -258,7 +271,14 @@ function studentDayBands(data, student, weekIndex, weekday, dateIso, showMarkup)
     if ((cell.clinical || cell.clinicalMissed || cell.makeupClinical) && weekday === clinDay) {
       var facId = cell.facilityId || student.facilityId;
       var cTimes = ScheduleHours.clinicalTimesForFacility(data, facId);
+      var coursePrefix = '';
+      if (isThird) {
+        coursePrefix = HoursBySpecialty.practicumLabelForClinicalCell(
+          student, data, weekIndex, cell
+        ) + ' · ';
+      }
       var clinicalText =
+        coursePrefix +
         (cell.makeupClinical ? 'Makeup Clinical' : 'Clinical') +
         (facilityLabel(data, facId) ? ' @ ' + facilityLabel(data, facId) : '') +
         ' ' + ScheduleHours.formatTimeRange(cTimes.start, cTimes.end) +
@@ -270,8 +290,12 @@ function studentDayBands(data, student, weekIndex, weekday, dateIso, showMarkup)
     }
     if (cell.sim && (cell.simDay || 'Mon') === weekday) {
       var sTimes = ScheduleHours.simTimesForNum(data, cell.sim);
+      var simPrefix = '';
+      if (isThird) {
+        simPrefix = HoursBySpecialty.practicumLabelForSimCell(data, cell.sim) + ' · ';
+      }
       practicumHtml += renderPracticumLine(
-        'Simulation ' + cell.sim +
+        simPrefix + 'Simulation ' + cell.sim +
         (cell.simGuestGroup ? ' (guest ' + cell.simGuestGroup + ')' : '') +
         ' ' + ScheduleHours.formatTimeRange(sTimes.start, sTimes.end),
         'student-cal-chip-simulation'

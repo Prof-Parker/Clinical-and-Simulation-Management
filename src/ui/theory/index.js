@@ -2,8 +2,7 @@
  * Theory Management — sub-nav router and shared init.
  */
 
-import { getData, getFileRoot, onStateChange } from '../../core/state.js';
-import * as TheoryData from '../../core/theory-data.js';
+import { getData, onStateChange } from '../../core/state.js';
 import * as TheoryLibrary from '../../storage/theory-library-storage.js';
 import { showAlert } from '../dialogs.js';
 import { render as renderMaster, renderTopicLibraryPanel } from './master-calendar.js';
@@ -13,13 +12,6 @@ import { init as initHourSettings } from './hour-settings.js';
 import { init as initMasterSetup } from './master-setup.js';
 import { init as initContentLibrary } from './content-library.js';
 
-function theoryLibraryCourseId() {
-  var root = getFileRoot();
-  var code = root && root.meta && root.meta.activeCourseCode;
-  if (code && TheoryData.isTheoryCourseCode(code)) return code;
-  return 'REGN15';
-}
-
 function initTheoryLibraryButtons() {
   var connectBtn = document.getElementById('theoryLibraryConnectBtn');
   var createBtn = document.getElementById('theoryLibraryCreateBtn');
@@ -27,15 +19,15 @@ function initTheoryLibraryButtons() {
     connectBtn.addEventListener('click', function () {
       TheoryLibrary.openFilePicker().then(function () {
         renderTopicLibraryPanel();
-        showAlert('Connected', 'Theory content library loaded.');
+        showAlert('Connected', 'Program content library loaded.');
       }).catch(function () {});
     });
   }
   if (createBtn) {
     createBtn.addEventListener('click', function () {
-      TheoryLibrary.createFilePicker(theoryLibraryCourseId()).then(function () {
+      TheoryLibrary.createFilePicker(null).then(function () {
         renderTopicLibraryPanel();
-        showAlert('Created', 'New theory content library saved.');
+        showAlert('Created', 'New program content library saved.');
       }).catch(function () {});
     });
   }

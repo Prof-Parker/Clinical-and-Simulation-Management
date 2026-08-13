@@ -5,6 +5,7 @@
 import * as TheoryData from '../../core/theory-data.js';
 import * as TheoryLibrary from '../../storage/theory-library-storage.js';
 import * as SkillPlacements from '../../core/skill-placements.js';
+import * as CourseVisibility from '../../core/course-visibility.js';
 import { formatDisplayDate } from '../../core/calendar-engine.js';
 import { WEEK_COLS, buildMasterCalendarWeeks } from './master-calendar-layout.js';
 
@@ -128,9 +129,21 @@ function renderSkillsLabContent(ev, settings) {
   return '<div class="theory-ev-skills-groups">' + html + '</div>';
 }
 
-function renderEventChip(data, ev, settings, readOnly) {
+function renderEventChip(data, ev, settings, readOnly, options) {
+  options = options || {};
   var dragAttr = readOnly ? '' : ' draggable="true"';
+  var badge = '';
+  if (options.showCourseBadge) {
+    var label = CourseVisibility.eventCourseBadge(ev, data);
+    if (!label && ev.courseCode) {
+      label = CourseVisibility.formatCourseBadge(ev.courseCode);
+    }
+    if (label) {
+      badge = '<span class="theory-ev-course-badge">' + esc(label) + '</span>';
+    }
+  }
   var html = '<div class="' + TheoryData.trackCssClass(ev) + '" data-event-id="' + esc(ev.id) + '"' + dragAttr + '>' +
+    badge +
     '<strong>' + esc(ev.title || ev.track) + '</strong>';
   if (ev.timeStart) {
     html += '<div class="theory-ev-time">' + ev.timeStart + '–' + (ev.timeEnd || '') + '</div>';
@@ -146,12 +159,15 @@ function renderEventChip(data, ev, settings, readOnly) {
 
 /**
  * @param {object} data
- * @param {{ readOnly?: boolean }} [options]
+ * @param {{ readOnly?: boolean, courseCode?: string|null, showCourseBadge?: boolean }} [options]
  * @returns {string}
  */
 export function buildMasterCalendarHtml(data, options) {
   options = options || {};
   var readOnly = !!options.readOnly;
+  var filterCode = options.courseCode || null;
+  var showBadge = !!options.showCourseBadge ||
+    CourseVisibility.isThirdSemester(data && data.meta && data.meta.courseId);
   if (!data || !data.theory) {
     return '<p class="section-sub">No theory / skills calendar for this course.</p>';
   }
@@ -166,8 +182,12 @@ export function buildMasterCalendarHtml(data, options) {
     var dayMeta = week.days.map(function (cell) {
       var theoryHtml = '';
       var practicumHtml = '';
-      (cell.events || []).forEach(function (ev) {
-        var chip = renderEventChip(data, ev, settings, readOnly);
+      var events = cell.events || [];
+      if (filterCode) {
+        events = CourseVisibility.filterEventsForCourse(events, filterCode, data);
+      }
+      events.forEach(function (ev) {
+        var chip = renderEventChip(data, ev, settings, readOnly, { showCourseBadge: showBadge });
         if (TheoryData.isPracticumTrackEvent(ev)) practicumHtml += chip;
         else theoryHtml += chip;
       });
@@ -185,7 +205,9 @@ export function buildMasterCalendarHtml(data, options) {
     html += '<tr class="theory-week-theory-row' + zebra + '">';
     html += '<td class="theory-week-label" rowspan="3">Wk ' + week.weekLabel + '</td>';
     dayMeta.forEach(function (meta) {
-      html += '<td class="theory-day-cell theory-day-theory-cell" data-date="' + meta.date + '">';
+      html += '<td class="theory-day-cell theory-day-theory-cell" data-date="' + meta.date + '"';
+      if (filterCode) html += ' data-course-code="' + esc(filterCode) + '"';
+      html += '>';
       if (meta.date) {
         html += '<div class="theory-day-date">' + formatDisplayDate(meta.date) + '</div>';
       }
@@ -199,7 +221,9 @@ export function buildMasterCalendarHtml(data, options) {
 
     html += '<tr class="theory-week-practicum-row' + zebra + '">';
     dayMeta.forEach(function (meta) {
-      html += '<td class="theory-day-cell theory-day-practicum-cell" data-date="' + meta.date + '">' +
+      html += '<td class="theory-day-cell theory-day-practicum-cell" data-date="' + meta.date + '"';
+      if (filterCode) html += ' data-course-code="' + esc(filterCode) + '"';
+      html += '>' +
         '<div class="theory-day-practicum-band">' + meta.practicumHtml + '</div></td>';
     });
     html += '</tr>';

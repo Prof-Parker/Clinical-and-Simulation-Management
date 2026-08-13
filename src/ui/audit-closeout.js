@@ -7,6 +7,9 @@ import * as AuditExport from '../audit/audit-export.js';
 import * as CourseDefaults from '../core/course-defaults.js';
 import * as DataModel from '../core/data-model/index.js';
 import * as MakeupDisplay from '../core/makeup-display.js';
+import * as CourseVisibility from '../core/course-visibility.js';
+import * as HoursBySpecialty from '../core/hours-by-specialty.js';
+import * as ScheduleHours from '../core/schedule-hours.js';
 import { escapeHtml, showAlert, showConfirm } from './dialogs.js';
 import { getData, notifyChange } from '../core/state.js';
 
@@ -187,6 +190,38 @@ var groupFilter = '';
       '</section>';
   }
 
+  function hoursSummaryHtml(data) {
+    if (!CourseVisibility.isThirdSemester(data.meta && data.meta.courseId)) return '';
+    var rows = (data.students || []).slice().sort(function (a, b) {
+      return a.name.localeCompare(b.name);
+    });
+    if (!rows.length) {
+      return '<section class="card audit-card"><h3 class="section-title">Clinical hours (merged 35P/36P)</h3>' +
+        '<p class="section-sub">No students on the roster yet.</p></section>';
+    }
+    var body = rows.map(function (s) {
+      var h = HoursBySpecialty.studentHoursBySpecialty(s, data);
+      return '<tr>' +
+        '<td>' + esc(s.name) + '</td>' +
+        '<td>' + esc(s.clinicalGroup) + '</td>' +
+        '<td>' + ScheduleHours.roundHours(h.clinicalHours) + '</td>' +
+        '<td>' + ScheduleHours.roundHours(h.clinicalByTag.MS || 0) + '</td>' +
+        '<td>' + ScheduleHours.roundHours(h.clinicalByTag.OB || 0) + '</td>' +
+        '<td>' + ScheduleHours.roundHours(h.clinicalByTag.PEDS || 0) + '</td>' +
+        '<td>' + ScheduleHours.roundHours(h.simHours) + '</td>' +
+        '<td>' + ScheduleHours.roundHours(h.simByTag.MS || 0) + '</td>' +
+        '<td>' + ScheduleHours.roundHours(h.simByTag.OB || 0) + '</td>' +
+        '<td>' + ScheduleHours.roundHours(h.simByTag.PEDS || 0) + '</td>' +
+        '</tr>';
+    }).join('');
+    return '<section class="card audit-card"><h3 class="section-title">Clinical hours (merged 35P/36P)</h3>' +
+      '<p class="section-sub">Total clinical hours plus specialty subtotals. Clinical uses facility content tags; sims use Setup sim content tags (MS → 35P, OB/PEDS → 36P).</p>' +
+      '<div class="audit-makeup-table-wrap"><table class="audit-makeup-table">' +
+      '<thead><tr><th>Student</th><th>Group</th><th>Clin total</th><th>Clin MS</th><th>Clin OB</th><th>Clin PEDS</th>' +
+      '<th>Sim total</th><th>Sim MS</th><th>Sim OB</th><th>Sim PEDS</th></tr></thead>' +
+      '<tbody>' + body + '</tbody></table></div></section>';
+  }
+
   function render(data) {
     var container = document.getElementById('auditCloseout');
     if (!container) return;
@@ -202,6 +237,7 @@ var groupFilter = '';
     container.innerHTML =
       emptyState +
       statusCardHtml(data) +
+      hoursSummaryHtml(data) +
       adminControlsHtml(data) +
       attestationSectionHtml(data);
   }

@@ -48,7 +48,8 @@ export function inferFromFilenameOnly(name) {
   if (/^users-registry\.json$/i.test(name)) return 'users_registry';
   if (/\.user\.json$/i.test(name)) return 'user_credential';
   if (/^clinical-sites-library\.json$/i.test(name)) return 'clinical_sites_library';
-  if (/^theory-content-library_/i.test(name) && /\.json$/i.test(name)) {
+  if ((/^theory-content-library_/i.test(name) || /^program-content-library\.json$/i.test(name)) &&
+      /\.json$/i.test(name)) {
     return 'theory_content_library';
   }
   if (/_playground\.json$/i.test(name)) return 'playground';

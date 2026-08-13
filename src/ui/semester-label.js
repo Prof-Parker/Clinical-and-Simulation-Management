@@ -54,15 +54,24 @@ export function courseStatusAriaLabel(parts, code, phase) {
 
 /** Friendly picker label — REGN15 / REGN15P stay separate options. */
 export function formatCourseDisplayLabel(code) {
-  var c = String(code || '').toUpperCase();
+  var c = String(code || '').toUpperCase().replace(/\s+/g, '');
   if (c === 'REGN15') return '1st Semester · Theory (REGN15)';
   if (c === 'REGN15P') return '1st Semester · Practicum (REGN15P)';
+  if (c === 'REGN35') return '3rd Semester · Theory (REGN35)';
+  if (c === 'REGN36') return '3rd Semester · Theory (REGN36)';
+  if (c === 'REGN35P') return '3rd Semester · Practicum (REGN35P)';
+  if (c === 'REGN36P') return '3rd Semester · Practicum (REGN36P)';
+  if (c === 'REGN35P-36P') return '3rd Semester · Practicum (REGN35P/36P)';
   return code || '';
 }
 
 /** Compact chip label when either 1st-semester code is active. */
 export function formatCourseCompactLabel(code) {
-  var c = String(code || '').toUpperCase();
+  var c = String(code || '').toUpperCase().replace(/\s+/g, '');
   if (c === 'REGN15' || c === 'REGN15P') return '1st Semester';
+  if (c === 'REGN35' || c === 'REGN36' || c === 'REGN35P' || c === 'REGN36P' ||
+      c === 'REGN35P-36P') {
+    return '3rd Semester';
+  }
   return code || '';
 }

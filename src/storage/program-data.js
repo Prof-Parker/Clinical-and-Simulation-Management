@@ -7,7 +7,7 @@
  *     semesters/*.json
  *     playgrounds/*.json
  *     clinical-sites-library.json
- *     theory-content-library_*.json
+ *     program-content-library.json (legacy theory-content-library_*.json still loads)
  */
 
 import * as FileKind from '../core/file-kind.js';
@@ -235,6 +235,13 @@ export function listSemesterFiles() {
 }
 
 export function theoryLibraryPath(courseId) {
+  // Program-wide catalog; courseId kept for call-site compatibility.
+  void courseId;
+  return 'program-content-library.json';
+}
+
+/** Legacy per-course path used as migration fallback when program file is missing. */
+export function theoryLibraryLegacyPath(courseId) {
   var id = courseId || 'REGN15';
   return 'theory-content-library_' + id + '.json';
 }

@@ -6,6 +6,8 @@
 import * as CalendarEngine from '../core/calendar-engine.js';
 import * as DataModel from '../core/data-model/index.js';
 import * as ScheduleHours from '../core/schedule-hours.js';
+import * as CourseVisibility from '../core/course-visibility.js';
+import * as HoursBySpecialty from '../core/hours-by-specialty.js';
 import { dateForWeekdayInWeek } from '../core/theory-modules.js';
 import { APP_VERSION } from '../app-version.js';
 
@@ -107,6 +109,7 @@ function assignmentDueHhmm(ev) {
 
 function collectPracticumEvents(semester, student) {
   var events = [];
+  var isThird = CourseVisibility.isThirdSemester(semester.meta && semester.meta.courseId);
   var clinDay = DataModel.getClinicalDayForGroup(student.clinicalGroup, semester.config);
   for (var wi = 0; wi < 18; wi++) {
     var cell = student.schedule && student.schedule[wi];
@@ -117,9 +120,15 @@ function collectPracticumEvents(semester, student) {
       var facId = cell.facilityId || student.facilityId;
       var cTimes = ScheduleHours.clinicalTimesForFacility(semester, facId);
       var site = facilityLabel(semester, facId);
+      var clinSummary = cell.makeupClinical ? 'Makeup Clinical' : 'Clinical';
+      if (isThird) {
+        clinSummary = HoursBySpecialty.practicumLabelForClinicalCell(
+          student, semester, wi, cell
+        ) + ' · ' + clinSummary;
+      }
       events.push(makeTimedEvent({
         uid: uidFor(student, cell.makeupClinical ? 'makeup-clinical' : 'clinical', dateClin, wi),
-        summary: cell.makeupClinical ? 'Makeup Clinical' : 'Clinical',
+        summary: clinSummary,
         date: dateClin,
         start: cTimes.start,
         end: cTimes.end,
@@ -133,9 +142,14 @@ function collectPracticumEvents(semester, student) {
       var dateSim = dateForWeekdayInWeek(semester, wi, simDay);
       if (dateSim) {
         var sTimes = ScheduleHours.simTimesForNum(semester, cell.sim);
+        var simSummary = 'Simulation ' + cell.sim;
+        if (isThird) {
+          simSummary = HoursBySpecialty.practicumLabelForSimCell(semester, cell.sim) +
+            ' · ' + simSummary;
+        }
         events.push(makeTimedEvent({
           uid: uidFor(student, 'sim', dateSim, cell.sim),
-          summary: 'Simulation ' + cell.sim,
+          summary: simSummary,
           date: dateSim,
           start: sTimes.start,
           end: sTimes.end,
@@ -169,9 +183,13 @@ function collectTheoryEvents(semester, student) {
     (day.events || []).forEach(function (ev, idx) {
       if (!ev) return;
       if (ev.track === 'theory') {
+        var lectureSummary = 'Lecture';
+        if (ev.courseCode) {
+          lectureSummary = CourseVisibility.formatCourseBadge(ev.courseCode) + ' · Lecture';
+        }
         events.push(makeTimedEvent({
           uid: uidFor(student, 'lecture', dateIso, ev.id || idx),
-          summary: 'Lecture',
+          summary: lectureSummary,
           date: dateIso,
           start: ev.timeStart || defaults.lectureStart,
           end: ev.timeEnd || defaults.lectureEnd
@@ -179,9 +197,13 @@ function collectTheoryEvents(semester, student) {
         return;
       }
       if (ev.track === 'skills') {
+        var skillsSummary = 'Skills lab';
+        if (ev.courseCode) {
+          skillsSummary = CourseVisibility.formatCourseBadge(ev.courseCode) + ' · Skills lab';
+        }
         events.push(makeTimedEvent({
           uid: uidFor(student, 'skills', dateIso, ev.id || idx),
-          summary: 'Skills lab',
+          summary: skillsSummary,
           date: dateIso,
           start: ev.timeStart || defaults.skillsStart,
           end: ev.timeEnd || defaults.skillsEnd
