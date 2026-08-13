@@ -63,13 +63,22 @@ export function pickBestFile(files, season, year, courseId) {
   return matches[0];
 }
 
-export function findInFileSemester(season, year) {
+export function findInFileSemester(season, year, courseId) {
   var fileRoot = getFileRoot();
   if (!fileRoot || !fileRoot.semesters) return null;
-  return fileRoot.semesters.find(function (sem) {
+  var matches = fileRoot.semesters.filter(function (sem) {
     var p = DataModel.parseSemesterDisplay(sem);
     return p.season === season && String(p.year) === String(year);
-  }) || null;
+  });
+  if (!matches.length) return null;
+  if (courseId) {
+    var exact = matches.find(function (sem) {
+      return String(sem.meta && sem.meta.courseId || '').toLowerCase() ===
+        String(courseId).toLowerCase();
+    });
+    if (exact) return exact;
+  }
+  return matches[0];
 }
 
 function closeMenu() {
@@ -186,6 +195,7 @@ export function listInFileOptions(parts) {
       year: parseInt(p.year, 10) || parseInt(parts.year, 10),
       fileName: null,
       semesterId: sem.id,
+      courseId: (sem.meta && sem.meta.courseId) || '',
       finalized: !!p.finalized,
       current: sem.id === activeId
     };
@@ -236,7 +246,7 @@ function renderProgramDataMenu(files) {
   var neighbors = neighborSemesters(parts.season, year, 2);
   var options = neighbors.map(function (n) {
     var file = pickBestFile(files, n.season, n.year, courseId);
-    var inFile = findInFileSemester(n.season, n.year);
+    var inFile = findInFileSemester(n.season, n.year, courseId);
     return {
       season: n.season,
       year: n.year,
@@ -304,7 +314,7 @@ function openSearchDialog() {
 
 function resolveAndSwitch(season, year) {
   var courseId = preferredCourseId();
-  var inFile = findInFileSemester(season, year);
+  var inFile = findInFileSemester(season, year, courseId);
   if (inFile && getData() && inFile.id === getData().id) return;
 
   function withFiles(files) {

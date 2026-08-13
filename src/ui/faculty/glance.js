@@ -3,7 +3,13 @@
  */
 
 import { escapeHtml } from '../dialogs.js';
+import { getFileRoot } from '../../core/state.js';
 import { listAllSlots } from '../../core/faculty-schedule/slot-inventory.js';
+import {
+  listProgramSlots,
+  listProgramMyAssignedSlots,
+  listAllSubstitutes
+} from '../../core/faculty-schedule/program-inventory.js';
 import { listMyAssignedSlots } from '../../proposals/substitute-proposals.js';
 import {
   groupSlots,
@@ -25,11 +31,21 @@ function shortName(fullName) {
   return parts[0].charAt(0).toUpperCase() + '. ' + parts[parts.length - 1];
 }
 
-function glanceEventsForUser(semester, session) {
-  var assigned = session
-    ? listMyAssignedSlots(semester, session)
-    : listAllSlots(semester).filter(function (s) { return !s.open; });
-  var subs = (semester.facultySchedule && semester.facultySchedule.substitutes) || [];
+function glanceEventsForUser(semester, session, fileRoot) {
+  fileRoot = fileRoot || getFileRoot();
+  var assigned;
+  var subs;
+  if (fileRoot && Array.isArray(fileRoot.semesters) && fileRoot.semesters.length) {
+    assigned = session
+      ? listProgramMyAssignedSlots(fileRoot, session)
+      : listProgramSlots(fileRoot).filter(function (s) { return !s.open; });
+    subs = listAllSubstitutes(fileRoot);
+  } else {
+    assigned = session
+      ? listMyAssignedSlots(semester, session)
+      : listAllSlots(semester).filter(function (s) { return !s.open; });
+    subs = (semester.facultySchedule && semester.facultySchedule.substitutes) || [];
+  }
   var events = [];
   assigned.forEach(function (slot) {
     (slot.instances || []).forEach(function (inst) {
@@ -75,9 +91,9 @@ function glanceDayHtml(ctx, subByDateSlot, expandedMap) {
   return html;
 }
 
-function glanceHtml(semester, session, expandedGroups) {
+function glanceHtml(semester, session, expandedGroups, fileRoot) {
   expandedGroups = expandedGroups || {};
-  var events = glanceEventsForUser(semester, session);
+  var events = glanceEventsForUser(semester, session, fileRoot);
   var byDate = {};
   var subByDateSlot = {};
 

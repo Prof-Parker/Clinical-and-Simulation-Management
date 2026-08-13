@@ -19,7 +19,7 @@ mock-onedrive/
 ├── users/
 │   └── users-registry.json
 ├── semesters/
-│   └── F2026_REGN_program.json   ← consolidated term file (theory + REGN15P)
+│   └── F2026_REGN_program.json   ← Fall 2026 program file (REGN15P + REGN35P-36P)
 ├── program-content-library.json  ← preferred program-wide topics/skills (courseIds tags)
 ├── theory-content-library_REGN15.json  ← legacy seed; still loads as migration fallback
 ├── playgrounds/
@@ -29,7 +29,12 @@ mock-onedrive/
 
 Sign-in is **email + password** against `users-registry.json`. Identity `*.user.json` files are no longer seeded.
 
-Theory calendar data is imported from the Fall 2026 prototype docx files under `docs/Design Docs/protypes/`.
+Theory calendar data is imported from Fall 2026 prototypes under `docs/Design Docs/protypes/`:
+
+- REGN 15/15P from the lecture / coordinator / detailed **docx** files
+- REGN 35/35P from `35.xlsx` (lecture, skills, orientation, clinical, and sim events with Faculty Needed slots)
+
+`F2026_REGN_program.json` contains **two** in-file semesters for the same term: REGN 15/15P (practicum scheduler runs) and REGN 35P-36P (events only — practicum generate is skipped; 36/36P events come later). Faculty Schedule inventories **both** semesters. Clinical sites include Mercy Medical Center Redding (`MMCR`, MS) for 35 clinicals.
 
 All names use placeholders only (`Student 1`, `Program Engineer`, etc.).
 

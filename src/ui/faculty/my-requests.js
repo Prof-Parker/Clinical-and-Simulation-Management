@@ -7,20 +7,35 @@ import * as Permissions from '../../auth/permissions.js';
 import * as UserSession from '../../auth/user-session.js';
 import * as UsersRegistryStorage from '../../storage/users-registry-storage.js';
 import * as ScheduleProposals from '../../proposals/schedule-proposals.js';
+import { listProgramMyAssignedSlots, semesterForSlotId } from '../../core/faculty-schedule/program-inventory.js';
 
 function esc(s) {
   return escapeHtml(s == null ? '' : String(s));
 }
 
-function myRequestsHtml(semester) {
+function collectProposals(fileRoot, semester) {
+  if (fileRoot && fileRoot.semesters && fileRoot.semesters.length) {
+    var out = [];
+    fileRoot.semesters.forEach(function (sem) {
+      (sem.proposals || []).forEach(function (p) { out.push(p); });
+    });
+    return out;
+  }
+  return semester.proposals || [];
+}
+
+function myRequestsHtml(semester, fileRoot) {
   var session = UserSession.getSession();
   if (!session) return '<p class="section-sub">Sign in to view your requests.</p>';
-  var mine = (semester.proposals || []).filter(function (p) {
+  var allProps = collectProposals(fileRoot, semester);
+  var mine = allProps.filter(function (p) {
     return p.proposedBy && p.proposedBy.userId === session.userId &&
       (p.kind === 'self_schedule' || p.kind === 'substitute');
   });
-  var assigned = ScheduleProposals.listMyAssignedSlots(semester, session);
-  var openPosts = (semester.proposals || []).filter(function (p) {
+  var assigned = fileRoot
+    ? listProgramMyAssignedSlots(fileRoot, session)
+    : ScheduleProposals.listMyAssignedSlots(semester, session);
+  var openPosts = allProps.filter(function (p) {
     return p.kind === 'substitute' && p.openPosting;
   });
 
@@ -64,12 +79,14 @@ function myRequestsHtml(semester) {
   return html;
 }
 
-function wire(root, semester, onDone) {
+function wire(root, semester, onDone, fileRoot) {
   if (!root) return;
   root.querySelectorAll('[data-req-sub]').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var slotId = btn.getAttribute('data-req-sub');
-      var slot = ScheduleProposals.listMyAssignedSlots(semester, UserSession.getSession())
+      var slot = (fileRoot
+        ? listProgramMyAssignedSlots(fileRoot, UserSession.getSession())
+        : ScheduleProposals.listMyAssignedSlots(semester, UserSession.getSession()))
         .find(function (s) { return s.slotId === slotId; });
       if (!slot) return;
       var dateOpts = (slot.instances || []).slice(0, 14).map(function (inst) {
@@ -108,8 +125,11 @@ function wire(root, semester, onDone) {
               });
             });
           }
+          var target = (fileRoot && slot && slot.semesterId)
+            ? (semesterForSlotId(fileRoot, slot.slotId) || semester)
+            : semester;
           var result = ScheduleProposals.submitSubstituteRequest(
-            semester,
+            target,
             slotId,
             covers,
             UserSession.getSession(),

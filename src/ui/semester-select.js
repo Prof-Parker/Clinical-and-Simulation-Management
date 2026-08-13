@@ -15,6 +15,7 @@ import {
   parseSemesterFileName,
   neighborSemesters
 } from './semester-picker.js';
+import { formatCourseCompactLabel } from './semester-label.js';
 
 /**
  * @returns {Promise<Array<{ value: string, label: string, current: boolean }>>}
@@ -24,9 +25,13 @@ export function listSemesterSelectOptions() {
     return raw.map(function (opt) {
       var seasonLabel = opt.season === 'fall' ? 'Fall' : 'Spring';
       var value = [opt.season, opt.year, opt.fileName || '', opt.semesterId || ''].join('|');
+      var course = formatCourseCompactLabel(opt.courseId);
+      var label = seasonLabel + ' ' + opt.year +
+        (course ? ' · ' + course : '') +
+        (opt.current ? ' (current)' : '');
       return {
         value: value,
-        label: seasonLabel + ' ' + opt.year + (opt.current ? ' (current)' : ''),
+        label: label,
         current: !!opt.current
       };
     });
@@ -66,12 +71,13 @@ export function listSemesterSelectOptions() {
     var neighbors = neighborSemesters(parts.season, year, 2);
     var options = neighbors.map(function (n) {
       var file = pickBestFile(files, n.season, n.year, courseId);
-      var inFile = findInFileSemester(n.season, n.year);
+      var inFile = findInFileSemester(n.season, n.year, courseId);
       return {
         season: n.season,
         year: n.year,
         fileName: file ? file.fileName : null,
         semesterId: inFile ? inFile.id : null,
+        courseId: (inFile && inFile.meta && inFile.meta.courseId) || '',
         finalized: inFile ? !!(inFile.meta && inFile.meta.finalized) : true,
         current: false
       };
@@ -83,6 +89,7 @@ export function listSemesterSelectOptions() {
       year: year,
       fileName: state.fileName || null,
       semesterId: getData() && getData().id,
+      courseId: (getData() && getData().meta && getData().meta.courseId) || courseId || '',
       finalized: parts.finalized,
       current: true
     });

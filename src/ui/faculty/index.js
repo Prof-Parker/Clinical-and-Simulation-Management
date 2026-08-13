@@ -5,6 +5,7 @@
 import * as Permissions from '../../auth/permissions.js';
 import * as UserSession from '../../auth/user-session.js';
 import { showAlert } from '../dialogs.js';
+import { getFileRoot } from '../../core/state.js';
 import * as Browse from './browse.js';
 import * as Cart from './cart.js';
 import * as AdminReview from './admin-review.js';
@@ -87,6 +88,7 @@ function render(data) {
     return;
   }
   var session = UserSession.getSession();
+  var fileRoot = getFileRoot();
   var html = '<div class="faculty-schedule-shell">' +
     '<header class="faculty-schedule-header">' +
     '<h2 class="section-title" style="margin-top:0">Faculty Schedule</h2>' +
@@ -94,26 +96,27 @@ function render(data) {
     '</header>' +
     '<div id="facultyScheduleBody"></div></div>';
   root.innerHTML = html;
-  renderBody(data, session);
+  renderBody(data, session, fileRoot);
   wireShell(data);
 }
 
-function renderBody(data, session) {
+function renderBody(data, session, fileRoot) {
   clearOutsideCollapseListener();
   var body = document.getElementById('facultyScheduleBody');
   if (!body) return;
+  fileRoot = fileRoot || getFileRoot();
   if (panelState.subtab === 'admin') {
-    body.innerHTML = AdminReview.panelHtml(data);
-    AdminReview.wire(body, data, function () { render(data); });
+    body.innerHTML = AdminReview.panelHtml(data, fileRoot);
+    AdminReview.wire(body, data, function () { render(data); }, fileRoot);
     return;
   }
   if (panelState.subtab === 'requests') {
-    body.innerHTML = MyRequests.myRequestsHtml(data);
-    MyRequests.wire(body, data, function () { render(data); });
+    body.innerHTML = MyRequests.myRequestsHtml(data, fileRoot);
+    MyRequests.wire(body, data, function () { render(data); }, fileRoot);
     return;
   }
   if (panelState.subtab === 'glance') {
-    body.innerHTML = Glance.glanceHtml(data, session, panelState.expandedGroups);
+    body.innerHTML = Glance.glanceHtml(data, session, panelState.expandedGroups, fileRoot);
     wireGlance(data, session);
     return;
   }
@@ -123,15 +126,15 @@ function renderBody(data, session) {
   if (!document.getElementById('facultyFilters')) {
     filters = { courseId: '', kind: '', siteId: '', weekday: '', showAll: false, openOnly: true };
   }
-  var slots = Browse.visibleSlots(data, session, filters);
+  var slots = Browse.visibleSlots(data, session, filters, fileRoot);
   var allForFilters = Browse.visibleSlots(data, session, {
     courseId: '', kind: '', siteId: '', weekday: '', showAll: true, openOnly: true
-  });
+  }, fileRoot);
   body.innerHTML =
     Browse.filtersHtml(allForFilters, filters) +
     '<div class="faculty-browse-layout">' +
     Browse.calendarHtml(data, slots, Cart.getCartIds(), panelState.expandedGroups) +
-    Cart.cartPanelHtml(data) +
+    Cart.cartPanelHtml(data, fileRoot) +
     '</div>';
   wireBrowse(data, session);
 }
@@ -204,7 +207,7 @@ function wireBrowse(data, session) {
   var submitBtn = document.getElementById('facultyCartSubmitBtn');
   if (submitBtn) {
     submitBtn.addEventListener('click', function () {
-      Cart.submitCart(data, function () { render(data); });
+      Cart.submitCart(data, function () { render(data); }, getFileRoot());
     });
   }
   wireOutsideCollapse(refreshBrowse);

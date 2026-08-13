@@ -290,6 +290,9 @@ function eventSlotKind(ev) {
   var has = function (name) {
     return type === name || track === name || cats.indexOf(name) >= 0;
   };
+  if (has('orientation')) return 'skills';
+  if (has('simulation') || has('sim')) return 'sim';
+  if (has('clinical')) return 'clinical';
   if (has('skills_lab') || has('skills')) return 'skills';
   if (has('lecture') || has('guest_lecture') || track === 'theory') return 'lecture';
   return '';
@@ -313,7 +316,10 @@ function theorySlots(semester) {
         var start = ScheduleHours.normalizeHhmm(ev.timeStart || day.timeStart, '0800');
         var end = ScheduleHours.normalizeHhmm(ev.timeEnd || day.timeEnd, '1200');
         var wd = fullWeekday(day.weekday) || weekdayFromDate(day.date);
-        var key = [kind, wd, start, end, ev.courseCode || ''].join('|');
+        var siteKey = ev.facilityId || ev.siteId || '';
+        var groupKey = Array.isArray(ev.groups) ? ev.groups.join(',') : '';
+        var key = [kind, wd, start, end, ev.courseCode || '', siteKey, groupKey].join('|');
+        var tags = normalizeSpecialties(ev.contentTags);
         if (!groups[key]) {
           groups[key] = {
             kind: kind,
@@ -321,6 +327,11 @@ function theorySlots(semester) {
             timeStart: start,
             timeEnd: end,
             courseCode: ev.courseCode || '',
+            facilityId: siteKey,
+            siteId: siteKey,
+            siteLabel: ev.siteLabel || '',
+            clinicalGroup: (ev.groups && ev.groups[0]) || '',
+            specialties: tags,
             capacity: 0,
             refs: [],
             instances: {}
@@ -350,7 +361,9 @@ function theorySlots(semester) {
     var g = groups[key];
     var specs = g.kind === 'lecture'
       ? ['Lec']
-      : defaultSpecialties(semester, 'skills');
+      : (g.specialties && g.specialties.length
+        ? g.specialties
+        : defaultSpecialties(semester, g.kind === 'clinical' || g.kind === 'sim' ? g.kind : 'skills'));
     var slot = makeBase(semester, {
       slotId: 'theory:' + key,
       kind: g.kind,
@@ -360,6 +373,10 @@ function theorySlots(semester) {
       timeStart: g.timeStart,
       timeEnd: g.timeEnd,
       weekday: g.weekday,
+      facilityId: g.facilityId || '',
+      siteId: g.siteId || '',
+      siteLabel: g.siteLabel || '',
+      clinicalGroup: g.clinicalGroup || '',
       open: g.capacity > 0,
       capacity: g.capacity,
       openCount: g.capacity,
@@ -385,7 +402,10 @@ function listOpenSlots(semester) {
 }
 
 function findSlotById(semester, slotId) {
-  return listAllSlots(semester).find(function (s) { return s.slotId === slotId; }) || null;
+  var id = String(slotId || '');
+  var prefix = semester && semester.id ? semester.id + '::' : '';
+  if (prefix && id.indexOf(prefix) === 0) id = id.slice(prefix.length);
+  return listAllSlots(semester).find(function (s) { return s.slotId === id; }) || null;
 }
 
 function filterSlots(slots, filters) {

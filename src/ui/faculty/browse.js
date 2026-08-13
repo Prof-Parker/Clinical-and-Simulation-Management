@@ -4,6 +4,10 @@
 
 import { escapeHtml } from '../dialogs.js';
 import { listOpenSlots, filterSlots, listAllSlots } from '../../core/faculty-schedule/slot-inventory.js';
+import {
+  listProgramSlots,
+  listProgramOpenSlots
+} from '../../core/faculty-schedule/program-inventory.js';
 import { userCanSeeSlot } from '../../core/faculty-schedule/slot-rules.js';
 import { dayCellChipsHtml } from './chips.js';
 import {
@@ -112,9 +116,16 @@ function calendarHtml(semester, slots, cartIds, expandedGroups) {
     '</section>';
 }
 
-function visibleSlots(semester, session, filters) {
+function visibleSlots(semester, session, filters, fileRoot) {
   filters = filters || {};
-  var all = filters.openOnly === false ? listAllSlots(semester) : listOpenSlots(semester);
+  var all;
+  if (fileRoot && Array.isArray(fileRoot.semesters) && fileRoot.semesters.length) {
+    all = filters.openOnly === false
+      ? listProgramSlots(fileRoot)
+      : listProgramOpenSlots(fileRoot);
+  } else {
+    all = filters.openOnly === false ? listAllSlots(semester) : listOpenSlots(semester);
+  }
   var filtered = filterSlots(all, filters);
   var specs = (session && session.specialties) || [];
   // No specialties configured → show all open slots (signup still validates tags).

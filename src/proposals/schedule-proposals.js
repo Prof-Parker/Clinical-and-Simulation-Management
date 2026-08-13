@@ -3,6 +3,10 @@
  */
 
 import { findSlotById } from '../core/faculty-schedule/slot-inventory.js';
+import {
+  findProgramSlotById,
+  semesterForSlotId
+} from '../core/faculty-schedule/program-inventory.js';
 import { validateCart } from '../core/faculty-schedule/slot-rules.js';
 import { FACULTY_NEEDED_NAME } from '../core/theory-events.js';
 import * as MessageEmit from '../messages/message-emit.js';
@@ -64,26 +68,31 @@ function submitSelfSchedule(semester, slotIds, session, opts) {
     if (!slot || !slot.open || slot.openCount < 1) {
       return { error: 'Slot is not available: ' + slotIds[i] };
     }
-    if (hasPendingSlot(semester, session.userId, slot.slotId)) {
-      return { error: 'You already have a pending request for ' + slot.slotId };
+    if (hasPendingSlot(semester, session.userId, slotIds[i]) ||
+        hasPendingSlot(semester, session.userId, slot.slotId)) {
+      return { error: 'You already have a pending request for ' + slotIds[i] };
     }
     slots.push(slot);
   }
   if (!slots.length) return { error: 'Select at least one slot' };
 
-  var check = validateCart(slots, session.specialties || [], {
-    allowSpecialtyOverride: !!opts.allowSpecialtyOverride,
-    allowHoursOverride: !!opts.allowHoursOverride
-  });
-  if (!check.ok) return { error: check.errors.join(' '), errors: check.errors };
+  if (!opts.skipValidate) {
+    var check = validateCart(slots, session.specialties || [], {
+      allowSpecialtyOverride: !!opts.allowSpecialtyOverride,
+      allowHoursOverride: !!opts.allowHoursOverride
+    });
+    if (!check.ok) return { error: check.errors.join(' '), errors: check.errors };
+  }
 
+  var storedIds = (slotIds || []).slice();
   var proposal = {
     id: uid('prop_'),
     kind: 'self_schedule',
     status: 'pending',
+    semesterId: semester.id,
     path: 'facultySchedule.self_schedule',
     currentValue: null,
-    proposedValue: { slotIds: slots.map(function (s) { return s.slotId; }) },
+    proposedValue: { slotIds: storedIds },
     proposedBy: proposerFromSession(session),
     proposedAt: new Date().toISOString(),
     reviewedBy: null,
@@ -92,9 +101,9 @@ function submitSelfSchedule(semester, slotIds, session, opts) {
       proposer: String(opts.note || ''),
       reviewer: ''
     },
-    items: slots.map(function (s) {
+    items: slots.map(function (s, idx) {
       return {
-        slotId: s.slotId,
+        slotId: storedIds[idx] || s.slotId,
         kind: s.kind,
         courseId: s.courseId,
         label: summarizeSlot(s),
@@ -109,6 +118,56 @@ function submitSelfSchedule(semester, slotIds, session, opts) {
   return { ok: true, proposal: proposal };
 }
 
+function submitSelfScheduleProgram(fileRoot, slotIds, session, opts) {
+  opts = opts || {};
+  var slots = [];
+  var i;
+  for (i = 0; i < (slotIds || []).length; i++) {
+    var slot = findProgramSlotById(fileRoot, slotIds[i]) ||
+      (fileRoot.semesters || []).reduce(function (found, sem) {
+        return found || findSlotById(sem, slotIds[i]);
+      }, null);
+    if (!slot || !slot.open || slot.openCount < 1) {
+      return { error: 'Slot is not available: ' + slotIds[i] };
+    }
+    if (!slot.semesterId && fileRoot.semesters && fileRoot.semesters.length === 1) {
+      slot = Object.assign({}, slot, { semesterId: fileRoot.semesters[0].id });
+    }
+    slots.push({ slot: slot, slotId: slotIds[i] });
+  }
+  if (!slots.length) return { error: 'Select at least one slot' };
+
+  var check = validateCart(slots.map(function (row) { return row.slot; }), session.specialties || [], {
+    allowSpecialtyOverride: !!opts.allowSpecialtyOverride,
+    allowHoursOverride: !!opts.allowHoursOverride
+  });
+  if (!check.ok) return { error: check.errors.join(' '), errors: check.errors };
+
+  var bySem = {};
+  var order = [];
+  slots.forEach(function (row) {
+    var sem = semesterForSlotId(fileRoot, row.slotId) ||
+      ((fileRoot.semesters || []).find(function (s) { return s.id === row.slot.semesterId; }));
+    if (!sem) return;
+    if (!bySem[sem.id]) {
+      bySem[sem.id] = { semester: sem, ids: [] };
+      order.push(sem.id);
+    }
+    bySem[sem.id].ids.push(row.slotId);
+  });
+
+  var proposals = [];
+  for (i = 0; i < order.length; i++) {
+    var group = bySem[order[i]];
+    var result = submitSelfSchedule(group.semester, group.ids, session, Object.assign({}, opts, {
+      skipValidate: true
+    }));
+    if (result.error) return result;
+    proposals.push(result.proposal);
+  }
+  return { ok: true, proposals: proposals, proposal: proposals[0] };
+}
+
 function pendingSelfScheduleHours(proposal) {
   return (proposal.items || []).reduce(function (sum, it) {
     return sum + (Number(it.hours) || 0);
@@ -118,6 +177,9 @@ function pendingSelfScheduleHours(proposal) {
 function applySlotAssignment(semester, slotId, name, userId) {
   var slot = findSlotById(semester, slotId);
   if (!slot) return false;
+  if (slot.sourcePath === 'theory' || (slot.theoryRefs && slot.theoryRefs.length)) {
+    return applyTheoryAssignment(semester, slot, name, userId);
+  }
   if (slot.kind === 'clinical') {
     var f = (semester.faculty || []).find(function (x) { return x.id === slot.sourceId; });
     if (!f) return false;
@@ -149,7 +211,9 @@ function applyTheoryAssignment(semester, slot, name, userId) {
   var need = 1;
   for (var r = 0; r < refs.length && assigned < need; r++) {
     var ref = refs[r];
-    var day = semester.theory.days.find(function (d) { return d.id === ref.dayId; });
+    var day = semester.theory.days.find(function (d) {
+      return d.id === ref.dayId || d.date === ref.dayId;
+    });
     if (!day || !Array.isArray(day.events)) continue;
     var ev = day.events.find(function (e) { return e.id === ref.eventId; });
     if (!ev || !Array.isArray(ev.faculty)) continue;
@@ -247,6 +311,7 @@ function notifyAdminsOfPendingSelfSchedule(semester, registry) {
 export {
   listByKind,
   submitSelfSchedule,
+  submitSelfScheduleProgram,
   reviewSelfSchedule,
   pendingSelfScheduleHours,
   setSelfSchedulingOpen,

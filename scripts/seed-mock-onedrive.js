@@ -15,6 +15,8 @@ import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { importTheoryFromPrototypes } from './theory/merge-prototypes.js';
+import { importRegn35FromXlsx } from './theory/import-35-xlsx.js';
+import { SITES as SITES_35 } from './theory/map-35-events.js';
 import { rebuildWeeks } from '../src/core/calendar-engine.js';
 import { migrateTheory } from '../src/core/theory-data.js';
 import {
@@ -22,6 +24,8 @@ import {
   createStudent,
   syncSemesterForConfig
 } from '../src/core/data-model/index.js';
+import * as CourseDefaults from '../src/core/course-defaults.js';
+import { migrateLibrary, createEmptyLibrary } from '../src/storage/theory-library-model.js';
 import * as RosterBalance from '../src/core/roster-balance.js';
 import * as Scheduler from '../src/core/scheduler/index.js';
 import { hashPassword } from '../src/auth/password.js';
@@ -78,6 +82,14 @@ async function main() {
 
   var imported = await importTheoryFromPrototypes({ semesterStartDate: '2026-08-16' });
   console.log('  theory import:', imported.validation);
+  var imported35 = await importRegn35FromXlsx({ semesterStartDate: '2026-08-16' });
+  console.log('  REGN 35 import:', imported35.validation);
+  var n35Events = 0;
+  ((imported35.theory && imported35.theory.days) || []).forEach(function (d) {
+    n35Events += (d.events && d.events.length) || 0;
+  });
+  console.log('  REGN 35 events:', n35Events, 'topics:', (imported35.topics || []).length,
+    'skills:', (imported35.skills || []).length);
 
   var registry = {
     meta: {
@@ -133,8 +145,14 @@ async function main() {
   var siteLibrary = {
     meta: { version: 1 },
     sites: [
-      { id: 'fac_srmc', name: 'Shasta Regional Medical Center', shortName: 'SRMC', contentTags: ['MS'] },
-      { id: 'fac_stel', name: 'Saint Elizabeth', shortName: 'StE', contentTags: ['MS'] }
+    { id: 'fac_srmc', name: 'Shasta Regional Medical Center', shortName: 'SRMC', contentTags: ['MS'] },
+    { id: 'fac_stel', name: 'Saint Elizabeth', shortName: 'StE', contentTags: ['MS'] },
+    {
+      id: SITES_35.mmcr.id,
+      name: SITES_35.mmcr.name,
+      shortName: SITES_35.mmcr.shortName,
+      contentTags: SITES_35.mmcr.contentTags.slice()
+    }
     ]
   };
 
@@ -152,6 +170,16 @@ async function main() {
     imported.library.meta.fileKind = 'theory_content_library';
   }
   writeJson('theory-content-library_REGN15.json', imported.library);
+
+  var programLibrary = createEmptyLibrary();
+  programLibrary.meta.scope = 'program';
+  programLibrary.meta.courseId = null;
+  programLibrary.meta.fileKind = 'theory_content_library';
+  programLibrary.topics = ((imported.library && imported.library.topics) || []).concat(imported35.topics || []);
+  programLibrary.skills = ((imported.library && imported.library.skills) || []).concat(imported35.skills || []);
+  programLibrary = migrateLibrary(programLibrary);
+  programLibrary.meta.fileKind = 'theory_content_library';
+  writeJson('program-content-library.json', programLibrary);
 
   var semId = uid('sem');
   var sectionIds = {
@@ -207,7 +235,8 @@ async function main() {
         lockedAt: null,
         lockedByName: '',
         lockedReason: 'semester_complete'
-      }
+      },
+      selfSchedulingOpen: true
     },
     config: config,
     calendar: { semesterStartDate: '2026-08-16', weeks: [] },
@@ -241,6 +270,93 @@ async function main() {
   Scheduler.regenerateAll(semester);
   RosterBalance.rebalanceSimGroups(semester);
 
+  var sem35Id = uid('sem');
+  var sectionIds35 = {
+    F6011: uid('sec'),
+    F6012: uid('sec'),
+    F6013: uid('sec'),
+    F6014: uid('sec')
+  };
+  var course35 = CourseDefaults.get('REGN35P-36P');
+  var config35 = course35 ? JSON.parse(JSON.stringify(course35.config)) : buildFall2026Config();
+  var students35 = [];
+  for (var j = 1; j <= 30; j++) {
+    var clin35 = 'C' + (((j - 1) % 5) + 1);
+    var section35 = sectionNames[(j - 1) % sectionNames.length];
+    students35.push(createStudent(
+      'Student ' + j,
+      clin35,
+      'SG1',
+      'fac_srmc',
+      section35
+    ));
+  }
+  var semester35 = {
+    id: sem35Id,
+    meta: {
+      courseId: 'REGN35P-36P',
+      semesterSeason: 'fall',
+      semesterYear: 2026,
+      semesterName: 'Fall 2026',
+      auditPhase: 'setup',
+      finalized: false,
+      configCustomized: true,
+      version: 1,
+      lastModified: new Date().toISOString(),
+      leadFaculty: { name: 'Lead Faculty', email: 'lead@example.edu' },
+      makeupAttestation: {
+        attestedAt: null,
+        attestedByName: '',
+        attestedByEmail: '',
+        notes: ''
+      },
+      auditExport: {
+        exportedAt: null,
+        exportedByName: '',
+        snapshotHash: '',
+        appVersion: '',
+        exportVersion: 0
+      },
+      lock: {
+        lockedAt: null,
+        lockedByName: '',
+        lockedReason: 'semester_complete'
+      },
+      selfSchedulingOpen: true
+    },
+    config: config35,
+    calendar: { semesterStartDate: '2026-08-16', weeks: [] },
+    holidays: [
+      { id: uid('id'), date: '2026-09-07', label: 'Labor Day', type: 'mondayHoliday' },
+      { id: uid('id'), date: '2026-11-09', label: 'Veterans Day', type: 'mondayHoliday' },
+      { id: uid('id'), date: '2026-11-22', label: 'Thanksgiving', type: 'break', weekIndex: 14 }
+    ],
+    orientations: [],
+    facilities: [
+      { id: 'fac_srmc', name: 'Shasta Regional Medical Center', shortName: 'SRMC', contentTags: ['MS'] },
+      { id: 'fac_stel', name: 'Saint Elizabeth', shortName: 'StE', contentTags: ['MS'] },
+      {
+        id: SITES_35.mmcr.id,
+        name: SITES_35.mmcr.name,
+        shortName: SITES_35.mmcr.shortName,
+        contentTags: SITES_35.mmcr.contentTags.slice()
+      }
+    ],
+    faculty: [],
+    simInstructors: [],
+    sections: sectionNames.map(function (name) {
+      return { id: sectionIds35[name], name: name };
+    }),
+    students: students35,
+    proposals: [],
+    theory: imported35.theory
+  };
+  syncSemesterForConfig(semester35);
+  semester35.faculty = [];
+  semester35.simInstructors = [];
+  migrateTheory(semester35);
+  rebuildWeeks(semester35);
+
   var fileRoot = {
     meta: {
       fileVersion: 5,
@@ -252,7 +368,7 @@ async function main() {
       lastModified: new Date().toISOString(),
       siteLibrary: siteLibrary
     },
-    semesters: [semester]
+    semesters: [semester, semester35]
   };
 
   writeJson(path.join('semesters', 'F2026_REGN_program.json'), fileRoot);
@@ -279,7 +395,8 @@ async function main() {
   });
 
   console.log('\nDone. Test: load mock-onedrive/semesters/F2026_REGN_program.json');
-  console.log('Theory library: mock-onedrive/theory-content-library_REGN15.json');
+  console.log('Theory library: mock-onedrive/program-content-library.json');
+  console.log('  (legacy fallback: mock-onedrive/theory-content-library_REGN15.json)');
 }
 
 main().catch(function (err) {

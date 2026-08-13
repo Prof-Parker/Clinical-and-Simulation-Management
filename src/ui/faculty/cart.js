@@ -7,6 +7,10 @@ import * as Permissions from '../../auth/permissions.js';
 import * as UserSession from '../../auth/user-session.js';
 import * as UsersRegistryStorage from '../../storage/users-registry-storage.js';
 import { findSlotById } from '../../core/faculty-schedule/slot-inventory.js';
+import {
+  findProgramSlotById,
+  programSelfSchedulingOpen
+} from '../../core/faculty-schedule/program-inventory.js';
 import { validateCart } from '../../core/faculty-schedule/slot-rules.js';
 import * as ScheduleProposals from '../../proposals/schedule-proposals.js';
 import { summarizeSlot } from '../../proposals/schedule-proposals.js';
@@ -31,14 +35,17 @@ function toggleCart(slotId) {
   return !!cartIds[slotId];
 }
 
-function cartSlotList(semester) {
+function cartSlotList(semester, fileRoot) {
   return Object.keys(cartIds).map(function (id) {
+    if (fileRoot) {
+      return findProgramSlotById(fileRoot, id) || findSlotById(semester, id);
+    }
     return findSlotById(semester, id);
   }).filter(Boolean);
 }
 
-function cartPanelHtml(semester) {
-  var slots = cartSlotList(semester);
+function cartPanelHtml(semester, fileRoot) {
+  var slots = cartSlotList(semester, fileRoot);
   if (!slots.length) {
     return '<div id="facultyCartPanel" class="faculty-cart-panel">' +
       '<h3 class="section-title">Cart</h3>' +
@@ -51,7 +58,9 @@ function cartPanelHtml(semester) {
       '<button type="button" class="btn btn-sm" data-cart-remove="' + esc(s.slotId) +
       '">Remove</button></li>';
   }).join('');
-  var open = !!(semester.meta && semester.meta.selfSchedulingOpen);
+  var open = fileRoot
+    ? programSelfSchedulingOpen(fileRoot)
+    : !!(semester.meta && semester.meta.selfSchedulingOpen);
   var canSubmit = Permissions.canAction('faculty.selfSchedule');
   return '<div id="facultyCartPanel" class="faculty-cart-panel">' +
     '<h3 class="section-title">Cart</h3>' +
@@ -68,7 +77,7 @@ function cartPanelHtml(semester) {
     '</div>';
 }
 
-function submitCart(semester, onDone) {
+function submitCart(semester, onDone, fileRoot) {
   var session = UserSession.getSession();
   if (!session) {
     showAlert('Sign in required', 'Sign in to submit a self-schedule request.');
@@ -81,16 +90,25 @@ function submitCart(semester, onDone) {
   }
   var ids = Object.keys(cartIds);
   var noteEl = document.getElementById('facultyCartNote');
-  var result = ScheduleProposals.submitSelfSchedule(semester, ids, session, {
+  var opts = {
     note: noteEl ? noteEl.value : '',
     adminOverride: Permissions.canAction('faculty.reviewSchedule')
-  });
+  };
+  var result = fileRoot
+    ? ScheduleProposals.submitSelfScheduleProgram(fileRoot, ids, session, opts)
+    : ScheduleProposals.submitSelfSchedule(semester, ids, session, opts);
   if (result.error) {
     showAlert('Self schedule', result.error);
     return;
   }
   var registry = UsersRegistryStorage.getRegistry();
-  ScheduleProposals.notifyAdminsOfPendingSelfSchedule(semester, registry);
+  if (fileRoot && fileRoot.semesters) {
+    fileRoot.semesters.forEach(function (sem) {
+      ScheduleProposals.notifyAdminsOfPendingSelfSchedule(sem, registry);
+    });
+  } else {
+    ScheduleProposals.notifyAdminsOfPendingSelfSchedule(semester, registry);
+  }
   if (registry) {
     UsersRegistryStorage.mergeSave(registry).catch(function () { /* non-blocking */ });
   }
@@ -99,9 +117,9 @@ function submitCart(semester, onDone) {
   if (onDone) onDone();
 }
 
-function validateCurrentCart(semester) {
+function validateCurrentCart(semester, fileRoot) {
   var session = UserSession.getSession() || {};
-  return validateCart(cartSlotList(semester), session.specialties || [], {
+  return validateCart(cartSlotList(semester, fileRoot), session.specialties || [], {
     allowSpecialtyOverride: Permissions.canAction('faculty.reviewSchedule'),
     allowHoursOverride: Permissions.canAction('faculty.reviewSchedule')
   });

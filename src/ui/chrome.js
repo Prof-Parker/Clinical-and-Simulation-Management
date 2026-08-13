@@ -35,7 +35,7 @@ import {
 } from './course-selector.js';
 import { syncWorkspaceNav } from './workspace-nav.js';
 import { openSetupModal, isSetupModalOpen, hideSetupModalShell } from './setup-modal.js';
-import { showAlert } from './dialogs.js';
+import { showAlert, escapeHtml } from './dialogs.js';
 import { escAttr } from './setup/dom-utils.js';
 import * as Permissions from '../auth/permissions.js';
 import * as UserTemplate from '../auth/user-template.js';
@@ -43,7 +43,7 @@ import * as UserSession from '../auth/user-session.js';
 import * as Audit from '../audit/audit.js';
 import * as Storage from '../storage/semester-storage.js';
 import * as Theme from './theme.js';
-import { buildSemesterLabelHtml } from './semester-label.js';
+import { buildSemesterLabelHtml, formatCourseCompactLabel } from './semester-label.js';
 
 export { buildSemesterLabelHtml };
 
@@ -113,6 +113,8 @@ export function refreshSemesterSwitchMenu() {
   menu.innerHTML = fileRoot.semesters.map(function (sem) {
     var parts = DataModel.parseSemesterDisplay(sem);
     var label = buildSemesterLabelHtml(parts);
+    var course = formatCourseCompactLabel(sem.meta && sem.meta.courseId);
+    if (course) label += ' <span class="text-muted">· ' + escapeHtml(course) + '</span>';
     return '<button type="button" class="menu-item menu-item-nested" role="menuitem" data-semester-id="' +
       escAttr(sem.id) + '"' + (sem.id === activeId ? ' aria-current="true"' : '') + '>' + label + '</button>';
   }).join('');
@@ -298,6 +300,8 @@ export function switchSemester(semesterId) {
   if (!sem) return;
   state.fileRoot.meta.activeSemesterId = semesterId;
   state.data = sem;
+  var courseId = (sem.meta && sem.meta.courseId) || '';
+  if (courseId) state.fileRoot.meta.activeCourseCode = courseId;
   rebuildWeeks(sem);
   notifyChange();
   populateFilters(sem);
