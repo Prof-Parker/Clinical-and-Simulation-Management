@@ -132,7 +132,11 @@ export function skillsFacultyFields(ev, settings) {
 export function renderSkillsTopics(ev) {
   var wrap = document.getElementById('theoryEvSkillsTopics');
   if (!wrap) return;
-  SkillPlacements.migrateEventSkillPlacements(ev);
+  // Editor drafts may include empty skillId rows; only migrate when placements
+  // are absent so legacy skillRefs can lift without stripping those drafts.
+  if (!Array.isArray(ev.skillPlacements)) {
+    SkillPlacements.migrateEventSkillPlacements(ev);
+  }
   var placements = (ev.skillPlacements && ev.skillPlacements.length)
     ? ev.skillPlacements.slice()
     : [{ skillId: '', kind: '' }];

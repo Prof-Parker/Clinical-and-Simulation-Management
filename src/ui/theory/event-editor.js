@@ -367,8 +367,8 @@ function wireFormHandlers(data, day, ev) {
   if (addTopicBtn) {
     addTopicBtn.onclick = function () {
       saveFormToEvent(data, day, { soft: true });
-      SkillPlacements.migrateEventSkillPlacements(ev);
-      if (!ev.skillPlacements) ev.skillPlacements = [];
+      // Do not migrate here: normalizeSkillPlacement drops empty draft rows.
+      if (!Array.isArray(ev.skillPlacements)) ev.skillPlacements = [];
       ev.skillPlacements.push({ skillId: '', kind: '' });
       ev.skillRefs = SkillPlacements.skillRefsFromPlacements(ev.skillPlacements);
       renderSkillsTopics(ev);
@@ -459,7 +459,11 @@ function saveFormToEvent(data, day, options) {
       var skillId = sel.value === '__new__' ? '' : (sel.value || '');
       var kindSel = document.querySelector('.theory-skills-kind[data-skill-idx="' + idx + '"]');
       var kind = kindSel ? kindSel.value : '';
-      if (!skillId) return;
+      if (!skillId) {
+        // Soft saves keep empty draft rows so Add skill / track switches do not collapse UI.
+        if (options.soft) placements.push({ skillId: '', kind: kind || '' });
+        return;
+      }
       var normalized = SkillPlacements.normalizeSkillPlacement({ skillId: skillId, kind: kind });
       if (normalized) placements.push(normalized);
     });
