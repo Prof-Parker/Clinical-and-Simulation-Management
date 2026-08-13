@@ -6,7 +6,7 @@ import * as CalendarEngine from '../../core/calendar-engine.js';
 import * as Validator from '../../core/validator.js';
 import * as Orientation from '../../core/orientation.js';
 import { buildMasterCalendarHtml } from '../theory/master-calendar-html.js';
-import { openEventEditor } from '../theory/event-editor.js';
+import { openEventDetails } from './event-details.js';
 import { renderCellHtml, scheduleRightColsHtml } from './schedule-cell-html.js';
 import { getScheduleFilteredStudents, escapeHtml } from './schedule-filters.js';
 import { renderConflictsPanel as renderConflictsPanelHtml } from './conflicts-panel.js';
@@ -25,7 +25,7 @@ function bindTheoryChipDetails(root, data) {
       if (!date) return;
       var chip = e.target.closest('[data-event-id]');
       if (!chip) return;
-      openEventEditor(data, date, chip.getAttribute('data-event-id'));
+      openEventDetails(data, date, chip.getAttribute('data-event-id'));
     });
   });
 }

@@ -291,6 +291,7 @@ html.dark .rail-flyout-item.active {
 .dash-overview-panel {
   width: 100%;
   max-width: none;
+  margin-bottom: 1rem;
 }
 
 .dash-overview-calendar {
@@ -306,6 +307,15 @@ html.dark .rail-flyout-item.active {
 
 .dash-overview-calendar .cell-readonly {
   cursor: default;
+}
+
+.dash-overview-calendar .theory-day-cell {
+  cursor: default;
+}
+
+.dash-overview-calendar .theory-track,
+.dash-overview-calendar .theory-track:active {
+  cursor: pointer;
 }
 
 .setup-modal-overlay {
@@ -3748,6 +3758,34 @@ html.dark .theory-coord-semester-totals td { box-shadow: 0 -2px 8px rgba(0, 0, 0
 .theory-skill-coverage-summary-hint {
   margin: 0;
   font-weight: 400;
+}
+.event-details-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+}
+.event-details-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.event-details-value {
+  font-size: 0.95rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+.event-details-objectives {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+.event-details-empty {
+  margin: 0;
+  font-size: 0.95rem;
+}
+.event-details-divider {
+  margin: 0.85rem 0;
+  border: none;
+  border-top: 1px solid var(--border);
 }
 .theory-lib-form {
   display: flex;

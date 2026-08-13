@@ -84,3 +84,14 @@ export function showDialog(title, bodyHtml, onSave) {
   _bindDialogPrimary(onSave);
   document.getElementById('dialogModal').classList.add('open');
 }
+
+/** Read-only dialog with a single Close button (no Cancel / Save). */
+export function showCloseDialog(title, bodyHtml) {
+  document.getElementById('dialogTitle').textContent = title;
+  document.getElementById('dialogBody').innerHTML = bodyHtml;
+  document.getElementById('dialogCancel').style.display = 'none';
+  var saveBtn = _bindDialogPrimary(null);
+  saveBtn.textContent = 'Close';
+  saveBtn.className = 'btn';
+  document.getElementById('dialogModal').classList.add('open');
+}

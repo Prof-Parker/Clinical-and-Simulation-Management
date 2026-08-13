@@ -223,16 +223,34 @@
                 <p class="section-sub" style="margin:0.35rem 0 0">Read-only master and practicum calendars for the open course. Open chips for details; editing lives under Cal.</p>
             </section>
             <div class="dash-overview-stack">
-                <section class="card dash-overview-panel" style="padding:1.25rem;margin-bottom:1rem">
-                    <h3 class="section-title">Master Calendar</h3>
-                    <p class="section-sub">Sun–Sat week grid — theory tracks, skills labs, assignments, and holidays. Read-only preview (no content library).</p>
-                    <div id="dashOverviewTheory" class="dash-overview-calendar"></div>
-                </section>
-                <section class="card dash-overview-panel" style="padding:1.25rem;margin-bottom:1rem">
-                    <h3 class="section-title">Practicum schedule</h3>
-                    <p class="section-sub">Full 18-week semester. Read-only preview — open Cal → Practicum to edit.</p>
-                    <div id="dashOverviewPracticum" class="dash-overview-calendar"></div>
-                </section>
+                <details class="card dash-overview-panel dashboard-panel-details">
+                    <summary class="dashboard-panel-summary">
+                        <div class="dashboard-panel-summary-text">
+                            <h3 class="section-title" style="margin:0">Master Calendar</h3>
+                            <p class="section-sub" style="margin:0.35rem 0 0">Sun–Sat week grid — theory tracks, skills labs, assignments, and holidays. Read-only preview.</p>
+                        </div>
+                        <div class="dashboard-panel-summary-actions">
+                            <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
+                        </div>
+                    </summary>
+                    <div class="dashboard-panel-body">
+                        <div id="dashOverviewTheory" class="dash-overview-calendar"></div>
+                    </div>
+                </details>
+                <details class="card dash-overview-panel dashboard-panel-details">
+                    <summary class="dashboard-panel-summary">
+                        <div class="dashboard-panel-summary-text">
+                            <h3 class="section-title" style="margin:0">Practicum schedule</h3>
+                            <p class="section-sub" style="margin:0.35rem 0 0">Full 18-week semester. Read-only preview — open Cal → Practicum to edit.</p>
+                        </div>
+                        <div class="dashboard-panel-summary-actions">
+                            <span class="dashboard-panel-chevron" aria-hidden="true">▼</span>
+                        </div>
+                    </summary>
+                    <div class="dashboard-panel-body">
+                        <div id="dashOverviewPracticum" class="dash-overview-calendar"></div>
+                    </div>
+                </details>
             </div>
         </div>
 
