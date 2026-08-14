@@ -108,6 +108,7 @@ export function practicumSlotsForDay(semester, weekLabel, weekday, courseCode) {
           clinicalByGroup[cg] = {
             group: cg,
             clinicalNum: clinicalOrdinalForGroup(semester, cg, wi),
+            facilityId: facilityId,
             hours: resolveClinicalDayHours(semester, facilityId)
           };
         }

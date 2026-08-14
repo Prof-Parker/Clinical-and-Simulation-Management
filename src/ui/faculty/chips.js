@@ -1,5 +1,6 @@
 /**
- * Faculty schedule slot chip HTML (reuses coordinator color classes).
+ * Faculty schedule slot chip HTML.
+ * Colors match Master Calendar / Dash theory tracks (theory-track-*).
  * Day cells show compressed course/kind/hours chips; expand to detail chips.
  */
 
@@ -10,12 +11,13 @@ function esc(s) {
   return escapeHtml(s == null ? '' : String(s));
 }
 
+/** Same solid palette as .theory-track-* on the Master Calendar. */
 function kindClass(kind) {
-  if (kind === 'clinical') return 'theory-coord-item-clinical';
-  if (kind === 'sim') return 'theory-coord-item-simulation';
-  if (kind === 'skills') return 'theory-coord-item-skills';
-  if (kind === 'lecture') return 'theory-coord-item-theory';
-  return 'theory-coord-item-theory';
+  if (kind === 'clinical') return 'theory-track-clinical';
+  if (kind === 'sim') return 'theory-track-simulation';
+  if (kind === 'skills') return 'theory-track-skills';
+  if (kind === 'lecture') return 'theory-track-theory';
+  return 'theory-track-theory';
 }
 
 function kindLabel(kind, slot) {
@@ -112,7 +114,7 @@ function slotChipHtml(slot, opts) {
   if (!slot.open && slot.assignedName) {
     lines.push('<div class="faculty-chip-line">' + esc(slot.assignedName) + '</div>');
   }
-  var attrs = 'class="faculty-slot-chip theory-coord-item ' + kindClass(slot.kind) +
+  var attrs = 'class="faculty-slot-chip ' + kindClass(slot.kind) +
     (selected ? ' faculty-slot-chip-selected' : '') +
     (slot.open ? '' : ' faculty-slot-chip-filled') + '"';
   attrs += ' data-slot-id="' + esc(slot.slotId) + '"';
@@ -137,7 +139,7 @@ function compressedChipHtml(group, opts) {
   var line2 = kindLabel(group.kind, group) + (hrs ? ' ' + hrs : '') +
     (count > 0 ? ' (' + count + ')' : '');
   var aria = (group.courseLabel || '') + ' ' + line2;
-  var attrs = 'class="faculty-slot-chip faculty-slot-chip-compressed theory-coord-item ' +
+  var attrs = 'class="faculty-slot-chip faculty-slot-chip-compressed ' +
     kindClass(group.kind) +
     (selected ? ' faculty-slot-chip-selected' : '') +
     (expanded ? ' faculty-slot-chip-expanded-toggle' : '') + '"';

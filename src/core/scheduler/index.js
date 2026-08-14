@@ -70,6 +70,7 @@ import {
   buildStateFromStudentSchedule,
   scheduleOneSimForStudent
 } from './sim-placement.js';
+import { syncPracticumFromSemester } from '../theory-practicum-sync.js';
 
 export function regenerateAll(data) {
   if (!data || !data.students || !data.students.length) return data;
@@ -98,6 +99,7 @@ export function regenerateAll(data) {
   } else {
     data._week17ClusteringStale = false;
   }
+  if (data.theory) syncPracticumFromSemester(data);
   return data;
 }
 

@@ -275,11 +275,12 @@ function resyncPracticum() {
   var data = getData();
   if (!data || !data.theory) return;
   TheoryData.syncHolidaysFromSemester(data);
+  TheoryData.syncPracticumFromSemester(data);
   notifyChange();
   refresh();
   showAlert(
     'Resync with practicum calendar',
-    'Holiday and break dates and labels were refreshed from Setup onto the Master Calendar.'
+    'Holidays/breaks and clinical/simulation sessions were refreshed from the practicum schedule onto the Master Calendar.'
   );
 }
 

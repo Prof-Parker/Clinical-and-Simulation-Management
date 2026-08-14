@@ -14,6 +14,7 @@ import {
   refreshFacultyNeeded,
   reindexTheoryDays
 } from './theory-events.js';
+import { syncPracticumFromSemester } from './theory-practicum-sync.js';
 import * as SkillPlacements from './skill-placements.js';
 
 export { WEEKDAYS } from './theory-modules.js';
@@ -79,6 +80,11 @@ export {
   reindexTheoryDay,
   reindexTheoryDays
 } from './theory-events.js';
+
+export {
+  syncPracticumFromSemester,
+  SYNCED_PRACTICUM_CATEGORY
+} from './theory-practicum-sync.js';
 
 export var THEORY_VERSION = 1;
 
@@ -273,6 +279,7 @@ export function migrateTheory(semester) {
     semester.theory = createEmptyTheory(codes);
     reindexTheoryDays(semester);
     syncHolidaysFromSemester(semester);
+    syncPracticumFromSemester(semester);
     return semester;
   }
   var t = semester.theory;
@@ -316,6 +323,7 @@ export function migrateTheory(semester) {
   reindexTheoryDays(semester);
   renumberAllWeekModules(t);
   syncHolidaysFromSemester(semester);
+  syncPracticumFromSemester(semester);
   refreshFacultyNeeded(t);
   return semester;
 }
