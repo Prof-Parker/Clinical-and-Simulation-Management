@@ -91,15 +91,15 @@ TODO.md
 ### Skills lab content
 - [X] Separate skills bank from theory topics (`skills[]`; migrate/strip legacy `defaultSkills`)
 - [X] Optional description + curriculum metadata stubs (COR / ACEN) on topics and skills
-- [ ] Rename library file to content-library_REGNXX-REGNXXP (examples: content-library_REGN15-REGN15P, content-library_REGN35-REGN35P)
+- [O] Rename library file to content-library_REGNXX-REGNXXP (examples: content-library_REGN15-REGN15P, content-library_REGN35-REGN35P). **Rejected** Will use one large content library for enhanced search and audit functions
 
 ### Faculty Management page
-- [ ] create faculty management page to view all faculty in roster (update user registry to include specialty tags for faculty such as sims, ob, peds, critical care etc.)
-- [ ] Faculty assignments/self scheduling page
+- [X] create faculty management page to view all faculty in roster (update user registry to include specialty tags for faculty such as sims, ob, peds, critical care etc.)
+- [X] Faculty assignments/self scheduling page
     - [ ] Admin view see open/filled needs with summary for remaining vaccancies
-    - [ ] Faculty view to request individual days or whole semester rotation
+    - [X] Faculty view to request individual days or whole semester rotation
     - [ ] Faculty request coverage or swap days
-    - [ ] Search by semeser, day of the week, times, length (add support for half days), content area, facility
+    - [X] Search by semeser, day of the week, times, length (add support for half days), content area, facility
 
 
 ## Worklist after demo:
@@ -110,7 +110,7 @@ TODO.md
 - [ ] Add acredidation tracking support for content (large feature)
 - [X] Work on Audra contact hour items
 - [ ] Add support to change user roles from user management system
-- [ ] Add file structure to seed and program data picker to support batch export and archieve folder, audit folder archieve, and password send folder
+- [X] Add file structure to seed and program data picker to support batch export and archieve folder, audit folder archieve, and password send folder
 - [ ] Add audit mailto feature
 
 #### UI improvements after implementing folder picker:
@@ -122,12 +122,12 @@ TODO.md
 - [ ] Add linked clinical, sim and skills lab student performance flags (start with strong/weak and free text notes, expand to include tags for specific competencies? `clinical judgement, safety, sterile technique, medication administration, time management, interpersonal skills, professional conduct/behavior `)
 
 # Priority items from demo
-- [ ] Build out 1st-3rd semester for clinicals and sims
-- [ ] add self scheduling support for faculty
+- [ ] Build out 1st-3rd semester for clinicals and sims (placeholder for 3rd semester built)
+- [X] add self scheduling support for faculty
 - [X] Integrate audra contact hour tracking support (theory only)
 - [X] Debug file kind guards — [file_kind_guards_login_debug.md](file_kind_guards_login_debug.md)
-- [ ] **Priority**select which clinical day was missed on make up finder. Highlight/mark missed clinical or sim days. 
-- [ ] **Priority**makup finder should exclude missed sim as makeup option (example student 1 missed sim 1, make up finder shows week 5 as option even though this was the missed sim)
+- [X] **Priority**select which clinical day was missed on make up finder. Highlight/mark missed clinical or sim days. 
+- [X] **Priority**makup finder should exclude missed sim as makeup option (example student 1 missed sim 1, make up finder shows week 5 as option even though this was the missed sim)
 - [X] Remove load user file and connect user registry buttons from hamburger menu. Leave Logout button
 - [X] Add back button to login page steps 2,3
 - [ ] Hide bottom and top bars 
@@ -138,7 +138,7 @@ TODO.md
 - [X] Add week-17 makeup clinical clustering to force to lowest number of clinical groups required to accomodate makeup needs. (Dashboard Apply; modes + preferred-site conflict transfer; soft-floor + multi-pass thin consolidate — see `PROJECT_IMPLEMENTATION_GUIDE.md` §5.1 and `docs/Design Docs/week17_makeup_clustering_and_sim_soft_floor.md`)
 
 ## Side Bar Navigation
-- [ ] Sid bar to nav to sections on each page only appear on mouse over
+- [X] Side bar to nav to sections on each page only appear on mouse over
 
 ## Practicum Setup
 - [X] Split student names in setup to lastname | first name
@@ -158,6 +158,11 @@ TODO.md
 - [X] Increase size of faculty slots
 - [X] Add contact hour calculator
 
+## Chore Items:
+- [ ] Implement lazy load for node modules (especially excel import/export features)
+- [ ] Refactor data storage and scheduling rules to per semester basis
+- [ ] Implement true seed for REGN 35 and REGN 36 (current are hardcoded, rough approximations)
+- [ ] Update REGN 15 Content Library
 
 
 
