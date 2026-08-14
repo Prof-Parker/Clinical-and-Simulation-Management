@@ -14,7 +14,8 @@ import {
 } from './_harness.js';
 
 describe('scheduling-rules.test.js', () => {
-  it('runs assertions', { timeout: 20000 }, () => {
+  // Full 4×4 regen matrix + S2026 fixture; CI runners often exceed 20s.
+  it('runs assertions', { timeout: 60000 }, () => {
     let failed = 0;
 
     function assert(condition, message) {
