@@ -15,7 +15,8 @@ import { buildSemesterLabelHtml } from './semester-label.js';
 import { populateFilters } from './dashboard/index.js';
 import {
   parseSemesterFileName,
-  neighborSemesters
+  neighborSemesters,
+  pickBestSemesterFile
 } from './semester-window.js';
 
 export { parseSemesterFileName, neighborSemesters };
@@ -50,17 +51,7 @@ export function preferredCourseId() {
 }
 
 export function pickBestFile(files, season, year, courseId) {
-  var matches = files.filter(function (f) {
-    return f.season === season && f.year === year;
-  });
-  if (!matches.length) return null;
-  if (courseId) {
-    var exact = matches.find(function (f) {
-      return String(f.courseId).toLowerCase() === String(courseId).toLowerCase();
-    });
-    if (exact) return exact;
-  }
-  return matches[0];
+  return pickBestSemesterFile(files, season, year, courseId);
 }
 
 export function findInFileSemester(season, year, courseId) {

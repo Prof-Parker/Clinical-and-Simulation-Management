@@ -2,6 +2,8 @@
  * Parse Lecture Assignments docx into instructional rows.
  */
 
+import { makeFacultySlot } from '../../src/core/theory-events.js';
+
 var MONTHS = {
   January: 1, February: 2, March: 3, April: 4, May: 5, June: 6,
   July: 7, August: 8, September: 9, October: 10, November: 11, December: 12
@@ -17,6 +19,18 @@ function isoDate(year, month, day) {
 
 function isFacultyName(s) {
   return /^Mr\.|^Ms\.|^Mrs\.|^Dr\.|Brian|Robin|Julie|Staff/i.test(s);
+}
+
+function isNoClassSkillsLab(text) {
+  return /^no class$/i.test(String(text || '').trim());
+}
+
+function makeSkillsFacultySlots(required) {
+  var slots = [];
+  for (var i = 0; i < required; i++) {
+    slots.push(makeFacultySlot({ needed: true, role: 'skills' }));
+  }
+  return slots;
 }
 
 function parseMonthDay(cell, year) {
@@ -94,7 +108,13 @@ export function parseLectureAssignmentCells(cells) {
   return rows;
 }
 
-export function lectureRowsToEvents(rows, lectureWeekdays) {
+export function lectureRowsToEvents(rows, lectureWeekdays, options) {
+  options = options || {};
+  var defaultSkillsFacultyRequired = Number(options.defaultSkillsFacultyRequired);
+  if (!isFinite(defaultSkillsFacultyRequired) || defaultSkillsFacultyRequired < 1) {
+    defaultSkillsFacultyRequired = 2;
+  }
+  defaultSkillsFacultyRequired = Math.min(6, Math.floor(defaultSkillsFacultyRequired));
   var eventsByDate = {};
   rows.forEach(function (row) {
     if (!eventsByDate[row.date]) eventsByDate[row.date] = [];
@@ -118,6 +138,9 @@ export function lectureRowsToEvents(rows, lectureWeekdays) {
       });
     }
     if (row.skillsLab && row.skillsLab.toLowerCase() !== 'n/a') {
+      var facultyRequired = isNoClassSkillsLab(row.skillsLab)
+        ? 0
+        : defaultSkillsFacultyRequired;
       eventsByDate[row.date].push({
         track: 'skills',
         title: 'Skills lab',
@@ -125,7 +148,8 @@ export function lectureRowsToEvents(rows, lectureWeekdays) {
         timeStart: '1200',
         timeEnd: '1550',
         location: 'Clinical Classroom (8220 and 8217)',
-        faculty: [],
+        facultyRequired: facultyRequired,
+        faculty: makeSkillsFacultySlots(facultyRequired),
         categories: ['skills_lab']
       });
     }

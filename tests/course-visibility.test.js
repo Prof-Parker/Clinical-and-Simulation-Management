@@ -44,6 +44,16 @@ describe('course-visibility', () => {
     )).toEqual(['REGN36']);
   });
 
+  it('uses the selected theory course when the session can view it', () => {
+    var sem = { meta: { courseId: 'REGN35P-36P' } };
+    expect(CourseVisibility.selectedTheoryCodeForSession(
+      { role: 'program_engineer', specialties: [] }, sem, 'REGN36'
+    )).toBe('REGN36');
+    expect(CourseVisibility.selectedTheoryCodeForSession(
+      { role: 'adjunct_faculty', specialties: ['OB'] }, sem, 'REGN35'
+    )).toBe('REGN36');
+  });
+
   it('maps content tags to practicum course codes', () => {
     expect(CourseVisibility.practicumCourseForContentTags(['MS'])).toBe('REGN35P');
     expect(CourseVisibility.practicumCourseForContentTags(['OB'])).toBe('REGN36P');

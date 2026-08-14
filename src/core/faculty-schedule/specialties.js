@@ -92,6 +92,19 @@ function userMatchesAnySpecialty(userSpecialties, requiredList) {
 }
 
 /**
+ * True when the user has every required specialty (empty required list matches).
+ */
+function userMatchesAllSpecialties(userSpecialties, requiredList) {
+  var required = normalizeSpecialties(requiredList);
+  if (!required.length) return true;
+  var have = normalizeSpecialties(userSpecialties);
+  for (var i = 0; i < required.length; i++) {
+    if (have.indexOf(required[i]) < 0) return false;
+  }
+  return true;
+}
+
+/**
  * Full time faculty always receive the Lecture tag.
  */
 function ensureLeadLectureTag(role, specialties) {
@@ -111,5 +124,6 @@ export {
   matchesSiteTag,
   userHasSpecialty,
   userMatchesAnySpecialty,
+  userMatchesAllSpecialties,
   ensureLeadLectureTag
 };

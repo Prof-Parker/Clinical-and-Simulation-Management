@@ -15,20 +15,22 @@ import {
   parseSemesterFileName,
   neighborSemesters
 } from './semester-picker.js';
-import { formatCourseCompactLabel } from './semester-label.js';
-
 /**
  * @returns {Promise<Array<{ value: string, label: string, current: boolean }>>}
  */
 export function listSemesterSelectOptions() {
   function toOptions(raw) {
-    return raw.map(function (opt) {
+    var byTerm = {};
+    raw.forEach(function (opt) {
+      var key = [opt.season, opt.year, opt.fileName || 'current'].join('|');
+      if (!byTerm[key] || opt.current) byTerm[key] = opt;
+    });
+    return Object.keys(byTerm).map(function (key) {
+      return byTerm[key];
+    }).map(function (opt) {
       var seasonLabel = opt.season === 'fall' ? 'Fall' : 'Spring';
       var value = [opt.season, opt.year, opt.fileName || '', opt.semesterId || ''].join('|');
-      var course = formatCourseCompactLabel(opt.courseId);
-      var label = seasonLabel + ' ' + opt.year +
-        (course ? ' · ' + course : '') +
-        (opt.current ? ' (current)' : '');
+      var label = seasonLabel + ' ' + opt.year + (opt.current ? ' (current)' : '');
       return {
         value: value,
         label: label,

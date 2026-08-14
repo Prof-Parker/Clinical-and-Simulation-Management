@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   parseSemesterFileName,
   offsetSemester,
-  neighborSemesters
+  neighborSemesters,
+  isProgramSemesterFile,
+  pickBestSemesterFile
 } from '../src/ui/semester-window.js';
 
 describe('semester picker helpers', () => {
@@ -16,6 +18,20 @@ describe('semester picker helpers', () => {
     expect(parseSemesterFileName('S2026_REGN15P.json').season).toBe('spring');
     expect(parseSemesterFileName('F2026_REGN_program.json').courseId).toBe('REGN_program');
     expect(parseSemesterFileName('notes.txt')).toBeNull();
+  });
+
+  it('detects program semester files', () => {
+    expect(isProgramSemesterFile(parseSemesterFileName('F2026_REGN_program.json'))).toBe(true);
+    expect(isProgramSemesterFile(parseSemesterFileName('F2026_REGN15P.json'))).toBe(false);
+  });
+
+  it('prefers the program file over a single-course file for the same term', () => {
+    var files = [
+      parseSemesterFileName('F2026_REGN15P.json'),
+      parseSemesterFileName('F2026_REGN_program.json')
+    ];
+    expect(pickBestSemesterFile(files, 'fall', 2026, 'REGN15P').fileName)
+      .toBe('F2026_REGN_program.json');
   });
 
   it('offsets seasons across year boundaries', () => {

@@ -13,7 +13,7 @@ import { render as renderContentLibrary } from './content-library.js';
 import { renderSkillCoveragePanel } from './skill-coverage-panel.js';
 import { refresh } from '../chrome.js';
 import { buildMasterCalendarHtml } from './master-calendar-html.js';
-import { buildStackedMasterHtml, bindStackExpandCollapse } from './master-calendar-stack.js';
+import { getActiveTheoryCourseCode } from '../course-selector.js';
 
 var dragEventId = null;
 var suppressClick = false;
@@ -21,7 +21,11 @@ var suppressClick = false;
 function visibleTheoryCodes(data) {
   var session = UserSession.getSession && UserSession.getSession();
   if (CourseVisibility.isThirdSemester(data && data.meta && data.meta.courseId)) {
-    return CourseVisibility.theoryCodesForSession(session, data);
+    return [CourseVisibility.selectedTheoryCodeForSession(
+      session,
+      data,
+      getActiveTheoryCourseCode()
+    )];
   }
   return [null];
 }
@@ -96,23 +100,12 @@ export function render(data) {
   var codes = visibleTheoryCodes(data);
   var isThird = CourseVisibility.isThirdSemester(data.meta && data.meta.courseId);
 
-  if (isThird && codes.length > 1) {
-    grid.innerHTML = buildStackedMasterHtml(codes, function (code) {
-      return buildMasterCalendarHtml(data, {
-        readOnly: false,
-        courseCode: code,
-        showCourseBadge: true
-      });
-    });
-    bindStackExpandCollapse(grid);
-  } else {
-    var singleCode = isThird ? (codes[0] || 'REGN35') : null;
-    grid.innerHTML = buildMasterCalendarHtml(data, {
-      readOnly: false,
-      courseCode: singleCode,
-      showCourseBadge: isThird
-    });
-  }
+  var singleCode = isThird ? (codes[0] || 'REGN35') : null;
+  grid.innerHTML = buildMasterCalendarHtml(data, {
+    readOnly: false,
+    courseCode: singleCode,
+    showCourseBadge: isThird
+  });
 
   bindGridInteractions(grid, data);
   renderContentLibrary();

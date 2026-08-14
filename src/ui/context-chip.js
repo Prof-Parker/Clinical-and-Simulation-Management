@@ -4,12 +4,10 @@
 
 import { getData, getFileRoot } from '../core/state.js';
 import * as DataModel from '../core/data-model/index.js';
-import * as TheoryData from '../core/theory-data.js';
+import * as CourseVisibility from '../core/course-visibility.js';
 import * as Audit from '../audit/audit.js';
-import {
-  formatCourseCompactLabel,
-  formatCourseDisplayLabel
-} from './semester-label.js';
+import * as UserSession from '../auth/user-session.js';
+import { formatCourseCompactLabel } from './semester-label.js';
 import { escapeHtml } from './dialogs.js';
 import {
   openSemesterSearchDialog,
@@ -22,7 +20,9 @@ import {
 } from './semester-select.js';
 import {
   getActiveCourseCode,
-  setActiveCourseCode
+  getActiveTheoryCourseCode,
+  setActiveProgramSemesterId,
+  setActiveTheoryCourseCode
 } from './course-selector.js';
 import { isPlaygroundShell } from './playground-shell.js';
 
@@ -57,8 +57,17 @@ export function updateContextChip() {
 
   var parts = DataModel.parseSemesterDisplay(data);
   var seasonLabel = parts.season === 'fall' ? 'Fall' : (parts.season === 'spring' ? 'Spring' : '');
-  var code = getActiveCourseCode() || data.meta.courseId || '—';
+  var code = data.meta.courseId || getActiveCourseCode() || '—';
   var courseText = formatCourseCompactLabel(code);
+  if (CourseVisibility.isThirdSemester(code)) {
+    var session = UserSession.getSession && UserSession.getSession();
+    var theoryCode = CourseVisibility.selectedTheoryCodeForSession(
+      session,
+      data,
+      getActiveTheoryCourseCode()
+    );
+    courseText += ' · ' + CourseVisibility.formatCourseBadge(theoryCode);
+  }
   var phase = phaseLabel(data);
   var semesterText = seasonLabel
     ? seasonLabel + ' ' + (parts.year || '')
@@ -86,21 +95,48 @@ function fillCourseSelect() {
   var select = document.getElementById('contextCourseSelect');
   var fileRoot = getFileRoot();
   if (!select || !fileRoot) return;
-  var options = TheoryData.listCourseOptions(fileRoot);
-  var active = getActiveCourseCode();
+  var active = getData() && getData().id;
   select.textContent = '';
-  if (!options.length) {
+  if (!fileRoot.semesters || !fileRoot.semesters.length) {
     var empty = document.createElement('option');
     empty.value = '';
-    empty.textContent = 'No courses';
+    empty.textContent = 'No program semesters';
     select.appendChild(empty);
     return;
   }
-  options.forEach(function (opt) {
+  fileRoot.semesters.forEach(function (semester) {
     var o = document.createElement('option');
-    o.value = opt.code;
-    o.textContent = formatCourseDisplayLabel(opt.code);
-    if (opt.code === active) o.selected = true;
+    o.value = semester.id;
+    o.textContent = formatCourseCompactLabel(semester.meta && semester.meta.courseId) ||
+      (semester.meta && semester.meta.courseId) || 'Program semester';
+    if (semester.id === active) o.selected = true;
+    select.appendChild(o);
+  });
+}
+
+function fillTheoryCourseSelect() {
+  var select = document.getElementById('contextTheoryCourseSelect');
+  var label = document.getElementById('contextTheoryCourseLabel');
+  var data = getData();
+  var isThird = CourseVisibility.isThirdSemester(data && data.meta && data.meta.courseId);
+  if (!select || !label) return;
+  select.classList.toggle('hidden', !isThird);
+  label.classList.toggle('hidden', !isThird);
+  select.textContent = '';
+  if (!isThird) return;
+
+  var session = UserSession.getSession && UserSession.getSession();
+  var options = CourseVisibility.theoryCodesForSession(session, data);
+  var active = CourseVisibility.selectedTheoryCodeForSession(
+    session,
+    data,
+    getActiveTheoryCourseCode()
+  );
+  options.forEach(function (code) {
+    var o = document.createElement('option');
+    o.value = code;
+    o.textContent = CourseVisibility.formatCourseBadge(code);
+    if (code === active) o.selected = true;
     select.appendChild(o);
   });
 }
@@ -129,6 +165,7 @@ function fillSemesterSelect() {
 
 function populateContextPop() {
   fillCourseSelect();
+  fillTheoryCourseSelect();
   var phaseValue = document.getElementById('contextPhaseValue');
   if (phaseValue) phaseValue.textContent = phaseLabel(getData()) || '—';
   return fillSemesterSelect();
@@ -158,6 +195,7 @@ export function initContextChip() {
   var pop = document.getElementById('contextPop');
   var semSelect = document.getElementById('contextSemSelect');
   var courseSelect = document.getElementById('contextCourseSelect');
+  var theoryCourseSelect = document.getElementById('contextTheoryCourseSelect');
   var searchBtn = document.getElementById('contextSearchSemestersBtn');
   var openFileBtn = document.getElementById('contextOpenSemesterFileBtn');
   if (!wrap || !chip || !pop) return;
@@ -182,7 +220,15 @@ export function initContextChip() {
   if (courseSelect) {
     courseSelect.addEventListener('change', function () {
       if (!courseSelect.value) return;
-      setActiveCourseCode(courseSelect.value);
+      setActiveProgramSemesterId(courseSelect.value);
+      closeContextPop();
+    });
+  }
+
+  if (theoryCourseSelect) {
+    theoryCourseSelect.addEventListener('change', function () {
+      if (!theoryCourseSelect.value) return;
+      setActiveTheoryCourseCode(theoryCourseSelect.value);
       closeContextPop();
     });
   }

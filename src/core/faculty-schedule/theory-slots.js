@@ -3,6 +3,10 @@
  */
 
 import * as ScheduleHours from '../schedule-hours.js';
+import {
+  formatCourseBadge,
+  simPracticumCourse
+} from '../course-visibility.js';
 import { normalizeSpecialties } from './specialties.js';
 import {
   isUniqueSkillsEventTitle,
@@ -14,6 +18,27 @@ import {
   clinicalSeriesKey,
   clinicalSeriesLabel
 } from './clinical-series.js';
+
+/** Prefer event.courseCode; infer 35P/36P for sims via linkedSimNum. */
+function resolveEventCourseCode(ev, semester) {
+  if (ev && ev.courseCode) {
+    return String(ev.courseCode).toUpperCase().replace(/\s+/g, '');
+  }
+  if (ev && ev.linkedSimNum != null) {
+    return simPracticumCourse(semester, ev.linkedSimNum) || '';
+  }
+  return '';
+}
+
+/** Override semester-level REGN 35P/36P label with the event's actual course. */
+function courseFieldsFromCode(courseCode) {
+  var code = String(courseCode || '').trim();
+  if (!code) return {};
+  return {
+    courseId: code,
+    courseLabel: formatCourseBadge(code) || code
+  };
+}
 
 function eventSlotKind(ev) {
   if (!ev) return '';
@@ -50,13 +75,15 @@ function instanceFromDay(day, wd, start, end) {
 }
 
 function specsForGroup(semester, g, defaultSpecialties) {
-  if (g.kind === 'lecture') return ['Lec'];
+  if (g.kind === 'lecture') {
+    return normalizeSpecialties(['Lec'].concat(g.specialties || []));
+  }
   if (g.specialties && g.specialties.length) return g.specialties;
   return defaultSpecialties(semester, g.kind === 'clinical' || g.kind === 'sim' ? g.kind : 'skills');
 }
 
 function emitLegacyGroup(semester, key, g, helpers) {
-  var slot = helpers.makeBase(semester, {
+  var slot = helpers.makeBase(semester, Object.assign({
     slotId: 'theory:' + key,
     kind: g.kind,
     sourcePath: 'theory',
@@ -74,13 +101,13 @@ function emitLegacyGroup(semester, key, g, helpers) {
     openCount: g.capacity,
     theoryRefs: g.refs,
     instances: Object.keys(g.instances).sort().map(function (d) { return g.instances[d]; })
-  });
+  }, courseFieldsFromCode(g.courseCode)));
   return helpers.finalizeSlot(slot);
 }
 
 function emitSeriesSeat(semester, series, seat, helpers) {
   var unique = !!series.unique;
-  var slot = helpers.makeBase(semester, {
+  var slot = helpers.makeBase(semester, Object.assign({
     slotId: 'theory:' + series.key + ':seat:' + seat,
     kind: series.kind,
     sourcePath: 'theory',
@@ -105,7 +132,7 @@ function emitSeriesSeat(semester, series, seat, helpers) {
     instances: Object.keys(series.instances).sort().map(function (d) {
       return series.instances[d];
     })
-  });
+  }, courseFieldsFromCode(series.courseCode)));
   return helpers.finalizeSlot(slot);
 }
 
@@ -117,7 +144,8 @@ function ensureSeries(map, key, seed) {
 function pushNeededSeats(series, day, ev, helpers) {
   var staff = (ev.faculty || []).length;
   if (staff > series.facultyPerInstance) series.facultyPerInstance = staff;
-  neededIndexes(ev, helpers.isNeeded).forEach(function (fi, seat) {
+  var needed = neededIndexes(ev, helpers.isNeeded);
+  needed.forEach(function (fi, seat) {
     if (!series.seats[seat]) series.seats[seat] = [];
     series.seats[seat].push({
       dayId: day.id,
@@ -126,6 +154,7 @@ function pushNeededSeats(series, day, ev, helpers) {
       facultyId: (ev.faculty[fi] && ev.faculty[fi].id) || ''
     });
   });
+  return needed.length;
 }
 
 /**
@@ -149,6 +178,38 @@ function buildTheorySlots(semester, helpers) {
       var siteKey = ev.facilityId || ev.siteId || '';
       var groupKey = Array.isArray(ev.groups) ? ev.groups.join(',') : '';
       var tags = normalizeSpecialties(ev.contentTags);
+      var eventCourse = resolveEventCourseCode(ev, semester);
+
+      if (kind === 'sim' && ev.facultySeriesKey) {
+        var explicitKey = 'explicit:' + String(ev.facultySeriesKey);
+        var explicitSeries = ensureSeries(seriesMap, explicitKey, {
+          key: explicitKey,
+          kind: kind,
+          unique: false,
+          seriesLabel: ev.facultySeriesLabel || 'Simulation series',
+          weekday: wd,
+          timeStart: start,
+          timeEnd: end,
+          courseCode: eventCourse,
+          facilityId: siteKey,
+          siteId: siteKey,
+          siteLabel: ev.siteLabel || '',
+          clinicalGroup: '',
+          specialties: tags,
+          facultyPerInstance: 0,
+          seats: [],
+          instances: {}
+        });
+        if (tags.length && !explicitSeries.specialties.length) {
+          explicitSeries.specialties = tags;
+        }
+        if (eventCourse && !explicitSeries.courseCode) explicitSeries.courseCode = eventCourse;
+        var explicitNeeded = pushNeededSeats(explicitSeries, day, ev, helpers);
+        if (explicitNeeded && day.date) {
+          explicitSeries.instances[day.date] = instanceFromDay(day, wd, start, end);
+        }
+        return;
+      }
 
       if (kind === 'skills') {
         var unique = isUniqueSkillsEventTitle(ev.title);
@@ -158,7 +219,7 @@ function buildTheorySlots(semester, helpers) {
           weekday: wd,
           start: start,
           end: end,
-          courseCode: ev.courseCode || '',
+          courseCode: eventCourse,
           siteKey: siteKey
         });
         var skills = ensureSeries(seriesMap, sKey, {
@@ -169,7 +230,7 @@ function buildTheorySlots(semester, helpers) {
           weekday: wd,
           timeStart: start,
           timeEnd: end,
-          courseCode: ev.courseCode || '',
+          courseCode: eventCourse,
           facilityId: siteKey,
           siteId: siteKey,
           siteLabel: ev.siteLabel || '',
@@ -180,8 +241,11 @@ function buildTheorySlots(semester, helpers) {
           instances: {}
         });
         if (tags.length && !skills.specialties.length) skills.specialties = tags;
-        pushNeededSeats(skills, day, ev, helpers);
-        if (day.date) skills.instances[day.date] = instanceFromDay(day, wd, start, end);
+        if (eventCourse && !skills.courseCode) skills.courseCode = eventCourse;
+        var skillsNeeded = pushNeededSeats(skills, day, ev, helpers);
+        if (skillsNeeded && day.date) {
+          skills.instances[day.date] = instanceFromDay(day, wd, start, end);
+        }
         return;
       }
 
@@ -189,7 +253,7 @@ function buildTheorySlots(semester, helpers) {
         var clinGroup = primaryClinicalGroup(ev);
         var cKey = clinicalSeriesKey({
           clinicalGroup: clinGroup,
-          courseCode: ev.courseCode || ''
+          courseCode: eventCourse
         });
         var clin = ensureSeries(seriesMap, cKey, {
           key: cKey,
@@ -199,7 +263,7 @@ function buildTheorySlots(semester, helpers) {
           weekday: wd,
           timeStart: start,
           timeEnd: end,
-          courseCode: ev.courseCode || '',
+          courseCode: eventCourse,
           facilityId: siteKey,
           siteId: siteKey,
           siteLabel: ev.siteLabel || '',
@@ -210,6 +274,7 @@ function buildTheorySlots(semester, helpers) {
           instances: {}
         });
         if (tags.length) clin.specialties = tags;
+        if (eventCourse && !clin.courseCode) clin.courseCode = eventCourse;
         if (ev.siteLabel) clin.siteLabel = ev.siteLabel;
         if (siteKey) {
           clin.facilityId = siteKey;
@@ -229,21 +294,52 @@ function buildTheorySlots(semester, helpers) {
           }
         });
         clin.seriesLabel = clinicalSeriesLabel(clinGroup, clin.siteLabel);
-        pushNeededSeats(clin, day, ev, helpers);
-        if (day.date) clin.instances[day.date] = instanceFromDay(day, wd, start, end);
+        var clinicalNeeded = pushNeededSeats(clin, day, ev, helpers);
+        if (clinicalNeeded && day.date) {
+          clin.instances[day.date] = instanceFromDay(day, wd, start, end);
+        }
+        return;
+      }
+
+      if (kind === 'lecture') {
+        var lectureKey = [
+          kind, wd, start, end, eventCourse, siteKey, groupKey, tags.join(',')
+        ].join('|');
+        var lecture = ensureSeries(seriesMap, lectureKey, {
+          key: lectureKey,
+          kind: kind,
+          unique: false,
+          seriesLabel: 'Lecture',
+          weekday: wd,
+          timeStart: start,
+          timeEnd: end,
+          courseCode: eventCourse,
+          facilityId: siteKey,
+          siteId: siteKey,
+          siteLabel: ev.siteLabel || '',
+          clinicalGroup: (ev.groups && ev.groups[0]) || '',
+          specialties: tags,
+          facultyPerInstance: 0,
+          seats: [],
+          instances: {}
+        });
+        var lectureNeeded = pushNeededSeats(lecture, day, ev, helpers);
+        if (lectureNeeded && day.date) {
+          lecture.instances[day.date] = instanceFromDay(day, wd, start, end);
+        }
         return;
       }
 
       ev.faculty.forEach(function (slot, fi) {
         if (!helpers.isNeeded(slot)) return;
-        var key = [kind, wd, start, end, ev.courseCode || '', siteKey, groupKey].join('|');
+        var key = [kind, wd, start, end, eventCourse, siteKey, groupKey, tags.join(',')].join('|');
         if (!legacy[key]) {
           legacy[key] = {
             kind: kind,
             weekday: wd,
             timeStart: start,
             timeEnd: end,
-            courseCode: ev.courseCode || '',
+            courseCode: eventCourse,
             facilityId: siteKey,
             siteId: siteKey,
             siteLabel: ev.siteLabel || '',

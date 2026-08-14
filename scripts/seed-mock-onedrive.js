@@ -17,6 +17,8 @@ import { fileURLToPath } from 'url';
 import { importTheoryFromPrototypes } from './theory/merge-prototypes.js';
 import { importRegn35FromXlsx } from './theory/import-35-xlsx.js';
 import { SITES as SITES_35 } from './theory/map-35-events.js';
+import { replaceRegn35SeededSims } from './theory/seed-35-sims.js';
+import { mergeRegn36SeededEvents, SITE_MMCR_OBPED } from './theory/seed-36-events.js';
 import { rebuildWeeks } from '../src/core/calendar-engine.js';
 import { migrateTheory } from '../src/core/theory-data.js';
 import {
@@ -83,12 +85,14 @@ async function main() {
   var imported = await importTheoryFromPrototypes({ semesterStartDate: '2026-08-16' });
   console.log('  theory import:', imported.validation);
   var imported35 = await importRegn35FromXlsx({ semesterStartDate: '2026-08-16' });
+  replaceRegn35SeededSims(imported35.theory, '2026-08-16');
+  mergeRegn36SeededEvents(imported35.theory, '2026-08-16');
   console.log('  REGN 35 import:', imported35.validation);
   var n35Events = 0;
   ((imported35.theory && imported35.theory.days) || []).forEach(function (d) {
     n35Events += (d.events && d.events.length) || 0;
   });
-  console.log('  REGN 35 events:', n35Events, 'topics:', (imported35.topics || []).length,
+  console.log('  REGN 35/36 events:', n35Events, 'topics:', (imported35.topics || []).length,
     'skills:', (imported35.skills || []).length);
 
   var registry = {
@@ -109,7 +113,8 @@ async function main() {
     { role: 'adjunct_faculty', firstName: 'Adjunct', lastName: 'OB', email: 'adjunct-ob@example.edu', password: 'adjunct-ob-pass', specialties: ['OB'] },
     { role: 'adjunct_faculty', firstName: 'Adjunct', lastName: 'PED', email: 'adjunct-ped@example.edu', password: 'adjunct-ped-pass', specialties: ['PED'] },
     { role: 'lead_course_faculty', firstName: 'Lead', lastName: 'OB', email: 'lead-ob@example.edu', password: 'lead-ob-pass', specialties: ['OB', 'Lec'] },
-    { role: 'lead_course_faculty', firstName: 'Lead', lastName: 'PED', email: 'lead-ped@example.edu', password: 'lead-ped-pass', specialties: ['PED', 'Lec'] }
+    { role: 'lead_course_faculty', firstName: 'Lead', lastName: 'PED', email: 'lead-ped@example.edu', password: 'lead-ped-pass', specialties: ['PED', 'Lec'] },
+    { role: 'lead_course_faculty', firstName: 'Lead', lastName: 'OBPED', email: 'lead-obped@example.edu', password: 'lead-obped-pass', specialties: ['OB', 'PED', 'Lec'] }
   ];
 
   var helpDeskEngineerUserId = '';
@@ -140,7 +145,7 @@ async function main() {
   writeJson(path.join('users', 'users-registry.json'), registry);
 
   console.log('  demo passwords (permanent, not temporary): engineer-pass, admin-pass, lead-pass, adjunct-pass,');
-  console.log('    adjunct-ob-pass, adjunct-ped-pass, lead-ob-pass, lead-ped-pass');
+  console.log('    adjunct-ob-pass, adjunct-ped-pass, lead-ob-pass, lead-ped-pass, lead-obped-pass');
 
   var siteLibrary = {
     meta: { version: 1 },
@@ -152,6 +157,12 @@ async function main() {
       name: SITES_35.mmcr.name,
       shortName: SITES_35.mmcr.shortName,
       contentTags: SITES_35.mmcr.contentTags.slice()
+    },
+    {
+      id: SITE_MMCR_OBPED.id,
+      name: SITE_MMCR_OBPED.name,
+      shortName: SITE_MMCR_OBPED.shortName,
+      contentTags: SITE_MMCR_OBPED.contentTags.slice()
     }
     ]
   };
@@ -340,6 +351,12 @@ async function main() {
         name: SITES_35.mmcr.name,
         shortName: SITES_35.mmcr.shortName,
         contentTags: SITES_35.mmcr.contentTags.slice()
+      },
+      {
+        id: SITE_MMCR_OBPED.id,
+        name: SITE_MMCR_OBPED.name,
+        shortName: SITE_MMCR_OBPED.shortName,
+        contentTags: SITE_MMCR_OBPED.contentTags.slice()
       }
     ],
     faculty: [],

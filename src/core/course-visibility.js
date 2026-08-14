@@ -51,6 +51,12 @@ export function theoryCodesForSession(session, semester) {
   return ['REGN35'];
 }
 
+export function selectedTheoryCodeForSession(session, semester, preferredCode) {
+  var allowed = theoryCodesForSession(session, semester);
+  var preferred = String(preferredCode || '').toUpperCase().replace(/\s+/g, '');
+  return allowed.indexOf(preferred) >= 0 ? preferred : (allowed[0] || 'REGN35');
+}
+
 export function normalizeContentTags(tags) {
   if (!Array.isArray(tags)) tags = [];
   var seen = {};

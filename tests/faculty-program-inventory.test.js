@@ -66,6 +66,59 @@ describe('theory clinical/sim slots', () => {
     expect(clin.facilityId).toBe('fac_mmcr');
     expect(clin.specialties).toContain('MS');
     expect(clin.theoryRefs.length).toBe(1);
+    expect(clin.courseId).toBe('REGN35P');
+    expect(clin.courseLabel).toBe('REGN 35P');
+  });
+
+  it('labels lecture and sim chips with event course codes, not the merged semester id', () => {
+    var sem = {
+      id: 'sem35',
+      meta: { courseId: 'REGN35P-36P', selfSchedulingOpen: true },
+      faculty: [],
+      simInstructors: [],
+      students: [],
+      facilities: [],
+      config: {},
+      proposals: [],
+      theory: {
+        days: [{
+          id: '2026-09-01',
+          date: '2026-09-01',
+          weekday: 'Tue',
+          weekIndex: 2,
+          events: [
+            {
+              id: 'ev_lec',
+              track: 'theory',
+              title: '36 Lecture',
+              courseCode: 'REGN36',
+              timeStart: '0800',
+              timeEnd: '1100',
+              categories: ['lecture'],
+              faculty: [{ name: FACULTY_NEEDED_NAME, role: 'lecture', needed: true }]
+            },
+            {
+              id: 'ev_sim',
+              track: 'simulation',
+              title: '35P Sim',
+              courseCode: 'REGN35P',
+              timeStart: '0800',
+              timeEnd: '1200',
+              categories: ['simulation'],
+              facultySeriesKey: 'sim-35p-a',
+              faculty: [{ name: FACULTY_NEEDED_NAME, role: 'sim', needed: true }]
+            }
+          ]
+        }]
+      }
+    };
+    var slots = listAllSlots(sem);
+    var lec = slots.find(function (s) { return s.kind === 'lecture'; });
+    var sim = slots.find(function (s) { return s.kind === 'sim'; });
+    expect(lec.courseId).toBe('REGN36');
+    expect(lec.courseLabel).toBe('REGN 36');
+    expect(sim.courseId).toBe('REGN35P');
+    expect(sim.courseLabel).toBe('REGN 35P');
   });
 
   it('applySlotAssignment fills a theory-sourced clinical needed slot', () => {
@@ -184,7 +237,67 @@ function skillsDay(date, weekday, weekIndex, ev) {
   };
 }
 
-describe('recurring vs unique skills inventory', () => {
+describe('theory faculty series inventory', () => {
+  it('emits one recurring lecture chip per faculty seat', () => {
+    function lectureEvent(id) {
+      return {
+        id: id,
+        track: 'theory',
+        title: 'Maternal-Child Lecture',
+        courseCode: 'REGN36',
+        timeStart: '0800',
+        timeEnd: '1115',
+        categories: ['lecture'],
+        contentTags: ['OB'],
+        faculty: neededFaculty(2)
+      };
+    }
+    var sem = {
+      id: 'sem36',
+      meta: { courseId: 'REGN36' },
+      faculty: [],
+      simInstructors: [],
+      students: [],
+      facilities: [],
+      config: {},
+      theory: {
+        days: [
+          skillsDay('2026-08-25', 'Tue', 1, lectureEvent('lec_a')),
+          skillsDay('2026-09-01', 'Tue', 2, lectureEvent('lec_b'))
+        ]
+      }
+    };
+
+    var lectures = listAllSlots(sem).filter(function (s) { return s.kind === 'lecture'; });
+    expect(lectures).toHaveLength(2);
+    expect(lectures[0].facultyPerInstance).toBe(3);
+    expect(lectures[0].coversAllInstances).toBe(true);
+    expect(lectures[0].seriesOnce).toBe(false);
+    expect(lectures[0].instances.map(function (i) { return i.date; })).toEqual([
+      '2026-08-25', '2026-09-01'
+    ]);
+    lectures.forEach(function (slot) {
+      expect(slot.slotId).toMatch(/:seat:\d+$/);
+      expect(slot.theoryRefs).toHaveLength(2);
+      expect(slot.openCount).toBe(1);
+    });
+
+    expect(ScheduleProposals.applySlotAssignment(
+      sem,
+      lectures[0].slotId,
+      'Assigned Faculty',
+      'usr_assigned'
+    )).toBe(true);
+    sem.theory.days.forEach(function (day) {
+      expect(day.events[0].faculty[1]).toMatchObject({
+        name: 'Assigned Faculty',
+        needed: false,
+        userId: 'usr_assigned'
+      });
+      expect(day.events[0].faculty[2].needed).toBe(true);
+    });
+  });
+
   it('merges repeating 35P Skills into one series with per-session faculty count', () => {
     var sem = {
       id: 'sem35',

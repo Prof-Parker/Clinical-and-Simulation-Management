@@ -8,7 +8,8 @@ import {
   normalizeSpecialties,
   matchesSiteTag,
   ensureLeadLectureTag,
-  userMatchesAnySpecialty
+  userMatchesAnySpecialty,
+  userMatchesAllSpecialties
 } from '../src/core/faculty-schedule/specialties.js';
 import { validateCart, userCanSeeSlot } from '../src/core/faculty-schedule/slot-rules.js';
 import * as Messages from '../src/messages/messages.js';
@@ -33,6 +34,13 @@ describe('specialties', () => {
   it('ensures Lec for full time faculty', () => {
     expect(ensureLeadLectureTag('lead_course_faculty', ['MS'])).toContain('Lec');
     expect(ensureLeadLectureTag('adjunct_faculty', ['MS'])).toEqual(['MS']);
+  });
+
+  it('matches all required specialties', () => {
+    expect(userMatchesAllSpecialties(['OB', 'PED'], ['OB', 'PED'])).toBe(true);
+    expect(userMatchesAllSpecialties(['OB'], ['OB', 'PED'])).toBe(false);
+    expect(userMatchesAllSpecialties(['OB', 'PED', 'Lec'], ['Lec', 'OB'])).toBe(true);
+    expect(userMatchesAllSpecialties(['OB', 'Lec'], [])).toBe(true);
   });
 });
 
@@ -114,9 +122,11 @@ describe('slot rules', () => {
     expect(r.ok).toBe(false);
   });
 
-  it('userCanSeeSlot respects specialties', () => {
+  it('userCanSeeSlot requires every listed specialty', () => {
     expect(userCanSeeSlot(slot({ specialties: ['OB'] }), ['MS'], false)).toBe(false);
     expect(userCanSeeSlot(slot({ specialties: ['OB'] }), ['MS'], true)).toBe(true);
+    expect(userCanSeeSlot(slot({ specialties: ['OB', 'PED'] }), ['OB'], false)).toBe(false);
+    expect(userCanSeeSlot(slot({ specialties: ['OB', 'PED'] }), ['OB', 'PED'], false)).toBe(true);
     expect(userMatchesAnySpecialty(['MS', 'OB'], ['OB'])).toBe(true);
   });
 });

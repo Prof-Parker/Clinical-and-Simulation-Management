@@ -173,7 +173,8 @@ export var UI_SHELL = [
   'headerSaveBtn', 'playgroundExitFlyoutBtn', 'playgroundExitSubnavBtn',
   'fileStatus', 'storageModeBadge', 'syncOneDriveBtn',
   'contextChipWrap', 'contextChip', 'contextChipStrong', 'contextChipPhase', 'contextPop',
-  'contextSemSelect', 'contextCourseSelect', 'contextPhaseValue',
+  'contextSemSelect', 'contextCourseSelect', 'contextTheoryCourseLabel',
+  'contextTheoryCourseSelect', 'contextPhaseValue',
   'contextSearchSemestersBtn', 'contextOpenSemesterFileBtn', 'semesterPickerFileInput',
   'menuToggle', 'menuDropdown', 'closeoutBanner', 'pwaInstallBanner', 'pwaIosInstallBanner', 'pwaOnedriveBanner'
 ];

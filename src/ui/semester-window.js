@@ -15,6 +15,26 @@ export function parseSemesterFileName(fileName) {
   };
 }
 
+export function isProgramSemesterFile(parsed) {
+  return /_program$/i.test(String(parsed && parsed.courseId || ''));
+}
+
+export function pickBestSemesterFile(files, season, year, courseId) {
+  var matches = (files || []).filter(function (f) {
+    return f && f.season === season && f.year === year;
+  });
+  if (!matches.length) return null;
+  var program = matches.find(isProgramSemesterFile);
+  if (program) return program;
+  if (courseId) {
+    var exact = matches.find(function (f) {
+      return String(f.courseId).toLowerCase() === String(courseId).toLowerCase();
+    });
+    if (exact) return exact;
+  }
+  return matches[0];
+}
+
 export function offsetSemester(season, year, delta) {
   var s = season === 'fall' ? 'fall' : 'spring';
   var y = parseInt(year, 10);

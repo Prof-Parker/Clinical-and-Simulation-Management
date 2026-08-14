@@ -42,7 +42,9 @@ export async function importTheoryFromPrototypes(options) {
   var lectureRows = parseLectureAssignmentCells(lectureCells);
   var theory = createEmptyTheory(['REGN15', 'REGN15P']);
   var lectureWeekdays = theory.settings.lectureWeekdays;
-  var eventsByDate = lectureRowsToEvents(lectureRows, lectureWeekdays);
+  var eventsByDate = lectureRowsToEvents(lectureRows, lectureWeekdays, {
+    defaultSkillsFacultyRequired: theory.settings.defaultSkillsFacultyRequired
+  });
   var weekSummaries = parseCoordinatorWeekSummaries(coordCells);
   var detailedMarkers = parseDetailedMarkers(detailedCells);
 

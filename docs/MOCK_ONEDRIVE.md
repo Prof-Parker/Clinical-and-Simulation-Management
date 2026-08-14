@@ -33,8 +33,9 @@ Theory calendar data is imported from Fall 2026 prototypes under `docs/Design Do
 
 - REGN 15/15P from the lecture / coordinator / detailed **docx** files
 - REGN 35/35P from `35.xlsx` (lecture, skills, orientation, clinical, and sim events with Faculty Needed slots)
+- REGN 36/36P hardcoded seed: Mercy OB/PEDS clinicals (groups C1–C4), OP Peds sims (one shared faculty series), and Maternal-Child / Pediatric lectures
 
-`F2026_REGN_program.json` contains **two** in-file semesters for the same term: REGN 15/15P (practicum scheduler runs) and REGN 35P-36P (events only — practicum generate is skipped; 36/36P events come later). Faculty Schedule inventories **both** semesters. Clinical sites include Mercy Medical Center Redding (`MMCR`, MS) for 35 clinicals.
+`F2026_REGN_program.json` contains **two** in-file semesters for the same term: REGN 15/15P (practicum scheduler runs) and REGN 35P-36P (events only — practicum generate is skipped). Faculty Schedule inventories **both** semesters. Clinical sites include Mercy Medical Center Redding (`MMCR`, MS) for 35 clinicals and `MMCR OB/PED` for 36P Mercy OB/PEDS clinicals.
 
 All names use placeholders only (`Student 1`, `Program Engineer`, etc.).
 
@@ -68,6 +69,7 @@ Uses a DEV-only virtual folder (Vite middleware) so you do not have to click thr
 | `lead@example.edu` | Full Time Faculty | MS, Lec | `lead-pass` |
 | `lead-ob@example.edu` | Full Time Faculty | OB, Lec | `lead-ob-pass` |
 | `lead-ped@example.edu` | Full Time Faculty | PED, Lec | `lead-ped-pass` |
+| `lead-obped@example.edu` | Full Time Faculty | OB, PED, Lec | `lead-obped-pass` |
 | `adjunct@example.edu` | Adjunct Faculty | MS | `adjunct-pass` |
 | `adjunct-ob@example.edu` | Adjunct Faculty | OB | `adjunct-ob-pass` |
 | `adjunct-ped@example.edu` | Adjunct Faculty | PED | `adjunct-ped-pass` |

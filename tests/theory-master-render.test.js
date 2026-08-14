@@ -200,7 +200,7 @@ describe('theory master calendar render (mock-onedrive / synthetic)', () => {
     expect(grid.textContent).toMatch(/Wk|Week|Lecture/i);
   });
 
-  it('3rd-semester Theory Master stacks REGN35 and REGN36 for engineer', function () {
+  it('3rd-semester Theory Master shows the engineer-selected theory course', function () {
     var fileRoot = DataModel.createDefaultFile();
     var sem = fileRoot.semesters[0];
     sem.meta.courseId = 'REGN35P-36P';
@@ -242,17 +242,17 @@ describe('theory master calendar render (mock-onedrive / synthetic)', () => {
     }];
     TheoryData.migrateTheory(sem);
     fileRoot.meta.activeSemesterId = sem.id;
-    fileRoot.meta.activeCourseCode = 'REGN35';
+    fileRoot.meta.activeCourseCode = 'REGN35P-36P';
+    fileRoot.meta.activeTheoryCourseCode = 'REGN36';
     setFileRoot(fileRoot);
     sessionStub.role = 'program_engineer';
     sessionStub.specialties = [];
 
     expect(function () { switchTab('theory-master'); }).not.toThrow();
     var grid = document.getElementById('theoryMasterGrid');
-    expect(grid.querySelectorAll('.theory-master-course-panel').length).toBe(2);
-    expect(grid.textContent).toMatch(/REGN35|REGN 35/);
     expect(grid.textContent).toMatch(/REGN36|REGN 36/);
-    expect(grid.querySelector('#theoryMasterExpandAll')).toBeTruthy();
+    expect(grid.textContent).not.toMatch(/MS Module/);
+    expect(grid.textContent).toMatch(/OB Module/);
   });
 
   it('3rd-semester Theory Master shows only REGN36 for OB faculty', function () {

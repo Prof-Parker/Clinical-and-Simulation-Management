@@ -26,6 +26,15 @@ export function getActiveCourseCode() {
   return data && data.meta ? data.meta.courseId : null;
 }
 
+export function getActiveTheoryCourseCode() {
+  var fileRoot = getFileRoot();
+  var selected = fileRoot && fileRoot.meta
+    ? String(fileRoot.meta.activeTheoryCourseCode || '').toUpperCase()
+    : '';
+  if (selected === 'REGN35' || selected === 'REGN36') return selected;
+  return 'REGN35';
+}
+
 export function getNavShell() {
   return resolveNavShell();
 }
@@ -77,6 +86,39 @@ export function setActiveCourseCode(code, skipConfirm) {
     return;
   }
   apply();
+}
+
+export function setActiveProgramSemesterId(semesterId, skipConfirm) {
+  var fileRoot = getFileRoot();
+  if (!fileRoot || !semesterId || semesterId === fileRoot.meta.activeSemesterId) return;
+  function apply() {
+    chromeApi().then(function (m) {
+      m.switchSemester(semesterId);
+      updateCourseStatusLabel();
+    });
+  }
+  if (state.dirty && !skipConfirm) {
+    showConfirm('Unsaved changes', 'Save or discard changes before switching program semester?', function () {
+      apply();
+    }, { confirmLabel: 'Switch anyway' });
+    return;
+  }
+  apply();
+}
+
+export function setActiveTheoryCourseCode(code) {
+  var fileRoot = getFileRoot();
+  var normalized = String(code || '').toUpperCase().replace(/\s+/g, '');
+  if (!fileRoot || (normalized !== 'REGN35' && normalized !== 'REGN36')) return;
+  if (getActiveTheoryCourseCode() === normalized &&
+      fileRoot.meta.activeTheoryCourseCode === normalized) {
+    return;
+  }
+  fileRoot.meta.activeTheoryCourseCode = normalized;
+  updateCourseStatusLabel();
+  chromeApi().then(function (m) {
+    m.refresh();
+  });
 }
 
 export function initCourseSelector() {

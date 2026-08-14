@@ -20,6 +20,11 @@ function esc(s) {
   return escapeHtml(s == null ? '' : String(s));
 }
 
+/** Merged file id — prefer concrete 35/36/35P/36P filter options instead. */
+function isMergedCourseFilterId(id) {
+  return String(id || '').toUpperCase().replace(/\s+/g, '') === 'REGN35P-36P';
+}
+
 function collectSites(slots) {
   var map = {};
   (slots || []).forEach(function (s) {
@@ -43,8 +48,10 @@ function readFilters(root) {
   var site = root.querySelector('#facultyFilterSite');
   var weekday = root.querySelector('#facultyFilterWeekday');
   var showAll = root.querySelector('#facultyFilterShowAll');
+  var courseId = course ? course.value : '';
+  if (isMergedCourseFilterId(courseId)) courseId = '';
   return {
-    courseId: course ? course.value : '',
+    courseId: courseId,
     kind: kind ? kind.value : '',
     siteId: site ? site.value : '',
     weekday: weekday ? weekday.value : '',
@@ -55,12 +62,14 @@ function readFilters(root) {
 
 function filtersHtml(slots, filters) {
   filters = filters || {};
+  if (isMergedCourseFilterId(filters.courseId)) filters.courseId = '';
   var sites = collectSites(slots);
   var courses = {};
   (slots || []).forEach(function (s) {
-    if (s.courseId) courses[s.courseId] = s.courseLabel || s.courseId;
+    if (!s.courseId || isMergedCourseFilterId(s.courseId)) return;
+    courses[s.courseId] = s.courseLabel || s.courseId;
   });
-  var courseOpts = Object.keys(courses).map(function (id) {
+  var courseOpts = Object.keys(courses).sort().map(function (id) {
     return '<option value="' + esc(id) + '"' +
       (filters.courseId === id ? ' selected' : '') + '>' + esc(courses[id]) + '</option>';
   }).join('');

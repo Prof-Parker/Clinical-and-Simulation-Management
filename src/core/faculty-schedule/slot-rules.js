@@ -3,7 +3,7 @@
  */
 
 import {
-  userMatchesAnySpecialty,
+  userMatchesAllSpecialties,
   normalizeSpecialties
 } from './specialties.js';
 import { hhmmToMinutes } from './slot-inventory.js';
@@ -68,7 +68,7 @@ function validateCart(slots, userSpecialties, opts) {
 
   list.forEach(function (slot) {
     if (!allowSpecialtyOverride &&
-        !userMatchesAnySpecialty(userSpecialties, slot.specialties)) {
+        !userMatchesAllSpecialties(userSpecialties, slot.specialties)) {
       errors.push('Missing specialty for ' + (slot.courseLabel || '') + ' ' + slot.kind +
         ' (' + normalizeSpecialties(slot.specialties).join(', ') + ').');
     }
@@ -174,7 +174,7 @@ function validateCart(slots, userSpecialties, opts) {
 
 function userCanSeeSlot(slot, userSpecialties, showAll) {
   if (showAll) return true;
-  return userMatchesAnySpecialty(userSpecialties, slot.specialties);
+  return userMatchesAllSpecialties(userSpecialties, slot.specialties);
 }
 
 export {
