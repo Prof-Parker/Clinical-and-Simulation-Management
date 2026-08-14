@@ -163,7 +163,7 @@ TODO.md
 - [ ] Refactor data storage and scheduling rules to per semester basis
 - [ ] Implement true seed for REGN 35 and REGN 36 (current are hardcoded, rough approximations)
 - [ ] Update REGN 15 Content Library
-
+- [ ] **After Feature Lock** review [src](src) and consider refactoring modules for abstraction, inheritance, composition for overall optimization.
 
 
 ## Closed out issues
