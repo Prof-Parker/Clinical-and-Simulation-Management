@@ -18,7 +18,10 @@ function kindClass(kind) {
   return 'theory-coord-item-theory';
 }
 
-function kindLabel(kind) {
+function kindLabel(kind, slot) {
+  if (slot && slot.seriesLabel && (slot.seriesOnce || kind === 'clinical')) {
+    return slot.seriesLabel;
+  }
   if (kind === 'skills') return 'Skills Lab';
   if (kind === 'sim') return 'Sim';
   if (kind === 'clinical') return 'Clinical';
@@ -50,11 +53,11 @@ function slotOpenCount(slot) {
 
 function groupKeyForSlot(slot) {
   var hrs = Math.round((Number(slot.hoursPerInstance) || 0) * 10) / 10;
-  return [slot.courseId || '', slot.kind || '', hrs].join('|');
+  return [slot.courseId || '', slot.kind || '', hrs, slot.seriesKey || ''].join('|');
 }
 
 /**
- * Group slots in one day cell by course + kind + hours-per-instance.
+ * Group slots in one day cell by course + kind + hours + skills series.
  */
 function groupSlots(slots) {
   var map = {};
@@ -69,6 +72,10 @@ function groupSlots(slots) {
         courseLabel: slot.courseLabel || slot.courseId || 'Course',
         kind: slot.kind || '',
         hours: Math.round((Number(slot.hoursPerInstance) || 0) * 10) / 10,
+        seriesKey: slot.seriesKey || '',
+        seriesLabel: slot.seriesLabel || '',
+        seriesOnce: !!slot.seriesOnce,
+        facultyPerInstance: 0,
         slots: [],
         openTotal: 0
       };
@@ -76,6 +83,8 @@ function groupSlots(slots) {
     }
     map[key].slots.push(slot);
     map[key].openTotal += slotOpenCount(slot);
+    var staff = Number(slot.facultyPerInstance) || 0;
+    if (staff > map[key].facultyPerInstance) map[key].facultyPerInstance = staff;
   });
   return order.map(function (k) { return map[k]; });
 }
@@ -87,7 +96,7 @@ function slotChipHtml(slot, opts) {
   opts = opts || {};
   var selected = !!opts.selected;
   var openCount = slotOpenCount(slot);
-  var title = (slot.courseLabel || slot.courseId || '') + ' ' + kindLabel(slot.kind);
+  var title = (slot.courseLabel || slot.courseId || '') + ' ' + kindLabel(slot.kind, slot);
   var lines = [];
   lines.push('<div class="faculty-chip-title">' + esc(title) + '</div>');
   if (slot.kind === 'clinical') {
@@ -122,8 +131,10 @@ function compressedChipHtml(group, opts) {
   var selected = !!opts.selected;
   var expanded = !!opts.expanded;
   var hrs = formatHoursLabel(group.hours);
-  var count = group.openTotal > 0 ? group.openTotal : (group.slots || []).length;
-  var line2 = kindLabel(group.kind) + (hrs ? ' ' + hrs : '') +
+  var count = group.facultyPerInstance > 0
+    ? group.facultyPerInstance
+    : (group.openTotal > 0 ? group.openTotal : (group.slots || []).length);
+  var line2 = kindLabel(group.kind, group) + (hrs ? ' ' + hrs : '') +
     (count > 0 ? ' (' + count + ')' : '');
   var aria = (group.courseLabel || '') + ' ' + line2;
   var attrs = 'class="faculty-slot-chip faculty-slot-chip-compressed theory-coord-item ' +

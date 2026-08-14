@@ -10,6 +10,7 @@ import { hoursFromTimes } from '../theory-data.js';
 import { normalizeSpecialties } from './specialties.js';
 import { courseBand } from './program-bands.js';
 import * as CourseDefaults from '../course-defaults.js';
+import { buildTheorySlots, eventSlotKind } from './theory-slots.js';
 
 var SHORT_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 var FULL_WEEKDAYS = [
@@ -282,108 +283,14 @@ function buildSimInstances(semester, start, end) {
   return Object.keys(dates).sort().map(function (d) { return dates[d]; });
 }
 
-function eventSlotKind(ev) {
-  if (!ev) return '';
-  var type = String(ev.type || '').toLowerCase();
-  var track = String(ev.track || '').toLowerCase();
-  var cats = Array.isArray(ev.categories) ? ev.categories : [];
-  var has = function (name) {
-    return type === name || track === name || cats.indexOf(name) >= 0;
-  };
-  if (has('orientation')) return 'skills';
-  if (has('simulation') || has('sim')) return 'sim';
-  if (has('clinical')) return 'clinical';
-  if (has('skills_lab') || has('skills')) return 'skills';
-  if (has('lecture') || has('guest_lecture') || track === 'theory') return 'lecture';
-  return '';
-}
-
-/**
- * Group theory faculty-needed rows by recurring pattern (weekday+times+type).
- */
 function theorySlots(semester) {
-  var theory = semester.theory;
-  if (!theory || !Array.isArray(theory.days)) return [];
-  var groups = {};
-  theory.days.forEach(function (day) {
-    if (!day || !Array.isArray(day.events)) return;
-    day.events.forEach(function (ev) {
-      if (!ev || !Array.isArray(ev.faculty)) return;
-      var kind = eventSlotKind(ev);
-      if (!kind) return;
-      ev.faculty.forEach(function (slot, fi) {
-        if (!isNeeded(slot)) return;
-        var start = ScheduleHours.normalizeHhmm(ev.timeStart || day.timeStart, '0800');
-        var end = ScheduleHours.normalizeHhmm(ev.timeEnd || day.timeEnd, '1200');
-        var wd = fullWeekday(day.weekday) || weekdayFromDate(day.date);
-        var siteKey = ev.facilityId || ev.siteId || '';
-        var groupKey = Array.isArray(ev.groups) ? ev.groups.join(',') : '';
-        var key = [kind, wd, start, end, ev.courseCode || '', siteKey, groupKey].join('|');
-        var tags = normalizeSpecialties(ev.contentTags);
-        if (!groups[key]) {
-          groups[key] = {
-            kind: kind,
-            weekday: wd,
-            timeStart: start,
-            timeEnd: end,
-            courseCode: ev.courseCode || '',
-            facilityId: siteKey,
-            siteId: siteKey,
-            siteLabel: ev.siteLabel || '',
-            clinicalGroup: (ev.groups && ev.groups[0]) || '',
-            specialties: tags,
-            capacity: 0,
-            refs: [],
-            instances: {}
-          };
-        }
-        groups[key].capacity += 1;
-        groups[key].refs.push({
-          dayId: day.id,
-          eventId: ev.id,
-          facultyIndex: fi,
-          facultyId: slot.id || ''
-        });
-        if (day.date) {
-          groups[key].instances[day.date] = {
-            date: day.date,
-            weekIndex: day.weekIndex != null ? day.weekIndex : null,
-            weekday: wd,
-            timeStart: start,
-            timeEnd: end
-          };
-        }
-      });
-    });
-  });
-
-  return Object.keys(groups).map(function (key) {
-    var g = groups[key];
-    var specs = g.kind === 'lecture'
-      ? ['Lec']
-      : (g.specialties && g.specialties.length
-        ? g.specialties
-        : defaultSpecialties(semester, g.kind === 'clinical' || g.kind === 'sim' ? g.kind : 'skills'));
-    var slot = makeBase(semester, {
-      slotId: 'theory:' + key,
-      kind: g.kind,
-      sourcePath: 'theory',
-      sourceId: key,
-      specialties: specs,
-      timeStart: g.timeStart,
-      timeEnd: g.timeEnd,
-      weekday: g.weekday,
-      facilityId: g.facilityId || '',
-      siteId: g.siteId || '',
-      siteLabel: g.siteLabel || '',
-      clinicalGroup: g.clinicalGroup || '',
-      open: g.capacity > 0,
-      capacity: g.capacity,
-      openCount: g.capacity,
-      theoryRefs: g.refs,
-      instances: Object.keys(g.instances).sort().map(function (d) { return g.instances[d]; })
-    });
-    return finalizeSlot(slot);
+  return buildTheorySlots(semester, {
+    isNeeded: isNeeded,
+    makeBase: makeBase,
+    finalizeSlot: finalizeSlot,
+    fullWeekday: fullWeekday,
+    weekdayFromDate: weekdayFromDate,
+    defaultSpecialties: defaultSpecialties
   });
 }
 
@@ -431,6 +338,7 @@ function filterSlots(slots, filters) {
 
 export {
   isNeeded,
+  eventSlotKind,
   listAllSlots,
   listOpenSlots,
   findSlotById,

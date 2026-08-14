@@ -8,7 +8,12 @@ import { loadDocxText } from './parse-docx.js';
 import { parseLectureAssignmentCells, lectureRowsToEvents } from './import-lecture-assignments.js';
 import { parseCoordinatorWeekSummaries } from './import-coordinator.js';
 import { parseDetailedMarkers, markersToEvents } from './import-detailed-calendar.js';
-import { buildTopicLibrary, attachModuleRefs } from './build-topic-library.js';
+import {
+  buildTopicLibrary,
+  attachModuleRefs,
+  attachSkillPlacementsToEvents,
+  applySkillsFacultyNeeded
+} from './build-topic-library.js';
 import { createEmptyTheory } from '../../src/core/theory-data.js';
 import { rebuildWeeks, getWeekIndexForDate } from '../../src/core/calendar-engine.js';
 import { uid } from '../../src/core/data-model/students.js';
@@ -124,7 +129,10 @@ export async function importTheoryFromPrototypes(options) {
 
   var built = buildTopicLibrary(lectureRows, eventsByDate);
   var topics = built.topics;
+  var skills = built.skills || [];
   attachModuleRefs(theory.days, topics);
+  attachSkillPlacementsToEvents(theory.days, skills);
+  applySkillsFacultyNeeded(theory.days, theory.settings.defaultSkillsFacultyRequired || 2);
 
   var validation = {
     lectureRowCount: lectureRows.length,
@@ -162,9 +170,7 @@ export async function importTheoryFromPrototypes(options) {
         }
       },
       topics: topics,
-      skills: (built.skillTitles || []).map(function (title) {
-        return { title: title, description: '', kinds: [], courseId: 'REGN15' };
-      })
+      skills: skills
     },
     validation: validation,
     lectureRows: lectureRows

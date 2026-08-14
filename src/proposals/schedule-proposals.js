@@ -208,7 +208,7 @@ function applyTheoryAssignment(semester, slot, name, userId) {
   var refs = slot.theoryRefs || [];
   if (!refs.length || !semester.theory || !Array.isArray(semester.theory.days)) return false;
   var assigned = 0;
-  var need = 1;
+  var need = slot.coversAllInstances ? refs.length : 1;
   for (var r = 0; r < refs.length && assigned < need; r++) {
     var ref = refs[r];
     var day = semester.theory.days.find(function (d) {
