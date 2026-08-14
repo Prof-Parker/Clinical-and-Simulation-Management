@@ -46,7 +46,9 @@ function renderPracticumPreview(data) {
   var validation = Validator.validateAll(data);
   var students = getScheduleFilteredStudents(data, validation);
   if (!students.length) {
-    el.textContent = 'No students on the practicum roster yet.';
+    el.textContent =
+      'This practicum course has not been set up for automatic generation; ' +
+      'use theory events as placeholders.';
     return;
   }
 

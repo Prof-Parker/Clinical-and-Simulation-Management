@@ -299,9 +299,10 @@ function theorySlots(semester) {
  */
 function listAllSlots(semester) {
   if (!semester) return [];
-  return clinicalSlots(semester)
-    .concat(simSlots(semester))
-    .concat(theorySlots(semester));
+  var practicumSlots = (semester.students || []).length
+    ? clinicalSlots(semester).concat(simSlots(semester))
+    : [];
+  return practicumSlots.concat(theorySlots(semester));
 }
 
 function listOpenSlots(semester) {

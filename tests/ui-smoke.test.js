@@ -165,6 +165,14 @@ describe('ui-smoke wiring and render', () => {
     expect(document.getElementById('view-setup').classList.contains('active')).toBe(true);
   });
 
+  it('shows the theory-placeholder message for an empty practicum roster', function () {
+    state.data.students = [];
+    switchTab('practicum');
+    expect(document.getElementById('scheduleBody').textContent).toContain(
+      'This practicum course has not been set up for automatic generation'
+    );
+  });
+
   it('switchTab activates each tab view without throwing', function () {
     UI_TABS.forEach(function (tab) {
       expect(function () { switchTab(tab.id); }).not.toThrow();

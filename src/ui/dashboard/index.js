@@ -184,6 +184,17 @@ function render(data, options) {
 
     var scheduleBody = document.getElementById('scheduleBody');
     scheduleBody.innerHTML = '';
+    if (!(data.students || []).length) {
+      var emptyRow = document.createElement('tr');
+      var emptyCell = document.createElement('td');
+      emptyCell.colSpan = 23;
+      emptyCell.className = 'muted';
+      emptyCell.textContent =
+        'This practicum course has not been set up for automatic generation; ' +
+        'use theory events as placeholders.';
+      emptyRow.appendChild(emptyCell);
+      scheduleBody.appendChild(emptyRow);
+    }
     scheduleStudents.forEach(function (student) {
       var vr = validation.students[student.id];
       var tr = document.createElement('tr');

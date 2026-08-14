@@ -290,18 +290,6 @@ async function main() {
   };
   var course35 = CourseDefaults.get('REGN35P-36P');
   var config35 = course35 ? JSON.parse(JSON.stringify(course35.config)) : buildFall2026Config();
-  var students35 = [];
-  for (var j = 1; j <= 30; j++) {
-    var clin35 = 'C' + (((j - 1) % 5) + 1);
-    var section35 = sectionNames[(j - 1) % sectionNames.length];
-    students35.push(createStudent(
-      'Student ' + j,
-      clin35,
-      'SG1',
-      'fac_srmc',
-      section35
-    ));
-  }
   var semester35 = {
     id: sem35Id,
     meta: {
@@ -364,7 +352,10 @@ async function main() {
     sections: sectionNames.map(function (name) {
       return { id: sectionIds35[name], name: name };
     }),
-    students: students35,
+    // REGN35P-36P is theory-first in the demo. Theory clinical/sim events
+    // remain available for faculty scheduling, but no practicum roster or
+    // automatically generated student schedules are seeded.
+    students: [],
     proposals: [],
     theory: imported35.theory
   };

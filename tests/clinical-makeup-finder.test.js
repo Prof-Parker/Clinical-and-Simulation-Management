@@ -134,6 +134,10 @@ describe('makeup finder practicum gates', () => {
     var sem15 = findCourseSemester(program, COURSE_15P);
     expect(sem15, 'REGN15P semester missing from F2026_REGN_program.json').toBeTruthy();
     expect(
+      (sem15.students || []).length,
+      'REGN15P roster is empty — re-run npm run seed:mock-onedrive'
+    ).toBeGreaterThan(0);
+    expect(
       hasPracticumSchedule(sem15),
       'REGN15P practicum is empty — re-run npm run seed:mock-onedrive'
     ).toBe(true);
@@ -147,19 +151,15 @@ describe('makeup finder practicum gates', () => {
     }
     var sem35 = findCourseSemester(program, COURSE_35P_36P);
     expect(sem35, 'REGN35P-36P semester missing from F2026_REGN_program.json').toBeTruthy();
-    if (!hasPracticumSchedule(sem35)) {
-      console.log(
-        'makeup finder: REGN35P-36P practicum empty (expected) — ' +
-          'not running full makeup suite on 35P/36P; clinical/sim come from theory events in this build'
-      );
-      expect(hasPracticumSchedule(sem35)).toBe(false);
-      return;
-    }
-    // Seed may still regenerate practicum; full suite stays pinned to REGN15P.
     console.log(
-      'makeup finder: REGN35P-36P has practicum schedule — full makeup coverage stays on REGN15P'
+      'makeup finder: REGN35P-36P practicum empty (expected) — ' +
+        'not running full makeup suite on 35P/36P; clinical/sim come from theory events in this build'
     );
-    expect(hasPracticumSchedule(sem35)).toBe(true);
+    expect(
+      sem35.students || [],
+      'REGN35P-36P should not seed a practicum student roster'
+    ).toHaveLength(0);
+    expect(hasPracticumSchedule(sem35)).toBe(false);
   });
 });
 

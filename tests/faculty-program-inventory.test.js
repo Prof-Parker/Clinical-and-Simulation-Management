@@ -70,6 +70,31 @@ describe('theory clinical/sim slots', () => {
     expect(clin.courseLabel).toBe('REGN 35P');
   });
 
+  it('emits only theory inventory when the practicum roster is empty', () => {
+    var sem = theoryClinicalSemester('sem35');
+    sem.faculty = [{
+      id: 'fac_auto',
+      clinicalGroup: 'C1',
+      name: FACULTY_NEEDED_NAME,
+      needed: true
+    }];
+    sem.simInstructors = [{
+      id: 'sim_auto',
+      simGroup: 'SG1',
+      name: FACULTY_NEEDED_NAME,
+      needed: true
+    }];
+
+    var slots = listAllSlots(sem);
+    expect(slots.length).toBeGreaterThan(0);
+    expect(slots.every(function (slot) {
+      return slot.sourcePath === 'theory';
+    })).toBe(true);
+    expect(slots.some(function (slot) {
+      return /^faculty\.|^simInstructors\./.test(slot.sourcePath || '');
+    })).toBe(false);
+  });
+
   it('labels lecture and sim chips with event course codes, not the merged semester id', () => {
     var sem = {
       id: 'sem35',
