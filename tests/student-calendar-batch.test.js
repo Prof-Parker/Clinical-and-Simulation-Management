@@ -19,8 +19,10 @@ import {
 import {
   buildSummaryHtml,
   buildDetailedHtml,
-  holidayLabelForWeek
+  holidayLabelForWeek,
+  summaryEventsForWeek
 } from '../src/export/student-calendar-html.js';
+import { formatSummaryDate } from '../src/export/student-calendar-summary.js';
 
 describe('student-calendar-batch.test.js', () => {
   it('filters, builds HTML/JSON, and includes audit hours', () => {
@@ -110,5 +112,56 @@ describe('student-calendar-batch.test.js', () => {
     assert(req[0].orientationHours != null, 'audit summary has orientationHours');
 
     expect(failed).toBe(0);
+  });
+
+  it('lists each summary event on its weekday date and does not repeat the week number', () => {
+    var fileRoot = DataModel.createDefaultFile();
+    var sem = fileRoot.semesters[0];
+    DataModel.migrateSemester(sem);
+    CalendarEngine.rebuildWeeks(sem);
+    Scheduler.regenerateAll(sem);
+
+    var student = sem.students[0];
+    var wi = 5;
+    student.simGroup = 'SG3';
+    student.schedule[wi] = {
+      clinical: true,
+      sim: 1,
+      simDay: 'Tue',
+      simGuestGroup: 'SG3',
+      facilityId: student.facilityId
+    };
+    sem.config.clinicalGroupDays = sem.config.clinicalGroupDays || {};
+    sem.config.clinicalGroupDays[student.clinicalGroup] = 'Mon';
+
+    var week = sem.calendar.weeks[wi];
+    var clinIso = CalendarEngine.dateForWeekdayInWeekRange(week, 'Mon');
+    var simIso = CalendarEngine.dateForWeekdayInWeekRange(week, 'Tue');
+    expect(clinIso).toBeTruthy();
+    expect(simIso).toBeTruthy();
+    expect(clinIso).not.toBe(week.startDate);
+
+    var events = summaryEventsForWeek(sem, student, wi, false);
+    expect(events.map(function (ev) { return ev.dateIso; })).toEqual([clinIso, simIso]);
+    expect(events[0].weekday).toBe('Monday');
+    expect(events[0].activity).toMatch(/^Clinical \(/);
+    expect(events[0].times).toMatch(/AM|PM/);
+    expect(events[1].weekday).toBe('Tuesday');
+    expect(events[1].activity).toBe('Simulation 1 (Sim group 3, guest)');
+    expect(events[1].times).toMatch(/AM|PM/);
+
+    var html = buildSummaryHtml(sem, student, {});
+    expect(html).toContain('<th>Day</th>');
+    expect(html).toContain('<th>Times</th>');
+    expect(html.split('>Week 6<').length - 1).toBe(1);
+    expect(html).toContain('rowspan="' + events.length + '"');
+    expect(html).toContain(formatSummaryDate(clinIso));
+    expect(html).toContain(formatSummaryDate(simIso));
+    expect(html).toContain('Monday');
+    expect(html).toContain('Tuesday');
+    expect(html).not.toContain('Clinical Monday');
+    expect(html).not.toContain(
+      '>Week 6</td><td>' + formatSummaryDate(week.startDate)
+    );
   });
 });
