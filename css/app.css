@@ -568,6 +568,15 @@ html.dark .sticky-top { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
   cursor: pointer; transition: background 0.15s;
 }
 .btn:hover { filter: brightness(0.97); }
+.btn:disabled,
+.btn:disabled:hover {
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+  filter: none;
+  opacity: 0.75;
+}
 .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
 .btn-danger {
   background: var(--danger-bg);
@@ -3450,6 +3459,33 @@ table.data-table.theory-master-table .theory-week-practicum-row .theory-day-cell
   flex-direction: column;
   gap: 0.5rem;
   min-width: 0;
+}
+.theory-calendar-seeding {
+  padding: 0;
+  overflow: hidden;
+}
+.theory-calendar-seeding-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+.theory-calendar-seeding-summary::-webkit-details-marker { display: none; }
+.theory-calendar-seeding-summary::marker { content: ''; }
+.theory-calendar-seeding[open] .dashboard-panel-chevron {
+  transform: rotate(180deg);
+}
+.theory-calendar-seeding-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0 0.75rem 0.75rem;
 }
 .theory-weekday-checks { display: flex; flex-wrap: wrap; gap: 0.35rem 0.75rem; }
 .theory-master-setup-sessions .config-list { display: flex; flex-direction: column; gap: 0.5rem; }

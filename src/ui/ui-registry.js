@@ -131,6 +131,7 @@ export var UI_TABS = [
       'theoryMasterSetup', 'theorySaveSetupBtn', 'theoryResyncPracticumBtn', 'theoryAdvancedConfigBtn',
       'theoryLectureSessions', 'theorySkillsSessions', 'theoryDefaultSkillsFacultyRequired',
       'theoryFacultyRoster', 'theorySkillsFacultyRoster', 'theoryModuleSeedBlank', 'theoryModuleSeedPull',
+      'theoryModuleSeedSessions', 'theoryModuleSeedFullImport',
       'theoryModuleSeedSemester', 'theoryModuleSeedApplyBtn', 'theoryMasterToolbar',
       'theoryShowLecturers', 'theoryShowPracticumFaculty', 'theoryShowSkillsLabContent',
       'theorySkillCoverageSection', 'theorySkillCoverage'

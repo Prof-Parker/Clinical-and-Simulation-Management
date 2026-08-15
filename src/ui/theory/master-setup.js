@@ -2,7 +2,7 @@
  * Theory Master Calendar setup defaults panel.
  */
 
-import { getData, getFileRoot, notifyChange } from '../../core/state.js';
+import { getData, notifyChange } from '../../core/state.js';
 import * as TheoryData from '../../core/theory-data.js';
 import * as UserDirectory from '../../storage/user-directory.js';
 import { uid } from '../../core/data-model/students.js';
@@ -20,6 +20,11 @@ import {
   defaultLectureSessions,
   defaultSkillsSessions
 } from './master-setup-sessions.js';
+import {
+  fillSeedSemesterSelect,
+  syncSeedControls,
+  bindSeedPanel
+} from './master-setup-seed.js';
 
 var bound = false;
 
@@ -145,19 +150,6 @@ function resizeSkillsFaculty(list, count) {
   return next;
 }
 
-function fillSeedSemesterSelect(data) {
-  var sel = document.getElementById('theoryModuleSeedSemester');
-  if (!sel) return;
-  var root = getFileRoot();
-  var semesters = (root && root.semesters) || [];
-  sel.innerHTML = '<option value="">Select semester…</option>';
-  semesters.forEach(function (sem) {
-    if (!sem || sem.id === data.id || !sem.theory) return;
-    var label = (sem.meta && sem.meta.semesterName) || sem.id;
-    sel.innerHTML += '<option value="' + escAttr(sem.id) + '">' + esc(label) + '</option>';
-  });
-}
-
 function syncLegacyFromSessions(settings) {
   if (settings.lectureSessions && settings.lectureSessions.length) {
     settings.lectureWeekdays = settings.lectureSessions.map(function (s) { return s.weekday; });
@@ -187,9 +179,7 @@ export function render(data) {
   renderRoster('theoryFacultyRoster', settings.theoryFaculty || []);
   renderRoster('theorySkillsFacultyRoster', skillsList);
   fillSeedSemesterSelect(data);
-  var pull = document.getElementById('theoryModuleSeedPull');
-  var seedSel = document.getElementById('theoryModuleSeedSemester');
-  if (seedSel) seedSel.disabled = !(pull && pull.checked);
+  syncSeedControls();
   var showL = document.getElementById('theoryShowLecturers');
   var showP = document.getElementById('theoryShowPracticumFaculty');
   var showS = document.getElementById('theoryShowSkillsLabContent');
@@ -284,40 +274,20 @@ function resyncPracticum() {
   );
 }
 
-function applyTopicSeed() {
-  if (!canEdit()) return;
-  var data = getData();
-  if (!data || !data.theory) return;
-  var pull = document.getElementById('theoryModuleSeedPull');
-  if (!pull || !pull.checked) {
-    showAlert('Module topics', 'Leave blank is selected — no topics were copied.');
-    return;
-  }
-  var sel = document.getElementById('theoryModuleSeedSemester');
-  var root = getFileRoot();
-  var source = root && root.semesters
-    ? root.semesters.find(function (s) { return s.id === (sel && sel.value); })
-    : null;
-  if (!source || !source.theory) {
-    showAlert('Module topics', 'Select a source semester that has theory calendar data.');
-    return;
-  }
-  var result = TheoryData.seedTopicsFromTheory(data.theory, source.theory);
-  notifyChange();
-  refresh();
-  showAlert('Module topics', 'Filled ' + result.filled + ' empty lecture slot(s) from the selected semester.');
-}
-
 export function init() {
   if (bound) return;
   bound = true;
   var setup = document.getElementById('theoryMasterSetup');
   if (setup) {
+    bindSeedPanel(setup, collectInto);
     setup.addEventListener('change', function (e) {
-      if (e.target && (e.target.id === 'theoryModuleSeedPull' || e.target.id === 'theoryModuleSeedBlank')) {
-        var seedSel = document.getElementById('theoryModuleSeedSemester');
-        var pull = document.getElementById('theoryModuleSeedPull');
-        if (seedSel) seedSel.disabled = !(pull && pull.checked);
+      if (e.target && (
+        e.target.id === 'theoryModuleSeedPull' ||
+        e.target.id === 'theoryModuleSeedBlank' ||
+        e.target.id === 'theoryModuleSeedSessions' ||
+        e.target.id === 'theoryModuleSeedFullImport' ||
+        e.target.id === 'theoryModuleSeedSemester'
+      )) {
         return;
       }
       if (e.target && (
@@ -471,8 +441,6 @@ export function init() {
   if (resyncBtn) resyncBtn.addEventListener('click', resyncPracticum);
   var advancedBtn = document.getElementById('theoryAdvancedConfigBtn');
   if (advancedBtn) advancedBtn.addEventListener('click', toggleAdvanced);
-  var applyBtn = document.getElementById('theoryModuleSeedApplyBtn');
-  if (applyBtn) applyBtn.addEventListener('click', applyTopicSeed);
 }
 
 function esc(s) {

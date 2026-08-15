@@ -41,7 +41,7 @@ import {
   toggleUserMenu,
   toggleDarkMode
 } from './chrome.js';
-import { closeDialog, showAlert } from './dialogs.js';
+import { closeDialog, runDialogCancel, showAlert } from './dialogs.js';
 
 export function wireAppShell() {
   if (Storage.configureImportInput) Storage.configureImportInput();
@@ -91,11 +91,15 @@ export function wireAppShell() {
   }
 
   document.getElementById('dialogCancel').addEventListener('click', function () {
+    runDialogCancel();
     closeDialog();
   });
 
   document.getElementById('dialogModal').addEventListener('click', function (e) {
-    if (e.target.id === 'dialogModal') closeDialog();
+    if (e.target.id === 'dialogModal') {
+      runDialogCancel();
+      closeDialog();
+    }
   });
 
   initWorkspaceNav({

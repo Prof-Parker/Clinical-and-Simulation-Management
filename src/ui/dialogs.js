@@ -5,6 +5,8 @@ const _dialogDefaults = {
   cancelLabel: 'Cancel'
 };
 
+var _pendingOnCancel = null;
+
 export function escapeHtml(text) {
   return String(text)
     .replace(/&/g, '&amp;')
@@ -50,6 +52,7 @@ function _bindDialogPrimary(onPrimary) {
   var newSave = saveBtn.cloneNode(true);
   saveBtn.parentNode.replaceChild(newSave, saveBtn);
   newSave.addEventListener('click', function () {
+    _pendingOnCancel = null;
     var result = onPrimary ? onPrimary() : undefined;
     if (result === false) return;
     closeDialog();
@@ -63,12 +66,21 @@ export function showConfirm(title, message, onConfirm, options) {
   document.getElementById('dialogBody').innerHTML = dialogMessageHtml(message);
   var cancelBtn = document.getElementById('dialogCancel');
   cancelBtn.style.display = '';
+  _pendingOnCancel = typeof options.onCancel === 'function' ? options.onCancel : null;
   var saveBtn = _bindDialogPrimary(onConfirm);
   saveBtn.textContent = options.confirmLabel || 'OK';
   document.getElementById('dialogModal').classList.add('open');
 }
 
+/** Run and clear pending cancel callback (Cancel button / backdrop). */
+export function runDialogCancel() {
+  var cb = _pendingOnCancel;
+  _pendingOnCancel = null;
+  if (typeof cb === 'function') cb();
+}
+
 export function showAlert(title, message, onOk) {
+  _pendingOnCancel = null;
   document.getElementById('dialogTitle').textContent = title;
   document.getElementById('dialogBody').innerHTML = dialogMessageHtml(message);
   document.getElementById('dialogCancel').style.display = 'none';
@@ -78,6 +90,7 @@ export function showAlert(title, message, onOk) {
 }
 
 export function showDialog(title, bodyHtml, onSave) {
+  _pendingOnCancel = null;
   document.getElementById('dialogTitle').textContent = title;
   document.getElementById('dialogBody').innerHTML = bodyHtml;
   document.getElementById('dialogCancel').style.display = '';
@@ -87,6 +100,7 @@ export function showDialog(title, bodyHtml, onSave) {
 
 /** Read-only dialog with a single Close button (no Cancel / Save). */
 export function showCloseDialog(title, bodyHtml) {
+  _pendingOnCancel = null;
   document.getElementById('dialogTitle').textContent = title;
   document.getElementById('dialogBody').innerHTML = bodyHtml;
   document.getElementById('dialogCancel').style.display = 'none';

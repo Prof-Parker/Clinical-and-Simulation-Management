@@ -141,6 +141,8 @@ export function eventCourseBadge(ev, semester) {
 
 export function formatCourseBadge(code) {
   var c = String(code || '').toUpperCase().replace(/\s+/g, '');
+  if (c === 'REGN15') return 'REGN 15';
+  if (c === 'REGN15P') return 'REGN 15P';
   if (c === 'REGN35') return 'REGN 35';
   if (c === 'REGN36') return 'REGN 36';
   if (c === 'REGN35P') return 'REGN 35P';

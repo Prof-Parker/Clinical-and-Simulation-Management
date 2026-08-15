@@ -86,6 +86,12 @@ export {
   SYNCED_PRACTICUM_CATEGORY
 } from './theory-practicum-sync.js';
 
+export {
+  isPlaceholderTopicTitle,
+  seedEmptySessionEvents,
+  importTheoryEventsFromSemester
+} from './theory-session-seed.js';
+
 export var THEORY_VERSION = 1;
 
 export var THEORY_TRACKS = [

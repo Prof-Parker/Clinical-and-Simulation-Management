@@ -908,21 +908,34 @@
                                 </label>
                                 <div id="theorySkillsFacultyRoster" class="config-list"></div>
                             </fieldset>
-                            <fieldset class="theory-master-setup-fieldset theory-master-setup-span">
-                                <legend>Module topics</legend>
-                                <label class="filter-check filter-check-compact">
-                                    <input type="radio" name="theoryModuleSeedMode" id="theoryModuleSeedBlank" value="blank" checked>
-                                    Leave module information blank
-                                </label>
-                                <label class="filter-check filter-check-compact">
-                                    <input type="radio" name="theoryModuleSeedMode" id="theoryModuleSeedPull" value="pull">
-                                    Pull topics in order from another semester
-                                </label>
-                                <label class="theory-seed-semester-label">Source semester
-                                    <select id="theoryModuleSeedSemester" class="select-control" aria-label="Source semester for topics" disabled></select>
-                                </label>
-                                <button type="button" class="btn btn-sm" id="theoryModuleSeedApplyBtn">Apply topic seed</button>
-                            </fieldset>
+                            <details class="theory-master-setup-fieldset theory-master-setup-span theory-calendar-seeding">
+                                <summary class="theory-calendar-seeding-summary">
+                                    <span>Theory Calendar Seeding</span>
+                                    <span class="dashboard-panel-chevron" aria-hidden="true">▾</span>
+                                </summary>
+                                <div class="theory-calendar-seeding-body">
+                                    <label class="filter-check filter-check-compact">
+                                        <input type="radio" name="theoryModuleSeedMode" id="theoryModuleSeedBlank" value="blank" checked>
+                                        No seeding
+                                    </label>
+                                    <label class="filter-check filter-check-compact">
+                                        <input type="radio" name="theoryModuleSeedMode" id="theoryModuleSeedPull" value="pull">
+                                        Seed EMPTY events with topics from another semester
+                                    </label>
+                                    <label class="filter-check filter-check-compact">
+                                        <input type="radio" name="theoryModuleSeedMode" id="theoryModuleSeedSessions" value="sessions">
+                                        Seed events only based on lecture days and skills lab days
+                                    </label>
+                                    <label class="filter-check filter-check-compact">
+                                        <input type="radio" name="theoryModuleSeedMode" id="theoryModuleSeedFullImport" value="full">
+                                        Clear all existing topics and import from previous semester
+                                    </label>
+                                    <label class="theory-seed-semester-label" id="theoryModuleSeedSemesterLabel">Source semester
+                                        <select id="theoryModuleSeedSemester" class="select-control" aria-label="Source semester for topics" disabled></select>
+                                    </label>
+                                    <button type="button" class="btn btn-sm" id="theoryModuleSeedApplyBtn" disabled>Apply seed</button>
+                                </div>
+                            </details>
                         </div>
                     </div>
                 </div>
