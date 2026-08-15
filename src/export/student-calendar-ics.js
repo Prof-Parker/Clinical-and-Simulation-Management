@@ -1,10 +1,11 @@
 /**
  * Build student schedule .ics (iCalendar) calendars for Outlook / Apple / Google.
- * Includes clinical, simulation, lecture, skills lab, and assignment due events.
+ * Includes orientation, clinical, simulation, lecture, skills lab, and assignment due events.
  */
 
 import * as CalendarEngine from '../core/calendar-engine.js';
 import * as DataModel from '../core/data-model/index.js';
+import * as Orientation from '../core/orientation.js';
 import * as ScheduleHours from '../core/schedule-hours.js';
 import * as CourseVisibility from '../core/course-visibility.js';
 import * as HoursBySpecialty from '../core/hours-by-specialty.js';
@@ -107,6 +108,51 @@ function assignmentDueHhmm(ev) {
   return DEFAULT_ASSIGNMENT_DUE;
 }
 
+/**
+ * Date for an orientation session in a given instructional week.
+ * Uses the setup date when it already falls in that week; otherwise maps the
+ * original weekday onto the week (student orientationWeekIndex override).
+ */
+function orientationEventDate(semester, orient, weekIndex) {
+  if (orient && orient.date) {
+    var dateWeek = CalendarEngine.getWeekIndexForDate(semester, orient.date);
+    if (dateWeek === weekIndex) return orient.date;
+    var parsed = CalendarEngine.parseDate(orient.date);
+    if (parsed) {
+      var remapped = dateForWeekdayInWeek(
+        semester, weekIndex, CalendarEngine.weekdayNameForDate(parsed)
+      );
+      if (remapped) return remapped;
+    }
+  }
+  var week = semester.calendar && semester.calendar.weeks && semester.calendar.weeks[weekIndex];
+  return (week && week.startDate) || null;
+}
+
+function collectOrientationEvents(semester, student) {
+  var events = [];
+  var weeks = Orientation.getOrientationWeeksForStudent(semester, student);
+  weeks.forEach(function (wi) {
+    var orient = Orientation.getOrientationForWeek(semester, student, wi);
+    if (!orient) return;
+    ScheduleHours.ensureOrientationTimes(orient);
+    var dateIso = orientationEventDate(semester, orient, wi);
+    if (!dateIso) return;
+    var facId = orient.facilityId || Orientation.getOrientationFacilityId(semester, student);
+    var site = facilityLabel(semester, facId);
+    events.push(makeTimedEvent({
+      uid: uidFor(student, 'orientation', dateIso, wi),
+      summary: Orientation.getOrientationLabel(semester, student, wi),
+      date: dateIso,
+      start: orient.timeStart,
+      end: orient.timeEnd,
+      location: site,
+      description: site ? ('Orientation at ' + site) : 'Orientation'
+    }));
+  });
+  return events;
+}
+
 function collectPracticumEvents(semester, student) {
   var events = [];
   var isThird = CourseVisibility.isThirdSemester(semester.meta && semester.meta.courseId);
@@ -196,6 +242,20 @@ function collectTheoryEvents(semester, student) {
         }));
         return;
       }
+      if (ev.track === 'orientation') {
+        var orientSummary = ev.title ? String(ev.title) : 'Orientation';
+        if (ev.courseCode) {
+          orientSummary = CourseVisibility.formatCourseBadge(ev.courseCode) + ' · ' + orientSummary;
+        }
+        events.push(makeTimedEvent({
+          uid: uidFor(student, 'theory-orientation', dateIso, ev.id || idx),
+          summary: orientSummary,
+          date: dateIso,
+          start: ev.timeStart || ScheduleHours.DEFAULT_ORIENT_START,
+          end: ev.timeEnd || ScheduleHours.DEFAULT_ORIENT_END
+        }));
+        return;
+      }
       if (ev.track === 'skills') {
         var skillsSummary = 'Skills lab';
         if (ev.courseCode) {
@@ -250,7 +310,8 @@ function collectStudentCalendarEvents(semester, student) {
   if (!semester.calendar || !semester.calendar.weeks || !semester.calendar.weeks.length) {
     CalendarEngine.rebuildWeeks(semester);
   }
-  return collectPracticumEvents(semester, student)
+  return collectOrientationEvents(semester, student)
+    .concat(collectPracticumEvents(semester, student))
     .concat(collectTheoryEvents(semester, student));
 }
 

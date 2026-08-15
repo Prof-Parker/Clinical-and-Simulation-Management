@@ -37,7 +37,9 @@ describe('orientation.test.js', () => {
     var se = sem.facilities.find(function (f) { return f.name.indexOf('Elizabeth') >= 0; });
 
     assert(Orientation.facilityInitials(sem, srmc.id) === 'SRMC', 'SRMC initials');
-    assert(Orientation.facilityInitials(sem, se.id) === 'SE', 'SE initials');
+    assert(Orientation.facilityInitials(sem, se.id) === 'StE', 'StE initials from name');
+    se.shortName = 'StE';
+    assert(Orientation.facilityInitials(sem, se.id) === 'StE', 'prefers library shortName StE');
     assert(Orientation.facilityInitials(sem, 'unknown') === 'OR', 'unknown facility fallback');
 
     var c1Student = sem.students.find(function (s) { return s.clinicalGroup === 'C1'; });
@@ -46,6 +48,8 @@ describe('orientation.test.js', () => {
     assert(Orientation.isOrientationWeek(sem, c1Student, 1), 'week 2 is orientation for C1');
     assert(!Orientation.isOrientationWeek(sem, c1Student, 0), 'week 1 is not orientation for C1');
     assert(Orientation.getOrientationLabel(sem, c1Student) === 'Orient SRMC', 'C1 orient label');
+    var c2Student = sem.students.find(function (s) { return s.clinicalGroup === 'C2'; });
+    assert(Orientation.getOrientationLabel(sem, c2Student, 1) === 'Orient StE', 'C2 orient label StE');
 
     c1Student.orientationWeekIndex = 3;
     assert(Orientation.getEffectiveOrientationWeekIndex(sem, c1Student) === 3, 'student override week');
