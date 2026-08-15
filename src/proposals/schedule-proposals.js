@@ -8,7 +8,7 @@ import {
   semesterForSlotId
 } from '../core/faculty-schedule/program-inventory.js';
 import { validateCart } from '../core/faculty-schedule/slot-rules.js';
-import { FACULTY_NEEDED_NAME } from '../core/theory-events.js';
+import { FACULTY_NEEDED_NAME, refreshFacultyNeeded } from '../core/theory-events.js';
 import * as MessageEmit from '../messages/message-emit.js';
 import { notifyChange } from '../core/state.js';
 import * as SubstituteProposals from './substitute-proposals.js';
@@ -212,7 +212,9 @@ function applyTheoryAssignment(semester, slot, name, userId) {
   for (var r = 0; r < refs.length && assigned < need; r++) {
     var ref = refs[r];
     var day = semester.theory.days.find(function (d) {
-      return d.id === ref.dayId || d.date === ref.dayId;
+      if (ref.date && d.date === ref.date) return true;
+      if (ref.dayId && (d.date === ref.dayId || d.id === ref.dayId)) return true;
+      return false;
     });
     if (!day || !Array.isArray(day.events)) continue;
     var ev = day.events.find(function (e) { return e.id === ref.eventId; });
@@ -224,6 +226,7 @@ function applyTheoryAssignment(semester, slot, name, userId) {
     fac.userId = userId || '';
     assigned++;
   }
+  if (assigned > 0) refreshFacultyNeeded(semester.theory);
   return assigned > 0;
 }
 
@@ -239,27 +242,50 @@ function reviewSelfSchedule(semester, proposalId, decisions, reviewer, notes, re
   var approved = 0;
   var denied = 0;
   var pending = 0;
+  var approveAttempts = 0;
+  var applyFailures = [];
   if (!proposal.notes) proposal.notes = { proposer: '', reviewer: '' };
   (proposal.items || []).forEach(function (item) {
     var d = decisions[item.slotId];
-    if (d === 'approved' || d === 'denied') {
-      item.decision = d;
+    if (d === 'denied') {
+      item.decision = 'denied';
       if (decisions[item.slotId + ':note']) item.note = String(decisions[item.slotId + ':note']);
+      denied++;
+      return;
     }
-    if (item.decision === 'approved') {
-      approved++;
-      applySlotAssignment(
+    if (d === 'approved') {
+      approveAttempts++;
+      var applied = applySlotAssignment(
         semester,
         item.slotId,
         proposal.proposedBy.name,
         proposal.proposedBy.userId
       );
+      if (!applied) {
+        applyFailures.push(item.slotId);
+        pending++;
+        return;
+      }
+      item.decision = 'approved';
+      if (decisions[item.slotId + ':note']) item.note = String(decisions[item.slotId + ':note']);
+      approved++;
+      return;
+    }
+    if (item.decision === 'approved') {
+      approved++;
     } else if (item.decision === 'denied') {
       denied++;
     } else {
       pending++;
     }
   });
+
+  if (approveAttempts > 0 && applyFailures.length === approveAttempts) {
+    return {
+      error: 'Could not assign slot ' + applyFailures.join(', ')
+    };
+  }
+
   if (pending === 0 && denied === 0) proposal.status = 'approved';
   else if (pending === 0 && approved === 0) proposal.status = 'denied';
   else if (pending === 0) proposal.status = 'partial';

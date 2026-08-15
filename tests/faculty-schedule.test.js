@@ -17,6 +17,8 @@ import { MESSAGE_TYPES } from '../src/messages/message-types.js';
 import * as MessageEmit from '../src/messages/message-emit.js';
 import * as ScheduleProposals from '../src/proposals/schedule-proposals.js';
 import * as UserTemplate from '../src/auth/user-template.js';
+import { listOpenSlots } from '../src/core/faculty-schedule/slot-inventory.js';
+import { FACULTY_NEEDED_NAME, facultyDisplayName } from '../src/core/theory-events.js';
 
 describe('specialties', () => {
   it('normalizes PEDS to PED and Lec case', () => {
@@ -178,6 +180,155 @@ describe('self schedule proposals', () => {
     expect(semester.faculty[0].needed).toBe(false);
     expect(semester.faculty[0].name).toBe('Ada Faculty');
     expect(Messages.unreadCount(registry.users.u1)).toBe(1);
+  });
+
+  function theoryDay(date, weekday, weekIndex, ev) {
+    return {
+      date: date,
+      weekday: weekday,
+      weekIndex: weekIndex,
+      events: [ev]
+    };
+  }
+
+  function theorySemester(days) {
+    return {
+      id: 'sem35',
+      meta: { selfSchedulingOpen: true, courseId: 'REGN35P-36P', semesterName: 'Fall 2026' },
+      proposals: [],
+      faculty: [],
+      simInstructors: [],
+      students: [],
+      facilities: [],
+      config: {},
+      facultySchedule: { substitutes: [] },
+      theory: { days: days }
+    };
+  }
+
+  it('approves a unique skills-fair seat on production-shaped days without id', () => {
+    var semester = theorySemester([
+      theoryDay('2026-08-17', 'Monday', 0, {
+        id: 'ev_fair',
+        track: 'skills',
+        title: 'REGN 35P Skills Fair',
+        courseCode: 'REGN35P',
+        timeStart: '0800',
+        timeEnd: '1200',
+        categories: ['skills_lab'],
+        faculty: [
+          { name: FACULTY_NEEDED_NAME, role: 'skills', needed: true }
+        ]
+      })
+    ]);
+    var slot = listOpenSlots(semester).find(function (s) { return s.kind === 'skills'; });
+    expect(slot).toBeTruthy();
+    expect(slot.coversAllInstances).toBe(false);
+    expect(slot.theoryRefs[0].dayId).toBe('2026-08-17');
+    expect(slot.theoryRefs[0].date).toBe('2026-08-17');
+    var session = { userId: 'u1', name: 'Ada Faculty', specialties: ['MS'] };
+    var submitted = ScheduleProposals.submitSelfSchedule(semester, [slot.slotId], session, {
+      allowSpecialtyOverride: true
+    });
+    expect(submitted.ok).toBe(true);
+    var decisions = {};
+    decisions[slot.slotId] = 'approved';
+    var reviewed = ScheduleProposals.reviewSelfSchedule(
+      semester,
+      submitted.proposal.id,
+      decisions,
+      { userId: 'admin', name: 'Admin' },
+      'ok',
+      null
+    );
+    expect(reviewed.ok).toBe(true);
+    expect(reviewed.proposal.status).toBe('approved');
+    var fac = semester.theory.days[0].events[0].faculty[0];
+    expect(fac.needed).toBe(false);
+    expect(fac.name).toBe('Ada Faculty');
+    expect(facultyDisplayName(fac)).toBe('Ada Faculty');
+    var stillOpen = listOpenSlots(semester).some(function (s) { return s.slotId === slot.slotId; });
+    expect(stillOpen).toBe(false);
+  });
+
+  it('approves a repeating lecture seat across every instance', () => {
+    var semester = theorySemester([
+      theoryDay('2026-08-18', 'Tuesday', 0, {
+        id: 'ev_lec_a',
+        track: 'theory',
+        title: 'REGN 36 Lecture',
+        courseCode: 'REGN36',
+        timeStart: '0800',
+        timeEnd: '1115',
+        categories: ['lecture'],
+        faculty: [{ name: FACULTY_NEEDED_NAME, role: 'lecturer', needed: true }]
+      }),
+      theoryDay('2026-08-25', 'Tuesday', 1, {
+        id: 'ev_lec_b',
+        track: 'theory',
+        title: 'REGN 36 Lecture',
+        courseCode: 'REGN36',
+        timeStart: '0800',
+        timeEnd: '1115',
+        categories: ['lecture'],
+        faculty: [{ name: FACULTY_NEEDED_NAME, role: 'lecturer', needed: true }]
+      })
+    ]);
+    var slot = listOpenSlots(semester).find(function (s) { return s.kind === 'lecture'; });
+    expect(slot).toBeTruthy();
+    expect(slot.coversAllInstances).toBe(true);
+    expect(slot.theoryRefs.length).toBe(2);
+    var session = { userId: 'u1', name: 'Ada Faculty', specialties: ['Lec'] };
+    var submitted = ScheduleProposals.submitSelfSchedule(semester, [slot.slotId], session, {});
+    expect(submitted.ok).toBe(true);
+    var decisions = {};
+    decisions[slot.slotId] = 'approved';
+    var reviewed = ScheduleProposals.reviewSelfSchedule(
+      semester,
+      submitted.proposal.id,
+      decisions,
+      { userId: 'admin', name: 'Admin' },
+      'ok',
+      null
+    );
+    expect(reviewed.ok).toBe(true);
+    expect(semester.theory.days[0].events[0].faculty[0].name).toBe('Ada Faculty');
+    expect(semester.theory.days[1].events[0].faculty[0].name).toBe('Ada Faculty');
+    expect(facultyDisplayName(semester.theory.days[0].events[0].faculty[0])).toBe('Ada Faculty');
+    expect(listOpenSlots(semester).some(function (s) { return s.slotId === slot.slotId; })).toBe(false);
+  });
+
+  it('does not mark a request approved when assignment cannot be applied', () => {
+    var semester = theorySemester([
+      theoryDay('2026-08-18', 'Tuesday', 0, {
+        id: 'ev_lec',
+        track: 'theory',
+        title: 'REGN 36 Lecture',
+        courseCode: 'REGN36',
+        timeStart: '0800',
+        timeEnd: '1115',
+        categories: ['lecture'],
+        faculty: [{ name: FACULTY_NEEDED_NAME, role: 'lecturer', needed: true }]
+      })
+    ]);
+    var slot = listOpenSlots(semester).find(function (s) { return s.kind === 'lecture'; });
+    var session = { userId: 'u1', name: 'Ada Faculty', specialties: ['Lec'] };
+    var submitted = ScheduleProposals.submitSelfSchedule(semester, [slot.slotId], session, {});
+    expect(submitted.ok).toBe(true);
+    semester.theory.days = [];
+    var decisions = {};
+    decisions[slot.slotId] = 'approved';
+    var reviewed = ScheduleProposals.reviewSelfSchedule(
+      semester,
+      submitted.proposal.id,
+      decisions,
+      { userId: 'admin', name: 'Admin' },
+      'ok',
+      null
+    );
+    expect(reviewed.error).toMatch(/Could not assign slot/i);
+    expect(submitted.proposal.status).toBe('pending');
+    expect(submitted.proposal.items[0].decision).toBeNull();
   });
 });
 
