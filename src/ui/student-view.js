@@ -6,8 +6,10 @@ import { getData } from '../core/state.js';
 import { refresh } from './chrome.js';
 import { buildCalendarHtml } from '../export/student-calendar-html.js';
 import { promptBatchExport } from '../export/student-calendar-batch.js';
+import { exportStudentCalendarPdf } from '../export/student-calendar-single-pdf.js';
 import { exportStudentIcs } from '../export/student-calendar-ics.js';
 import { showAlert } from './dialogs.js';
+import { canAction } from '../auth/permissions.js';
 import {
   populateRosterFilters,
   filterStudentsByRosterControls,
@@ -25,6 +27,11 @@ function selectedCalendarType() {
   return el && el.value === 'detailed' ? 'detailed' : 'summary';
 }
 
+function showMarkupEnabled() {
+  var el = document.getElementById('showMarkupToggle');
+  return el ? !!el.checked : false;
+}
+
 function selectedStudent(data) {
   var select = document.getElementById('studentViewSelect');
   if (!select || !select.value || !data || !data.students) return null;
@@ -37,8 +44,8 @@ function syncActionButtons(hasStudent) {
   if (printBtn) {
     printBtn.disabled = !hasStudent;
     printBtn.title = hasStudent
-      ? 'Print selected student calendar'
-      : 'Select a student to print their calendar';
+      ? 'Download a PDF calendar for the selected student'
+      : 'Select a student to download their PDF calendar';
   }
   if (icsBtn) {
     icsBtn.disabled = !hasStudent;
@@ -78,10 +85,8 @@ function render(data) {
     return;
   }
 
-  var showMarkup = document.getElementById('showMarkupToggle');
-  var markup = showMarkup ? showMarkup.checked : false;
   container.innerHTML = buildCalendarHtml(data, student, selectedCalendarType(), {
-    showMarkup: markup
+    showMarkup: showMarkupEnabled()
   });
 }
 
@@ -96,11 +101,31 @@ function init() {
   var printBtn = document.getElementById('printStudentBtn');
   if (printBtn) {
     printBtn.disabled = true;
-    printBtn.title = 'Select a student to print their calendar';
+    printBtn.title = 'Select a student to download their PDF calendar';
     printBtn.addEventListener('click', function () {
-      var sel = document.getElementById('studentViewSelect');
-      if (!sel || !sel.value) return;
-      window.print();
+      var data = getData();
+      var student = selectedStudent(data);
+      if (!student) return;
+      if (!canAction('student.calendar.export')) {
+        showAlert('Not allowed', 'Your role cannot export student calendars.');
+        return;
+      }
+      var label = printBtn.textContent;
+      printBtn.disabled = true;
+      printBtn.textContent = 'Generating…';
+      exportStudentCalendarPdf(data, student, {
+        calendarType: selectedCalendarType(),
+        showMarkup: showMarkupEnabled()
+      }).then(function (result) {
+        if (result) {
+          showAlert('Calendar PDF ready', 'Downloaded ' + result.filename + '.');
+        }
+      }).catch(function (err) {
+        showAlert('Export failed', String(err && err.message || err));
+      }).then(function () {
+        printBtn.textContent = label;
+        printBtn.disabled = false;
+      });
     });
   }
   var icsBtn = document.getElementById('exportStudentIcsBtn');
