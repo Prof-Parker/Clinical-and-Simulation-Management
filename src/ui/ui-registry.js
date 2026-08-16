@@ -99,6 +99,7 @@ export var UI_TABS = [
       'sortRosterAzBtn', 'showStudentEmailDomain', 'cfgStudentEmailDomain',
       'cfgClinicalGroupsList', 'cfgSimGroupsList', 'cfgSimDaysList', 'cfgSimDefaultStart',
       'cfgSimDefaultEnd', 'cfgSimLunchBreakMinutes', 'cfgSimTimeOverrides', 'cfgSimContentTags',
+      'cfgVariableStartWeeks', 'cfgGroupStartWeeksPanel', 'cfgGroupStartWeeksList',
       'setupAdvancedPanel'
     ]
   },

@@ -175,7 +175,16 @@ var BLOCKING_IDS = {
 
       if (data.calendar && CalendarEngine) {
         CalendarEngine.rebuildWeeks(data);
-        var clinWeeks = CalendarEngine.getClinicalEligibleWeeks(data).length;
+        var clinFromWeek;
+        if (cfg.variableStartWeeksPerGroup) {
+          var latestStart = cfg.clinicalStartWeek || 5;
+          DataModel.getClinicalGroups(cfg).forEach(function (g) {
+            var gStart = DataModel.resolveClinicalStartWeek(cfg, g);
+            if (gStart > latestStart) latestStart = gStart;
+          });
+          clinFromWeek = latestStart - 1;
+        }
+        var clinWeeks = CalendarEngine.getClinicalEligibleWeeks(data, clinFromWeek).length;
         if (clinWeeks < clinReq) {
           issues.push(makeIssue(
             'insufficient_clinical_weeks',

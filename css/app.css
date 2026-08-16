@@ -1938,6 +1938,21 @@ html.dark #cfgClinicalGroupsList .clin-group-week-plan {
   gap: 1.25rem;
   min-width: 0;
 }
+.setup-clin-groups-band {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  min-width: 0;
+}
+.setup-clin-groups-cell {
+  min-width: 0;
+}
+.setup-group-start-weeks-block .config-list-row {
+  grid-template-columns: 1fr;
+}
+.setup-group-start-weeks-block .config-list-row label {
+  width: 100%;
+}
 @media (min-width: 900px) {
   .setup-program-grid {
     grid-template-columns: minmax(10rem, 0.85fr) minmax(14rem, 1.75fr);
@@ -1947,6 +1962,26 @@ html.dark #cfgClinicalGroupsList .clin-group-week-plan {
   .setup-program-left {
     border-right: 1px solid var(--border);
     padding-right: 1.5rem;
+  }
+  .setup-clin-groups-band {
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(10rem, 0.85fr) minmax(14rem, 1.75fr);
+    gap: 1.5rem;
+    align-items: start;
+    padding-top: 0.25rem;
+  }
+  .setup-group-start-weeks-block {
+    border-right: 1px solid var(--border);
+    padding-right: 1.5rem;
+  }
+  .setup-group-start-weeks-block.hidden {
+    display: none;
+  }
+  .setup-clin-groups-band .setup-clin-groups-cell {
+    grid-column: 2;
+  }
+  .setup-facilities-continued {
+    grid-column: 2;
   }
 }
 .setup-program-block {

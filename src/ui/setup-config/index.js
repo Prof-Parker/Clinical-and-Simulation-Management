@@ -28,6 +28,7 @@ import {
 import { escAttr, escHtml } from '../setup/dom-utils.js';
 import { handleSetupClick } from './actions.js';
 import { readFormIntoConfig, draftConfigFromForm, renderAdvancedFields } from './form.js';
+import { ensureGroupStartWeeksSeeded, renderGroupStartWeeks } from './group-start-weeks.js';
 
 var pendingNewSemester = false;
 
@@ -178,6 +179,9 @@ function maybeRegenerateAfterChange(data, before) {
       JSON.stringify(before.simGroupDays) !== JSON.stringify(cfg.simGroupDays) ||
       JSON.stringify(before.simGroupPattern) !== JSON.stringify(cfg.simGroupPattern) ||
       JSON.stringify(before.simDays) !== JSON.stringify(cfg.simDays) ||
+      !!before.variableStartWeeksPerGroup !== !!cfg.variableStartWeeksPerGroup ||
+      JSON.stringify(before.clinicalGroupStartWeek || {}) !==
+        JSON.stringify(cfg.clinicalGroupStartWeek || {}) ||
       facilitiesStructureChanged(before, cfg) ||
       siteWeeksStructureChanged(before, cfg);
     var reqsChanged =
@@ -186,7 +190,7 @@ function maybeRegenerateAfterChange(data, before) {
 
     if (reqsChanged || structureChanged) {
       var msg = structureChanged
-        ? 'Clinical groups, simulation groups, sites, week ranges, or simulation days changed. Regenerate all schedules for this semester?'
+        ? 'Clinical groups, simulation groups, sites, week ranges, start weeks, or simulation days changed. Regenerate all schedules for this semester?'
         : 'Day requirements changed. Regenerate all schedules for this semester?';
       showConfirm('Regenerate schedules?', msg, function () {
         Scheduler.regenerateAll(data);
@@ -336,6 +340,20 @@ function bindScopedConfig(logicalId, event, handler) {
   });
 }
 
+function onVariableStartWeeksToggle() {
+  var data = resolveSetupData();
+  var before = DataModel.cloneConfig(data.config);
+  collectFormInto(data);
+  if (data.config.variableStartWeeksPerGroup) {
+    ensureGroupStartWeeksSeeded(data.config);
+    data.config = DataModel.normalizeConfig(data.config);
+  }
+  renderGroupStartWeeks(data.config);
+  touchSetupEdit(data);
+  finishSetupEdit(data, { rerender: false, refresh: true });
+  maybeRegenerateAfterChange(data, before);
+}
+
 function init() {
     document.querySelectorAll('#view-setup, #playgroundSetupRoot').forEach(function (view) {
       view.addEventListener('click', function (e) {
@@ -345,6 +363,18 @@ function init() {
       view.addEventListener('change', function (e) {
         setSetupScope(view.id === 'playgroundSetupRoot' ? PLAYGROUND : LIVE);
         var data = resolveSetupData();
+        if (e.target.id && e.target.id.replace(/^pg-/, '') === 'cfgVariableStartWeeks') {
+          onVariableStartWeeksToggle();
+          return;
+        }
+        if (e.target.hasAttribute('data-clin-group-start')) {
+          var beforeStart = DataModel.cloneConfig(data.config);
+          collectFormInto(data);
+          touchSetupEdit(data);
+          finishSetupEdit(data, { rerender: false });
+          maybeRegenerateAfterChange(data, beforeStart);
+          return;
+        }
         if (e.target.hasAttribute('data-clin-week-ranges-toggle')) {
           collectFormInto(data);
           var tg = e.target.getAttribute('data-clin-group');

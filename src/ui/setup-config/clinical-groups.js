@@ -10,6 +10,7 @@ import {
 import { setupEl, setupQueryAll } from '../setup/scope.js';
 import { escAttr, escHtml } from '../setup/dom-utils.js';
 import * as ScheduleHours from '../../core/schedule-hours.js';
+import { renderGroupStartWeeks } from './group-start-weeks.js';
 
 function getGroupFacilityIds(data, group) {
     if (ClinicalSites) {
@@ -62,13 +63,16 @@ function weekHintText(data, weekIndex) {
     return '';
   }
 
-function defaultRangeStart(data) {
+function defaultRangeStart(data, group) {
+    if (group) {
+      return Math.max(0, DataModel.resolveClinicalStartWeek(data.config, group) - 1);
+    }
     return Math.max(0, (data.config.clinicalStartWeek || 5) - 1);
   }
 
 function siteWeekRangeRow(data, group, range, rangeIndex, canRemove) {
     var facId = range.facilityId || getGroupFacilityIds(data, group)[0];
-    var start = range.startWeekIndex != null ? range.startWeekIndex : defaultRangeStart(data);
+    var start = range.startWeekIndex != null ? range.startWeekIndex : defaultRangeStart(data, group);
     var end = range.endWeekIndex != null ? range.endWeekIndex : Math.min(17, start + 2);
     var gAttr = escAttr(group);
     return '<div class="clin-site-range-row" data-clin-site-range-row="' + gAttr + '" data-clin-range-index="' + rangeIndex + '">' +
@@ -235,7 +239,7 @@ function addRangeToGroup(data, group) {
     var ranges = data.config.clinicalGroupSiteWeeks[group] || [];
     var facIds = getGroupFacilityIds(data, group);
     var facId = facIds[ranges.length % facIds.length] || facIds[0];
-    var start = defaultRangeStart(data);
+    var start = defaultRangeStart(data, group);
     if (ranges.length) {
       var last = ranges[ranges.length - 1];
       start = Math.min(17, (last.endWeekIndex != null ? last.endWeekIndex : start) + 1);
@@ -258,6 +262,7 @@ function refreshDynamicLists(data) {
     var cfg = data.config;
     ScheduleHours.ensureSimTimes(cfg);
     if (clinList) clinList.innerHTML = renderClinicalGroupsList(data);
+    renderGroupStartWeeks(cfg);
     if (simGroupsList) simGroupsList.innerHTML = renderSimGroupsList(cfg);
     if (simList) simList.innerHTML = renderSimDaysList(cfg);
     if (simOverrides) simOverrides.innerHTML = renderSimTimeOverrides(cfg);

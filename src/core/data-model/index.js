@@ -33,7 +33,8 @@ export {
   setSchedulingDefaults,
   configsMatch,
   applyConfigToSemester,
-  getClinicalDayForGroup
+  getClinicalDayForGroup,
+  resolveClinicalStartWeek
 } from './config.js';
 
 export {

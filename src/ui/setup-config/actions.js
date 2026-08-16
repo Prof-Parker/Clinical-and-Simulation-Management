@@ -95,6 +95,10 @@ function handleSetupClick(e) {
       cfg.clinicalGroupDays[name] = 'Mon';
       if (!cfg.clinicalGroupFacilities) cfg.clinicalGroupFacilities = {};
       if (!cfg.clinicalGroupSiteWeeks) cfg.clinicalGroupSiteWeeks = {};
+      if (!cfg.clinicalGroupStartWeek) cfg.clinicalGroupStartWeek = {};
+      if (cfg.variableStartWeeksPerGroup) {
+        cfg.clinicalGroupStartWeek[name] = cfg.clinicalStartWeek || 5;
+      }
       var defaultFac = DataModel.getDefaultFacilityIdForClinicalGroup(name, dataAdd.facilities || []);
       cfg.clinicalGroupFacilities[name] = defaultFac ? [defaultFac] : [];
       cfg.clinicalGroupSiteWeeks[name] = [];
@@ -131,6 +135,7 @@ function handleSetupClick(e) {
       delete cfgRemove.clinicalGroupDays[group];
       if (cfgRemove.clinicalGroupFacilities) delete cfgRemove.clinicalGroupFacilities[group];
       if (cfgRemove.clinicalGroupSiteWeeks) delete cfgRemove.clinicalGroupSiteWeeks[group];
+      if (cfgRemove.clinicalGroupStartWeek) delete cfgRemove.clinicalGroupStartWeek[group];
       dataRemove.config = DataModel.normalizeConfig(cfgRemove);
       refreshDynamicLists(dataRemove);
       finishSetupEdit(dataRemove, { rerender: false, refresh: true });

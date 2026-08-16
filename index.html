@@ -618,10 +618,16 @@
                         <label>Max guest sims per student<input type="number" id="cfgMaxGuestSims" min="0" title="Soft cap: prefer moving sim groups during rebalance so each student guests at most this many times (default 1)"></label>
                         <label>Max sim session (makeup overload only)<input type="number" id="cfgMaxSimOverload"></label>
                         <label>Sim makeup headroom (seats reserved per session)<input type="number" id="cfgSimHeadroom" min="0" max="3" title="During initial schedule generation, reserve this many seats per sim session for absence makeups"></label>
-                        <label class="filter-check filter-check-compact" style="align-self:end;padding-bottom:0.55rem">
-                          <input type="checkbox" id="cfgHolidayBlocksWeek" title="When checked, a holiday date blocks the entire instructional week for algorithmic sim/clinical placement. When unchecked, only that weekday is blocked (Mon/Tue streams may diverge).">
-                          Holiday blocks full week for sim/clinical
-                        </label>
+                        <div style="display:flex;flex-direction:column;gap:0.35rem;align-self:end;padding-bottom:0.55rem">
+                          <label class="filter-check filter-check-compact">
+                            <input type="checkbox" id="cfgHolidayBlocksWeek" title="When checked, a holiday date blocks the entire instructional week for algorithmic sim/clinical placement. When unchecked, only that weekday is blocked (Mon/Tue streams may diverge).">
+                            Holiday blocks full week for sim/clinical
+                          </label>
+                          <label class="filter-check filter-check-compact">
+                            <input type="checkbox" id="cfgVariableStartWeeks" title="When unchecked, all clinical groups use Clinical start week above. When checked, set a start week per clinical group in Starting weeks.">
+                            Variable start weeks per group
+                          </label>
+                        </div>
                         <label>Clinical start week<input type="number" id="cfgClinStart"></label>
                         <label>Simulation start week<input type="number" id="cfgSimStart"></label>
                         <label>Clinical makeup target week<input type="number" id="cfgClinMakeupPrimary" min="1" max="18" placeholder="Auto" title="Leave blank to use second-to-last active week"></label>
@@ -681,12 +687,21 @@
                             <h3 class="section-title" style="margin:0">Facilities &amp; Clinical Groups</h3>
                             <p class="section-sub setup-sections-hint">One entry per clinical site. A clinical group may use one site all semester or multiple sites (clinical weeks rotate across listed sites in order).</p>
                             <div id="setupFacilities"></div>
-                            <div class="setup-config-divider"></div>
-                            <div class="config-section-header">
-                                <h4 style="margin:0">Clinical groups</h4>
+                        </div>
+                        <div class="setup-clin-groups-band">
+                            <div id="cfgGroupStartWeeksPanel" class="setup-program-block setup-group-start-weeks-block hidden">
+                                <h4 style="margin:0">Starting weeks</h4>
+                                <p class="section-sub">Per clinical group start week. Simulation still uses Simulation start week in Advanced Configuration.</p>
+                                <div id="cfgGroupStartWeeksList" class="config-list"></div>
                             </div>
-                            <div id="cfgClinicalGroupsList" class="config-list"></div>
-                            <div class="setup-config-divider"></div>
+                            <div class="setup-clin-groups-cell">
+                                <div class="config-section-header">
+                                    <h4 style="margin:0">Clinical groups</h4>
+                                </div>
+                                <div id="cfgClinicalGroupsList" class="config-list"></div>
+                            </div>
+                        </div>
+                        <div class="setup-program-block setup-facilities-block setup-facilities-continued">
                             <div class="config-section-header">
                                 <h4 style="margin:0">Simulation groups</h4>
                             </div>

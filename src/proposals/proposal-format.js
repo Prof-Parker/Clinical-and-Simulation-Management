@@ -25,6 +25,8 @@ var SENTINEL = {
     numClinicalGroups: 'Clinical groups count',
     clinicalStartWeek: 'Clinical start week',
     simStartWeek: 'Simulation start week',
+    variableStartWeeksPerGroup: 'Variable start weeks per group',
+    clinicalGroupStartWeek: 'Clinical group start weeks',
     clinicalMakeupPrimaryWeek: 'Clinical makeup target week',
     clinicalMakeupFallbackWeek: 'Clinical makeup last-resort week',
     simMakeupLastResortWeek: 'Sim makeup last-resort week',
@@ -285,6 +287,8 @@ var SENTINEL = {
       if (CONFIG_SCALAR_LABELS[configRest]) return CONFIG_SCALAR_LABELS[configRest];
       var cgd = configRest.match(/^clinicalGroupDays\.(.+)$/);
       if (cgd) return cgd[1] + ' clinical weekday';
+      var cgswStart = configRest.match(/^clinicalGroupStartWeek\.(.+)$/);
+      if (cgswStart) return cgswStart[1] + ' clinical start week';
       var sgd = configRest.match(/^simGroupDays\.(.+)$/);
       if (sgd) return sgd[1] + ' simulation weekday';
       var sgp = configRest.match(/^simGroupPattern\.(.+)$/);

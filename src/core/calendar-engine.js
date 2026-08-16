@@ -58,7 +58,8 @@ function getActiveSchedulingWeeks(data) {
 
 function getClinicalEligibleWeeks(data, fromWeek) {
   var cfg = data.config;
-  var start = Math.max((cfg.clinicalStartWeek || 5) - 1, fromWeek || 0);
+  var start = fromWeek != null ? fromWeek : ((cfg.clinicalStartWeek || 5) - 1);
+  if (start < 0) start = 0;
   var weeks = [];
   for (var i = start; i < 18; i++) {
     if (!isSchedulingBlockedWeek(data, i)) weeks.push(i);
