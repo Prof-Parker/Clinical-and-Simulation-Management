@@ -114,8 +114,8 @@ TODO.md
 - [ ] Add audit mailto feature
 
 #### UI improvements after implementing folder picker:
-- [ ] remove save setup buttons if keeping live sync with onedrive. Investigate dirty state of file and possible storage options for faculty user before proposal submit
-- [ ] Further investigate file managment menu items (may be able to remove/streamline some items)
+- [X] remove save setup buttons if keeping live sync with onedrive. Investigate dirty state of file and possible storage options for faculty user before proposal submit
+- [X] Further investigate file managment menu items (may be able to remove/streamline some items)
 
 ### Lower priority TODO:
 - [ ] Add in app bug and feature request function
@@ -149,6 +149,9 @@ TODO.md
 - [X] Increase size of sim faculty text box in setup
 - [X] Add filters to student view (sim group, clinical group), search by student name
 - [X] Finalize semester should lock setup. Include toggle to unlock setup
+- [ ] Practicum Setup control bar no longer pinned **Bug**
+- [ ] Practicum setup UI needs rearranging (organize be type? Sims, holidays, etc)
+- [ ] **Bug** Not able to update clinical site library
 
 ## Theory
 - [X] Add resync practicum information (orientation days, holidays, sims, clinicals etc) button
@@ -171,6 +174,7 @@ TODO.md
 
 ## Chore Items:
 - [ ] Implement lazy load for node modules (especially excel import/export features)
+- [ ] For new semester file creation change from REGN15P to 1st semester, 2nd semester etc
 - [ ] Refactor data storage and scheduling rules to per semester basis
 - [ ] Implement true seed for REGN 35 and REGN 36 (current are hardcoded, rough approximations)
 - [ ] Update REGN 15 Content Library

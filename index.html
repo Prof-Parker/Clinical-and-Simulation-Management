@@ -565,22 +565,24 @@
         <div id="setupModal" class="setup-modal-overlay no-print hidden" role="dialog" aria-modal="true" aria-labelledby="setupModalTitle" aria-hidden="true">
             <div class="setup-modal-shell">
                 <div class="setup-modal-head">
-                    <h2 id="setupModalTitle" class="section-title" style="margin:0">Practicum setup</h2>
-                    <button id="setupModalClose" class="btn btn-sm" type="button">Close</button>
+                    <div class="setup-modal-head-bar">
+                        <h2 id="setupModalTitle" class="section-title" style="margin:0">Practicum setup</h2>
+                        <button id="setupModalClose" class="btn btn-sm" type="button">Close</button>
+                    </div>
+                    <div class="setup-actions-sticky setup-modal-actions no-print">
+                        <div class="setup-actions">
+                            <button id="saveSetupBtn" class="btn btn-primary" type="button">Save Setup</button>
+                            <button id="proposeSetupChangesBtn" class="btn hidden" type="button">Propose changes</button>
+                            <button id="importPlaygroundSetupBtn" class="btn hidden" type="button">Import playground…</button>
+                            <button id="createCourseTemplateBtn" class="btn hidden" type="button">Create course template</button>
+                            <button id="regenerateSchedulesBtn" class="btn" type="button">Regenerate Schedules</button>
+                            <button id="setupAdvancedConfigBtn" class="btn" type="button" aria-expanded="false">Advanced Configuration</button>
+                            <button id="finalizeSemesterBtn" class="btn btn-finalize" type="button">Finalize Semester</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="setup-modal-body">
         <div id="view-setup" class="view-panel setup-modal-panel">
-            <div class="setup-actions-sticky card no-print">
-                <div class="setup-actions">
-                    <button id="saveSetupBtn" class="btn btn-primary" type="button">Save Setup</button>
-                    <button id="proposeSetupChangesBtn" class="btn hidden" type="button">Propose changes</button>
-                    <button id="importPlaygroundSetupBtn" class="btn hidden" type="button">Import playground…</button>
-                    <button id="createCourseTemplateBtn" class="btn hidden" type="button">Create course template</button>
-                    <button id="regenerateSchedulesBtn" class="btn" type="button">Regenerate Schedules</button>
-                    <button id="setupAdvancedConfigBtn" class="btn" type="button" aria-expanded="false">Advanced Configuration</button>
-                    <button id="finalizeSemesterBtn" class="btn btn-finalize" type="button">Finalize Semester</button>
-                </div>
-            </div>
             <div id="setupProposalsPanel" class="setup-proposals-panel hidden card no-print" role="region" aria-label="Pending proposed changes"></div>
             <section id="setupScheduleWarningsSection" class="setup-schedule-warnings-section hidden" style="margin-bottom:1rem" aria-live="polite">
                 <div id="setupScheduleWarnings" class="setup-schedule-warnings hidden" role="alert"></div>
@@ -651,64 +653,32 @@
             <div class="setup-config-grid">
                 <section class="card setup-program-card" style="padding:1.25rem">
                     <div class="setup-program-grid">
-                        <div class="setup-program-column setup-program-left">
-                            <div class="setup-program-block setup-sections-block">
-                                <h3 class="section-title" style="margin:0">Registrar Sections</h3>
-                                <p class="section-sub setup-sections-hint">Registrar section codes (e.g. F6011). Sections are assigned per student in the roster&mdash;multiple clinical cohorts may share a section, and students in one cohort may use different sections.</p>
-                                <div id="setupSections"></div>
+                        <section class="setup-domain setup-domain-clinical" aria-labelledby="setupDomainClinicalTitle">
+                            <h3 id="setupDomainClinicalTitle" class="setup-domain-title">Clinical</h3>
+                            <div class="setup-program-block setup-facilities-block">
+                                <h4 class="setup-domain-subtitle">Facilities</h4>
+                                <p class="section-sub setup-sections-hint">One entry per clinical site. A clinical group may use one site all semester or multiple sites (clinical weeks rotate across listed sites in order).</p>
+                                <div id="setupFacilities"></div>
                             </div>
-                            <div class="setup-program-block setup-faculty-block">
-                                <h3 class="section-title" style="margin:0 0 0.35rem">Clinical Faculty</h3>
-                                <p class="section-sub setup-sections-hint">Type a name to search adjunct faculty from the user registry (when connected).</p>
-                                <datalist id="setupAdjunctFacultyList"></datalist>
-                                <div id="setupFaculty"></div>
-                            </div>
-                            <div class="setup-program-block setup-sim-instructors-block">
-                                <h3 class="section-title" style="margin:0 0 0.35rem">Simulation Faculty</h3>
-                                <p class="section-sub setup-sections-hint">Instructors who teach simulation sessions (distinct from student sim roles). Used on the Theory Master Calendar faculty display.</p>
-                                <div id="setupSimInstructors"></div>
-                            </div>
-                            <div class="setup-program-block setup-course-staff-block">
-                                <h3 class="section-title" style="margin:0 0 0.35rem">Course Staff</h3>
-                                <p class="section-sub setup-sections-hint">Full time faculty attests makeup records at end-of-semester closeout (see Audit tab). Not the same as per-group clinical faculty above.</p>
-                                <div class="setup-lead-faculty-fields">
-                                    <label>Full time faculty name</label>
-                                    <div id="leadFacultyNameControl">
-                                        <select id="leadFacultySelect" class="select-control hidden" aria-label="Full time faculty name"></select>
-                                        <input type="text" id="leadFacultyName" placeholder="Required before closeout" aria-label="Full time faculty name">
-                                    </div>
-                                    <label for="leadFacultyEmail">Full time faculty email</label>
-                                    <input type="text" id="leadFacultyEmail" placeholder="Auto-filled from registry" aria-label="Full time faculty email">
-                                </div>
-                                <p id="leadFacultyRegistryHint" class="section-sub setup-lead-faculty-hint hidden"></p>
-                            </div>
-                        </div>
-                        <div class="setup-program-block setup-facilities-block">
-                            <h3 class="section-title" style="margin:0">Facilities &amp; Clinical Groups</h3>
-                            <p class="section-sub setup-sections-hint">One entry per clinical site. A clinical group may use one site all semester or multiple sites (clinical weeks rotate across listed sites in order).</p>
-                            <div id="setupFacilities"></div>
-                        </div>
-                        <div class="setup-clin-groups-band">
                             <div id="cfgGroupStartWeeksPanel" class="setup-program-block setup-group-start-weeks-block hidden">
-                                <h4 style="margin:0">Starting weeks</h4>
+                                <h4 class="setup-domain-subtitle">Starting weeks</h4>
                                 <p class="section-sub">Per clinical group start week. Simulation still uses Simulation start week in Advanced Configuration.</p>
                                 <div id="cfgGroupStartWeeksList" class="config-list"></div>
                             </div>
-                            <div class="setup-clin-groups-cell">
-                                <div class="config-section-header">
-                                    <h4 style="margin:0">Clinical groups</h4>
-                                </div>
+                            <div class="setup-program-block setup-clin-groups-cell">
+                                <h4 class="setup-domain-subtitle">Clinical groups</h4>
                                 <div id="cfgClinicalGroupsList" class="config-list"></div>
                             </div>
-                        </div>
-                        <div class="setup-program-block setup-facilities-block setup-facilities-continued">
-                            <div class="config-section-header">
-                                <h4 style="margin:0">Simulation groups</h4>
+                        </section>
+                        <section class="setup-domain setup-domain-simulation" aria-labelledby="setupDomainSimulationTitle">
+                            <h3 id="setupDomainSimulationTitle" class="setup-domain-title">Simulation</h3>
+                            <div class="setup-program-block setup-sim-groups-block">
+                                <h4 class="setup-domain-subtitle">Simulation groups</h4>
+                                <p class="section-sub">Primary weekday and even/odd week pattern per simulation group. Count may differ from clinical groups; when counts match, regenerate aligns C1→SG1, etc.</p>
+                                <div id="cfgSimGroupsList" class="config-list"></div>
                             </div>
-                            <p class="section-sub">Primary weekday and even/odd week pattern per simulation group. Count may differ from clinical groups; when counts match, regenerate aligns C1→SG1, etc.</p>
-                            <div id="cfgSimGroupsList" class="config-list"></div>
-                            <div class="setup-sim-times-block">
-                                <h4 style="margin:0">Simulation times</h4>
+                            <div class="setup-program-block setup-sim-times-block">
+                                <h4 class="setup-domain-subtitle">Simulation times</h4>
                                 <p class="section-sub">Default session window for calendars and audit hours. Optional overrides per sim number. Lunch break is deducted only from Coordinator contact-hour totals (student calendars still show full start–end).</p>
                                 <div class="setup-sim-times-grid">
                                     <label>Default start
@@ -723,15 +693,53 @@
                                 </div>
                                 <div id="cfgSimTimeOverrides" class="config-list" style="margin-top:0.65rem"></div>
                             </div>
-                            <div class="setup-sim-content-tags-block" style="margin-top:1rem">
-                                <h4 style="margin:0">Simulation content tags</h4>
+                            <div class="setup-program-block setup-sim-content-tags-block">
+                                <h4 class="setup-domain-subtitle">Simulation content tags</h4>
                                 <p class="section-sub">Specialty tags per sim number (MS → REGN 35P; OB/PEDS → REGN 36P). Used for audit hour subtotals and student calendar labels.</p>
                                 <div id="cfgSimContentTags" class="config-list"></div>
                             </div>
-                            <h4 style="margin:0">Simulation days</h4>
-                            <p class="section-sub">Days of the week when simulation sessions may be scheduled.</p>
-                            <div id="cfgSimDaysList" class="config-list"></div>
-                        </div>
+                            <div class="setup-program-block setup-sim-days-block">
+                                <h4 class="setup-domain-subtitle">Simulation days</h4>
+                                <p class="section-sub">Days of the week when simulation sessions may be scheduled.</p>
+                                <div id="cfgSimDaysList" class="config-list"></div>
+                            </div>
+                        </section>
+                        <section class="setup-domain setup-domain-faculty" aria-labelledby="setupDomainFacultyTitle">
+                            <h3 id="setupDomainFacultyTitle" class="setup-domain-title">Faculty</h3>
+                            <datalist id="setupAdjunctFacultyList"></datalist>
+                            <div class="setup-program-block setup-faculty-block">
+                                <h4 class="setup-domain-subtitle">Clinical Faculty</h4>
+                                <p class="section-sub setup-sections-hint">Type a name to search adjunct faculty from the user registry (when connected).</p>
+                                <div id="setupFaculty"></div>
+                            </div>
+                            <div class="setup-program-block setup-sim-instructors-block">
+                                <h4 class="setup-domain-subtitle">Simulation Faculty</h4>
+                                <p class="section-sub setup-sections-hint">Instructors who teach simulation sessions (distinct from student sim roles). Used on the Theory Master Calendar faculty display.</p>
+                                <div id="setupSimInstructors"></div>
+                            </div>
+                            <div class="setup-program-block setup-course-staff-block">
+                                <h4 class="setup-domain-subtitle">Course Staff</h4>
+                                <p class="section-sub setup-sections-hint">Full time faculty attests makeup records at end-of-semester closeout (see Audit tab). Not the same as per-group clinical faculty above.</p>
+                                <div class="setup-lead-faculty-fields">
+                                    <label>Full time faculty name</label>
+                                    <div id="leadFacultyNameControl">
+                                        <select id="leadFacultySelect" class="select-control hidden" aria-label="Full time faculty name"></select>
+                                        <input type="text" id="leadFacultyName" placeholder="Required before closeout" aria-label="Full time faculty name">
+                                    </div>
+                                    <label for="leadFacultyEmail">Full time faculty email</label>
+                                    <input type="text" id="leadFacultyEmail" placeholder="Auto-filled from registry" aria-label="Full time faculty email">
+                                </div>
+                                <p id="leadFacultyRegistryHint" class="section-sub setup-lead-faculty-hint hidden"></p>
+                            </div>
+                        </section>
+                        <section class="setup-domain setup-domain-registrar" aria-labelledby="setupDomainRegistrarTitle">
+                            <h3 id="setupDomainRegistrarTitle" class="setup-domain-title">Registrar</h3>
+                            <div class="setup-program-block setup-sections-block">
+                                <h4 class="setup-domain-subtitle">Registrar Sections</h4>
+                                <p class="section-sub setup-sections-hint">Registrar section codes (e.g. F6011). Sections are assigned per student in the roster&mdash;multiple clinical cohorts may share a section, and students in one cohort may use different sections.</p>
+                                <div id="setupSections"></div>
+                            </div>
+                        </section>
                     </div>
                 </section>
                 <section class="card setup-orientations-card" style="padding:1.25rem">

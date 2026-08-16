@@ -32,6 +32,14 @@ export function updateSetupStickyOffset() {
 }
 
 export function scrollSetupToTop() {
+  var modal = document.getElementById('setupModal');
+  var modalBody = modal && !modal.classList.contains('hidden')
+    ? modal.querySelector('.setup-modal-body')
+    : null;
+  if (modalBody) {
+    modalBody.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
   var scope = getSetupScope();
   var view = document.getElementById(scope.viewId);
   if (!view || !view.classList.contains('active')) return;
