@@ -13,8 +13,6 @@ import {
   collectSiteLibraryFromDom, renderSiteLibrary
 } from './index.js';
 
-var dayOptions = WEEKDAY_OPTIONS;
-
 function handleSetupClick(e) {
     if (e.target.classList.contains('add-site-lib')) {
       if (!SiteLibrary) return;
@@ -174,9 +172,9 @@ function handleSetupClick(e) {
       collectFormInto(dataSim);
       var cfgSim = draftConfigFromForm(dataSim.config, dataSim);
       var unused = 'Mon';
-      for (var di = 0; di < dayOptions.length; di++) {
-        if (cfgSim.simDays.indexOf(dayOptions[di]) < 0) {
-          unused = dayOptions[di];
+      for (var di = 0; di < WEEKDAY_OPTIONS.length; di++) {
+        if (cfgSim.simDays.indexOf(WEEKDAY_OPTIONS[di]) < 0) {
+          unused = WEEKDAY_OPTIONS[di];
           break;
         }
       }
