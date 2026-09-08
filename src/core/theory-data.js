@@ -83,7 +83,9 @@ export {
 
 export {
   syncPracticumFromSemester,
-  SYNCED_PRACTICUM_CATEGORY
+  syncOrientationsFromSemester,
+  SYNCED_PRACTICUM_CATEGORY,
+  SYNCED_ORIENTATION_CATEGORY
 } from './theory-practicum-sync.js';
 
 export {

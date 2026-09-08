@@ -12,7 +12,8 @@ import {
   getSimSchedulingOptions,
   createSimSchedulingState,
   getGuestCountFromSchedule,
-  wouldSimClinicalConflict
+  wouldSimClinicalConflict,
+  findSimWeek
 } from './helpers.js';
 import {
   buildProgramSimCalendar,
@@ -23,6 +24,13 @@ import {
   canPlaceSimSlot,
   scheduleOneSimForStudent
 } from './sim-placement.js';
+import {
+  canUseAlignedHostOnlySimPlacement,
+  orderStudentsForAlignedHostPlacement,
+  clearPlacedSimsForAlignedFallback,
+  allRequiredSimsPlaced,
+  resetSimSchedulingStates
+} from './sim-placement-aligned.js';
 
 function countRemainingSimSlots(student, data, calendar, simNum, state, cfg) {
   var simGroups = getSimGroups(cfg);
@@ -202,15 +210,10 @@ export function orderStudentsForSimBlock(students, simGroups, data, calendar, si
   });
 }
 
-export function scheduleSimsForAllStudents(data, calendar) {
+function scheduleSimsWithFullAlgorithm(data, calendar, states) {
   var cfg = data.config;
-  calendar = calendar || data._simCalendar || buildProgramSimCalendar(data, cfg);
   var needed = cfg.simDaysRequired || 5;
   var simGroups = getSimGroups(cfg);
-  var states = {};
-  data.students.forEach(function (s) {
-    states[s.id] = createSimSchedulingState();
-  });
   for (var simNum = 1; simNum <= needed; simNum++) {
     var remaining = data.students.slice();
     // Alternate host-capable and host-incapable picks so day-overlap cohorts
@@ -252,4 +255,44 @@ export function scheduleSimsForAllStudents(data, calendar) {
     }
   }
   return states;
+}
+
+/**
+ * Setup-aligned host-only pass: C_i → SG_i day/pattern seats, no guests/round-robin.
+ * Returns true when every required sim placed.
+ */
+function tryScheduleSimsAlignedHostOnly(data, calendar, states) {
+  var cfg = data.config;
+  var needed = cfg.simDaysRequired || 5;
+  var ordered = orderStudentsForAlignedHostPlacement(data.students);
+  data._simPlacementMode = 'alignedHost';
+  try {
+    for (var simNum = 1; simNum <= needed; simNum++) {
+      for (var i = 0; i < ordered.length; i++) {
+        var student = ordered[i];
+        if (findSimWeek(student, simNum) >= 0) continue;
+        scheduleOneSimForStudent(student, data, states[student.id], calendar, simNum);
+        if (findSimWeek(student, simNum) < 0) return false;
+      }
+    }
+    return allRequiredSimsPlaced(data.students, needed);
+  } finally {
+    delete data._simPlacementMode;
+  }
+}
+
+export function scheduleSimsForAllStudents(data, calendar) {
+  var cfg = data.config;
+  calendar = calendar || data._simCalendar || buildProgramSimCalendar(data, cfg);
+  var states = resetSimSchedulingStates(data.students);
+
+  if (canUseAlignedHostOnlySimPlacement(cfg, data.students)) {
+    if (tryScheduleSimsAlignedHostOnly(data, calendar, states)) {
+      return states;
+    }
+    clearPlacedSimsForAlignedFallback(data.students);
+    states = resetSimSchedulingStates(data.students);
+  }
+
+  return scheduleSimsWithFullAlgorithm(data, calendar, states);
 }

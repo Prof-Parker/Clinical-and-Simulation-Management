@@ -18,7 +18,7 @@ import {
   makeFacultySlot,
   refreshFacultyNeeded
 } from './theory-events.js';
-import { SYNCED_PRACTICUM_CATEGORY } from './theory-practicum-sync.js';
+import { SYNCED_PRACTICUM_CATEGORY, SYNCED_ORIENTATION_CATEGORY } from './theory-practicum-sync.js';
 
 export { isPlaceholderTopicTitle };
 
@@ -179,6 +179,7 @@ function isPreservedEvent(ev) {
   var cats = ev.categories || [];
   if (cats.indexOf('synced_holiday') >= 0) return true;
   if (cats.indexOf(SYNCED_PRACTICUM_CATEGORY) >= 0) return true;
+  if (cats.indexOf(SYNCED_ORIENTATION_CATEGORY) >= 0) return true;
   return false;
 }
 

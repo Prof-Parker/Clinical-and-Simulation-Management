@@ -270,7 +270,7 @@ function resyncPracticum() {
   refresh();
   showAlert(
     'Resync with practicum calendar',
-    'Holidays/breaks and clinical/simulation sessions were refreshed from the practicum schedule onto the Master Calendar.'
+    'Holidays/breaks, orientation days, and clinical/simulation sessions were refreshed from the practicum schedule onto the Master Calendar.'
   );
 }
 

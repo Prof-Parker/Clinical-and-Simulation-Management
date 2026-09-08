@@ -180,6 +180,15 @@ TODO.md
 - [ ] Update REGN 15 Content Library
 - [ ] **After Feature Lock** review [src](src) and consider refactoring modules for abstraction, inheritance, composition for overall optimization.
 
+## General Idea:
+- [ ] Add support for undo/stage for all screens/areas
+
+## Scheduling logic:
+-[ ] Add 1st pass check: 
+```
+If clinical groups # = sim group # AND sim days NOT clinical days. 1:1 assign students from clinical groups to sim groups on set days
+```
+- [ ] Change odd/even pattern to 1st rotation, 2nd rotation, add support for 3rd rotation
 
 ## Closed out issues
 

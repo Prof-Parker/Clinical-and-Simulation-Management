@@ -1,13 +1,14 @@
 /**
- * Mirror practicum clinical / simulation sessions onto the Theory Master Calendar.
- * Replaces only events tagged categories includes 'synced_practicum'.
+ * Mirror practicum clinical / simulation / orientation onto the Theory Master Calendar.
+ * Replaces only events tagged synced_practicum or synced_orientation.
  */
 
 import { uid } from './data-model/students.js';
 import { findFacilityById } from './data-model/facilities.js';
 import {
   clinicalTimesForFacility,
-  simTimesForNum
+  simTimesForNum,
+  ensureOrientationTimes
 } from './schedule-hours.js';
 import { WEEKDAYS, dateForWeekdayInWeek } from './theory-modules.js';
 import {
@@ -22,6 +23,7 @@ import {
 import * as CourseVisibility from './course-visibility.js';
 
 export var SYNCED_PRACTICUM_CATEGORY = 'synced_practicum';
+export var SYNCED_ORIENTATION_CATEGORY = 'synced_orientation';
 
 function facilityLabel(semester, facilityId) {
   var f = findFacilityById(semester, facilityId);
@@ -51,7 +53,7 @@ function baseSyncedEvent(track, title, opts) {
     timeEnd: opts.timeEnd || null,
     allDay: false,
     faculty: opts.faculty || [],
-    categories: [SYNCED_PRACTICUM_CATEGORY],
+    categories: [opts.category || SYNCED_PRACTICUM_CATEGORY],
     contentArea: track,
     courseCode: opts.courseCode || null,
     groups: opts.groups || [],
@@ -60,22 +62,79 @@ function baseSyncedEvent(track, title, opts) {
   };
 }
 
-function clearSyncedPracticum(theory) {
+function clearSyncedCategory(theory, category) {
   (theory.days || []).forEach(function (day) {
     day.events = (day.events || []).filter(function (ev) {
-      return !(ev.categories && ev.categories.indexOf(SYNCED_PRACTICUM_CATEGORY) >= 0);
+      return !(ev.categories && ev.categories.indexOf(category) >= 0);
     });
   });
 }
 
+function clearSyncedPracticum(theory) {
+  clearSyncedCategory(theory, SYNCED_PRACTICUM_CATEGORY);
+}
+
 /**
- * Write clinical + simulation chips from student schedules onto theory.days.
- * Skills labs and manual practicum events are left alone.
+ * Write Setup orientation days onto theory.days (merged by date/facility/times).
+ * Manual orientation events (not tagged synced_orientation) are left alone.
+ */
+export function syncOrientationsFromSemester(semester) {
+  if (!semester || !semester.theory) return semester;
+  var theory = semester.theory;
+  clearSyncedCategory(theory, SYNCED_ORIENTATION_CATEGORY);
+
+  var courseCode = practicumCourseCode(theory);
+  var buckets = {};
+  (semester.orientations || []).forEach(function (o) {
+    if (!o || !o.date) return;
+    ensureOrientationTimes(o);
+    var key = o.date + '|' + (o.facilityId || '') + '|' +
+      (o.timeStart || '') + '|' + (o.timeEnd || '');
+    if (!buckets[key]) {
+      buckets[key] = {
+        date: o.date,
+        facilityId: o.facilityId || null,
+        timeStart: o.timeStart,
+        timeEnd: o.timeEnd,
+        groups: []
+      };
+    }
+    var group = o.clinicalGroup;
+    if (group && buckets[key].groups.indexOf(group) < 0) {
+      buckets[key].groups.push(group);
+    }
+  });
+
+  Object.keys(buckets).forEach(function (key) {
+    var item = buckets[key];
+    item.groups.sort();
+    var site = facilityLabel(semester, item.facilityId);
+    var title = (item.groups.length ? item.groups.join(', ') + ' ' : '') + 'Orientation';
+    if (site) title += ' @ ' + site;
+    var day = ensureDay(theory, semester, item.date);
+    insertEventOnDay(day, baseSyncedEvent('orientation', title, {
+      category: SYNCED_ORIENTATION_CATEGORY,
+      timeStart: item.timeStart,
+      timeEnd: item.timeEnd,
+      faculty: item.groups.length ? clinicalFacultySlots(semester, item.groups[0]) : [],
+      courseCode: courseCode,
+      groups: item.groups.slice(),
+      description: site || ''
+    }));
+  });
+
+  return semester;
+}
+
+/**
+ * Write clinical + simulation chips from student schedules onto theory.days,
+ * and sync Setup orientations. Skills labs and manual practicum events are left alone.
  */
 export function syncPracticumFromSemester(semester) {
   if (!semester || !semester.theory) return semester;
   var theory = semester.theory;
   clearSyncedPracticum(theory);
+  syncOrientationsFromSemester(semester);
 
   if (!semester.students || !semester.students.length) return semester;
 
