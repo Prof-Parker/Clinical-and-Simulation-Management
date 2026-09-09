@@ -16,6 +16,7 @@ import {
   summaryEventsForWeek,
   activityPartsForWeek
 } from './student-calendar-summary.js';
+import { includeTheoryOrientationForStudent } from './student-calendar-orientation-filter.js';
 
 var WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -215,6 +216,9 @@ function studentDayBands(data, student, weekIndex, weekday, dateIso, showMarkup)
   var isThird = CourseVisibility.isThirdSemester(data.meta && data.meta.courseId);
 
   theoryEventsForDate(data.theory, dateIso).forEach(function (ev) {
+    if (ev.track === 'orientation' && !includeTheoryOrientationForStudent(ev, student)) {
+      return;
+    }
     var chip = renderStudentEventChip(ev, data);
     if (TheoryData.isPracticumTrackEvent(ev) || ev.track === 'clinical' ||
         ev.track === 'simulation' || ev.track === 'orientation') {

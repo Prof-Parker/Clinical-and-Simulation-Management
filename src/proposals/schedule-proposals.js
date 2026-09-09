@@ -244,12 +244,12 @@ function reviewSelfSchedule(semester, proposalId, decisions, reviewer, notes, re
   var pending = 0;
   var approveAttempts = 0;
   var applyFailures = [];
+  var deferredDenials = [];
   if (!proposal.notes) proposal.notes = { proposer: '', reviewer: '' };
   (proposal.items || []).forEach(function (item) {
     var d = decisions[item.slotId];
     if (d === 'denied') {
-      item.decision = 'denied';
-      if (decisions[item.slotId + ':note']) item.note = String(decisions[item.slotId + ':note']);
+      deferredDenials.push(item);
       denied++;
       return;
     }
@@ -285,6 +285,13 @@ function reviewSelfSchedule(semester, proposalId, decisions, reviewer, notes, re
       error: 'Could not assign slot ' + applyFailures.join(', ')
     };
   }
+
+  deferredDenials.forEach(function (item) {
+    item.decision = 'denied';
+    if (decisions[item.slotId + ':note']) {
+      item.note = String(decisions[item.slotId + ':note']);
+    }
+  });
 
   if (pending === 0 && denied === 0) proposal.status = 'approved';
   else if (pending === 0 && approved === 0) proposal.status = 'denied';

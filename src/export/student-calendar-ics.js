@@ -11,6 +11,7 @@ import * as CourseVisibility from '../core/course-visibility.js';
 import * as HoursBySpecialty from '../core/hours-by-specialty.js';
 import { dateForWeekdayInWeek } from '../core/theory-modules.js';
 import { APP_VERSION } from '../app-version.js';
+import { includeTheoryOrientationForStudent } from './student-calendar-orientation-filter.js';
 
 var DEFAULT_ASSIGNMENT_DUE = '2359';
 var ICS_PRODID = '-//Clinical and Simulation Management//' + APP_VERSION + '//EN';
@@ -243,6 +244,7 @@ function collectTheoryEvents(semester, student) {
         return;
       }
       if (ev.track === 'orientation') {
+        if (!includeTheoryOrientationForStudent(ev, student)) return;
         var orientSummary = ev.title ? String(ev.title) : 'Orientation';
         if (ev.courseCode) {
           orientSummary = CourseVisibility.formatCourseBadge(ev.courseCode) + ' · ' + orientSummary;

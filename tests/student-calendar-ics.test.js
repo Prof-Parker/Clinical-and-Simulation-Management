@@ -14,6 +14,7 @@ import {
   formatLocalDateTime,
   DEFAULT_ASSIGNMENT_DUE
 } from '../src/export/student-calendar-ics.js';
+import { buildDetailedHtml } from '../src/export/student-calendar-html.js';
 import { buildEmailRows, rowsToJson } from '../src/export/power-automate-json.js';
 
 function seedTheoryDay(sem, date, events) {
@@ -177,6 +178,56 @@ describe('student-calendar-ics', () => {
     expect(ics).toContain('SUMMARY:Orient SRMC');
     expect(ics).toContain('SUMMARY:Mandatory MERCY Orientation');
     expect(ics).toContain('DTSTART:' + formatLocalDateTime(orientDate, '0800'));
+  });
+
+  it('does not duplicate setup orientation after syncOrientationsFromSemester', () => {
+    var fileRoot = DataModel.createDefaultFile();
+    var sem = fileRoot.semesters[0];
+    DataModel.migrateSemester(sem);
+    CalendarEngine.rebuildWeeks(sem);
+    Scheduler.regenerateAll(sem);
+    TheoryData.migrateTheory(sem);
+
+    var orientDate = sem.calendar.weeks[2].startDate;
+    var fac = sem.facilities[0];
+    sem.orientations = [{
+      id: 'o1',
+      clinicalGroup: 'C1',
+      date: orientDate,
+      facilityId: fac.id,
+      timeStart: '0800',
+      timeEnd: '1200'
+    }];
+
+    TheoryData.syncOrientationsFromSemester(sem);
+
+    var c1 = sem.students.find(function (s) { return s.clinicalGroup === 'C1'; });
+    var c2 = sem.students.find(function (s) { return s.clinicalGroup === 'C2'; });
+    expect(c1).toBeTruthy();
+    expect(c2).toBeTruthy();
+
+    var c1Events = collectStudentCalendarEvents(sem, c1);
+    var c1Orients = c1Events.filter(function (e) {
+      return /^Orient /.test(e.summary) || /Orientation/.test(e.summary);
+    });
+    expect(c1Orients.length).toBe(1);
+    expect(c1Orients[0].summary).toBe('Orient SRMC');
+    expect(c1Events.some(function (e) {
+      return e.uid && String(e.uid).indexOf('theory-orientation') >= 0;
+    })).toBe(false);
+
+    var c2Events = collectStudentCalendarEvents(sem, c2);
+    expect(c2Events.some(function (e) {
+      return /^Orient /.test(e.summary) || /Orientation/.test(e.summary);
+    })).toBe(false);
+
+    var detailedC1 = buildDetailedHtml(sem, c1, {});
+    var detailedC2 = buildDetailedHtml(sem, c2, {});
+    var setupHits = (detailedC1.match(/Orient SRMC/g) || []).length;
+    expect(setupHits).toBeGreaterThanOrEqual(1);
+    expect(detailedC1).not.toMatch(/C1 Orientation @/);
+    expect(detailedC2).not.toMatch(/Orient SRMC/);
+    expect(detailedC2).not.toMatch(/C1 Orientation @/);
   });
 
   it('places a student orientationWeekIndex override on the same weekday of the new week', () => {

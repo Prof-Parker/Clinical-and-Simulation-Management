@@ -330,6 +330,95 @@ describe('self schedule proposals', () => {
     expect(submitted.proposal.status).toBe('pending');
     expect(submitted.proposal.items[0].decision).toBeNull();
   });
+
+  it('does not persist denials when every approve fails to apply', () => {
+    var semester = {
+      id: 'sem1',
+      meta: { selfSchedulingOpen: true, courseId: 'REGN15P', semesterName: 'Fall 2026' },
+      proposals: [],
+      faculty: [
+        { id: 'f1', clinicalGroup: 'C1', needed: true, name: 'Faculty Needed' },
+        { id: 'f2', clinicalGroup: 'C2', needed: true, name: 'Faculty Needed' }
+      ],
+      simInstructors: [],
+      students: [{
+        id: 'stu1',
+        clinicalGroup: 'C1',
+        facilityId: 'fac1',
+        schedule: Array.from({ length: 18 }, function (_, i) {
+          return i === 4
+            ? { clinical: true, date: '2026-09-14', day: 'Monday', facilityId: 'fac1' }
+            : {};
+        })
+      }, {
+        id: 'stu2',
+        clinicalGroup: 'C2',
+        facilityId: 'fac1',
+        schedule: Array.from({ length: 18 }, function (_, i) {
+          return i === 4
+            ? { clinical: true, date: '2026-09-14', day: 'Monday', facilityId: 'fac1' }
+            : {};
+        })
+      }],
+      facilities: [{
+        id: 'fac1', shortName: 'SRMC', siteId: 'srmc',
+        clinicalStart: '0600', clinicalEnd: '1830', contentTags: ['MS']
+      }],
+      config: {},
+      facultySchedule: { substitutes: [] },
+      theory: {
+        days: [{
+          date: '2026-08-18',
+          weekday: 'Tuesday',
+          weekIndex: 0,
+          events: [{
+            id: 'ev_lec',
+            track: 'theory',
+            title: 'REGN 15 Lecture',
+            courseCode: 'REGN15',
+            timeStart: '0800',
+            timeEnd: '1115',
+            categories: ['lecture'],
+            faculty: [{ name: FACULTY_NEEDED_NAME, role: 'lecturer', needed: true }]
+          }]
+        }]
+      }
+    };
+    var session = { userId: 'u1', name: 'Ada Faculty', specialties: ['MS', 'Lec'] };
+    var clinicalSlot = listOpenSlots(semester).find(function (s) {
+      return s.kind === 'clinical' && s.slotId === 'clinical:f1';
+    });
+    var lectureSlot = listOpenSlots(semester).find(function (s) { return s.kind === 'lecture'; });
+    expect(clinicalSlot).toBeTruthy();
+    expect(lectureSlot).toBeTruthy();
+
+    var submitted = ScheduleProposals.submitSelfSchedule(
+      semester,
+      [clinicalSlot.slotId, lectureSlot.slotId],
+      session,
+      {}
+    );
+    expect(submitted.ok).toBe(true);
+
+    semester.theory.days = [];
+    var decisions = {};
+    decisions[clinicalSlot.slotId] = 'denied';
+    decisions[lectureSlot.slotId] = 'approved';
+    var reviewed = ScheduleProposals.reviewSelfSchedule(
+      semester,
+      submitted.proposal.id,
+      decisions,
+      { userId: 'admin', name: 'Admin' },
+      'ok',
+      null
+    );
+    expect(reviewed.error).toMatch(/Could not assign slot/i);
+    expect(submitted.proposal.status).toBe('pending');
+    expect(submitted.proposal.reviewedBy == null).toBe(true);
+    submitted.proposal.items.forEach(function (item) {
+      expect(item.decision).toBeNull();
+    });
+  });
 });
 
 describe('substitute proposals', () => {
