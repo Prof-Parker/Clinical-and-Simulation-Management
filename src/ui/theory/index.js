@@ -11,6 +11,7 @@ import { render as renderCoordinator } from './coordinator.js';
 import { init as initHourSettings } from './hour-settings.js';
 import { init as initMasterSetup } from './master-setup.js';
 import { init as initContentLibrary } from './content-library.js';
+import { init as initCoordinatorExport } from './coordinator-export.js';
 
 function initTheoryLibraryButtons() {
   var connectBtn = document.getElementById('theoryLibraryConnectBtn');
@@ -46,6 +47,7 @@ export function init() {
   initHourSettings();
   initMasterSetup();
   initContentLibrary();
+  initCoordinatorExport();
   initTheoryLibraryButtons();
   onStateChange(function () {
     var data = getData();

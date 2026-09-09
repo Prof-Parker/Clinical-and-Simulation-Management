@@ -7,7 +7,8 @@
 import { hoursFromTimes, getContactHourRules, clinicalHoursForDay, simHoursForDay } from './theory-data.js';
 import { findFacilityById } from './data-model/facilities.js';
 import { getClinicalGroups, getSimGroups } from './data-model/config.js';
-import { getGroupOrientations } from './orientation.js';
+import { getWeekIndexForDate } from './calendar-engine.js';
+import { getGroupOrientations, getOrientationForWeek } from './orientation.js';
 
 export var DEFAULT_CLINICAL_START = '0600';
 export var DEFAULT_CLINICAL_END = '1830';
@@ -199,6 +200,7 @@ export function studentHoursSummary(student, semester) {
 
 /**
  * Weekly clinical/sim hours from Setup times (one session per week).
+ * Orientation clock hours fold into clinical (REGN15P contact total).
  * options.clinicalGroup / options.simGroup — limit to that cohort path (semester totals).
  * Without filters, any group's session counts (weekly coordinator column).
  */
@@ -210,8 +212,10 @@ export function rollPracticumHoursByWeek(semester, options) {
   for (var wi = 0; wi < 18; wi++) {
     var clinical = 0;
     var simulation = 0;
+    var orientation = 0;
     var clinSet = false;
     var simSet = false;
+    var orientSet = false;
     (semester.students || []).forEach(function (student) {
       var cell = student.schedule && student.schedule[wi];
       if (!cell || cell.inactive) return;
@@ -226,8 +230,17 @@ export function rollPracticumHoursByWeek(semester, options) {
         simSet = true;
       }
     });
+    (semester.orientations || []).forEach(function (o) {
+      if (!o || !o.date) return;
+      if (clinicalGroup && o.clinicalGroup !== clinicalGroup) return;
+      if (getWeekIndexForDate(semester, o.date) !== wi) return;
+      if (!orientSet) {
+        orientation = orientationSessionHours(o);
+        orientSet = true;
+      }
+    });
     byWeek[wi + 1] = {
-      clinical: roundHours(clinical),
+      clinical: roundHours(clinical + orientation),
       simulation: roundHours(simulation)
     };
   }
@@ -298,6 +311,7 @@ export function representativeSimStudent(semester) {
  * classmates do not inflate the union of sim weeks past simDaysRequired.
  * Guest sims (simGuestGroup set) are excluded from the program contact total;
  * weekly Coordinator columns still use rollPracticumHoursByWeek (any group).
+ * Orientation for the representative clinical student folds into clinical hours.
  */
 export function rollPracticumHoursForCohort(semester) {
   var clinStudent = representativeClinicalStudent(semester);
@@ -311,6 +325,8 @@ export function rollPracticumHoursForCohort(semester) {
       if (cCell && !cCell.inactive && cCell.clinical && !cCell.clinicalMissed) {
         clinical = resolveClinicalDayHours(semester, cellFacilityId(clinStudent, cCell));
       }
+      var orient = getOrientationForWeek(semester, clinStudent, wi);
+      if (orient) clinical += orientationSessionHours(orient);
     }
     if (simStudent) {
       var sCell = simStudent.schedule && simStudent.schedule[wi];

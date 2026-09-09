@@ -59,6 +59,15 @@ describe('schedule-hours.test.js', () => {
     var oh = ScheduleHours.studentOrientationHours(sem.students[0], sem);
     assert(oh === 4, 'orientation hours 4 (got ' + oh + ')');
 
+    var orientWeek = ScheduleHours.rollPracticumHoursByWeek(sem)[4];
+    assert(orientWeek && orientWeek.clinical >= 4,
+      'weekly clinical rollup includes orientation hours (got ' +
+      (orientWeek && orientWeek.clinical) + ')');
+    var orientCohort = ScheduleHours.rollPracticumHoursForCohort(sem)[4];
+    assert(orientCohort && orientCohort.clinical >= 4,
+      'cohort clinical rollup includes orientation hours (got ' +
+      (orientCohort && orientCohort.clinical) + ')');
+
     var student = sem.students[0];
     student.email = 'student1@example.edu';
     assert(student.email === 'student1@example.edu', 'student email field writable');
@@ -68,9 +77,10 @@ describe('schedule-hours.test.js', () => {
     assert(summary.simHours > 0, 'student sim hours > 0');
 
     var byWeek = ScheduleHours.rollPracticumHoursByWeek(sem);
-    var clinWeek = Object.keys(byWeek).find(function (wl) { return byWeek[wl].clinical > 0; });
+    // Prefer a full clinical day (12.5h); orientation-only weeks are also > 0.
+    var clinWeek = Object.keys(byWeek).find(function (wl) { return byWeek[wl].clinical === 12.5; });
     var simWeek = Object.keys(byWeek).find(function (wl) { return byWeek[wl].simulation > 0; });
-    assert(!!clinWeek, 'has a clinical week');
+    assert(!!clinWeek, 'has a full clinical week (12.5h)');
     assert(!!simWeek, 'has a sim week');
     assert(byWeek[clinWeek].clinical === 12.5,
       'cohort clinical week is 12.5 not multi-group sum (got ' + byWeek[clinWeek].clinical + ')');

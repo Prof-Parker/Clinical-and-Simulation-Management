@@ -43,6 +43,7 @@ export {
   coordinatorCompactLabel,
   clinicalOrdinalForGroup,
   practicumSlotsForDay,
+  orientationSlotsForDay,
   coordinatorItemsForDay,
   weekSummaryForLabel,
   semesterHourTotals,

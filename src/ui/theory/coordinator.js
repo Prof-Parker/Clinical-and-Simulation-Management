@@ -4,6 +4,7 @@
 
 import * as TheoryData from '../../core/theory-data.js';
 import * as Permissions from '../../auth/permissions.js';
+import { updateExportButtonVisibility } from './coordinator-export.js';
 
 var WEEK_COLS = TheoryData.WEEKDAYS;
 
@@ -96,6 +97,7 @@ export function render(data) {
     settingsBtn.classList.toggle('hidden', !Permissions.canAction('theory.hourTargets.edit') &&
       !Permissions.canAction('*'));
   }
+  updateExportButtonVisibility();
 
   var warnings = TheoryData.simCrossCheckWarnings(data);
   if (warnEl) {

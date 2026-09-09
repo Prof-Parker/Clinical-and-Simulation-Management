@@ -148,7 +148,13 @@ export var UI_TABS = [
     id: 'theory-coordinator',
     shell: 'theory',
     workspace: 'calendars',
-    anchors: ['theoryCoordinatorGrid', 'theoryCoordinatorStatusChip', 'theoryHourSettingsBtn', 'theorySimWarnBanner']
+    anchors: [
+      'theoryCoordinatorGrid',
+      'theoryCoordinatorStatusChip',
+      'theoryCoordinatorExportBtn',
+      'theoryHourSettingsBtn',
+      'theorySimWarnBanner'
+    ]
   },
   {
     id: 'users',

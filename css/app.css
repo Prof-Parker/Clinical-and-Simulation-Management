@@ -3729,11 +3729,13 @@ html.dark .theory-chip-over {
 .theory-coord-item-skills { background: #ffedd5; color: #9a3412; }
 .theory-coord-item-simulation { background: #ede9fe; color: #5b21b6; }
 .theory-coord-item-clinical { background: #e0e7ff; color: #3730a3; }
+.theory-coord-item-orientation { background: #ccfbf1; color: #115e59; }
 .theory-coord-item-holiday { background: #fee2e2; color: #991b1b; font-weight: 600; }
 html.dark .theory-coord-item-theory { background: #1e40af; color: #dbeafe; }
 html.dark .theory-coord-item-skills { background: #c2410c; color: #ffedd5; }
 html.dark .theory-coord-item-simulation { background: #6d28d9; color: #ede9fe; }
 html.dark .theory-coord-item-clinical { background: #4338ca; color: #e0e7ff; }
+html.dark .theory-coord-item-orientation { background: #0f766e; color: #ccfbf1; }
 html.dark .theory-coord-item-holiday { background: #b91c1c; color: #fef2f2; }
 .theory-coord-week-totals { font-size: 0.72rem; line-height: 1.45; white-space: nowrap; }
 .theory-coord-totals-col,
