@@ -357,6 +357,51 @@ describe('theory-data.test.js', () => {
     expect(sunItems.filter(function (i) { return i.kind === 'simulation'; }).length).toBe(0);
   });
 
+  it('shows orientation chips and folds orientation hours into REGN15P clinical', () => {
+    var sem = DataModel.createDefaultFile().semesters[0];
+    DataModel.migrateSemester(sem);
+    CalendarEngine.rebuildWeeks(sem);
+    var week = sem.calendar.weeks[3];
+    var orientDate = week.startDate; // Sunday of week 4
+    var weekday = CalendarEngine.weekdayNameForDate(CalendarEngine.parseDate(orientDate));
+    var group = sem.students[0].clinicalGroup;
+    var facId = sem.facilities[0].id;
+    sem.orientations = [{
+      id: 'o1',
+      clinicalGroup: group,
+      date: orientDate,
+      facilityId: facId,
+      timeStart: '0800',
+      timeEnd: '1200',
+      weekIndex: 3
+    }];
+    var items = TheoryData.coordinatorItemsForDay(sem.theory, sem, 4, weekday, 'REGN15P');
+    var orients = items.filter(function (i) { return i.kind === 'orientation'; });
+    expect(orients.length).toBe(1);
+    expect(orients[0].label).toMatch(new RegExp('^' + group + ' Orient '));
+
+    var summary = TheoryData.weekSummaryForLabel(sem.theory, sem, 4, 'REGN15P');
+    expect(summary.clinical).toBe(4);
+
+    // Clear student clinical/sim so semester clinical is orientation-only for the cohort path.
+    (sem.students || []).forEach(function (s) {
+      (s.schedule || []).forEach(function (cell) {
+        if (!cell) return;
+        cell.clinical = false;
+        cell.clinicalMissed = false;
+        cell.sim = null;
+        cell.simDay = null;
+        cell.simGuestGroup = null;
+      });
+    });
+    var totals = TheoryData.semesterHourTotals(sem.theory, sem, 'REGN15P');
+    expect(totals.clinical).toBe(4);
+    expect(totals.practicum).toBe(totals.skills_lab + totals.clinical + totals.simulation);
+
+    var pracV = TheoryData.contactHourValidation(sem.theory, sem, 'REGN15P');
+    expect(pracV.scheduled).toBe(totals.practicum);
+  });
+
   it('auto-numbers lecture modules across a week and renumbers after remove', () => {
     var sem = DataModel.createDefaultFile().semesters[0];
     DataModel.migrateSemester(sem);

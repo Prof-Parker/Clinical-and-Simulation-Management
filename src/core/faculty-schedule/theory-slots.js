@@ -148,7 +148,8 @@ function pushNeededSeats(series, day, ev, helpers) {
   needed.forEach(function (fi, seat) {
     if (!series.seats[seat]) series.seats[seat] = [];
     series.seats[seat].push({
-      dayId: day.id,
+      dayId: day.id || day.date,
+      date: day.date,
       eventId: ev.id,
       facultyIndex: fi,
       facultyId: (ev.faculty[fi] && ev.faculty[fi].id) || ''
@@ -352,7 +353,8 @@ function buildTheorySlots(semester, helpers) {
         }
         legacy[key].capacity += 1;
         legacy[key].refs.push({
-          dayId: day.id,
+          dayId: day.id || day.date,
+          date: day.date,
           eventId: ev.id,
           facultyIndex: fi,
           facultyId: slot.id || ''

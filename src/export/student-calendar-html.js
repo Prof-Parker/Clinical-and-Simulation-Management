@@ -10,6 +10,13 @@ import * as Validator from '../core/validator.js';
 import * as TheoryData from '../core/theory-data.js';
 import * as CourseVisibility from '../core/course-visibility.js';
 import * as HoursBySpecialty from '../core/hours-by-specialty.js';
+import {
+  holidayLabelForWeek,
+  formatSummaryDate,
+  summaryEventsForWeek,
+  activityPartsForWeek
+} from './student-calendar-summary.js';
+import { includeTheoryOrientationForStudent } from './student-calendar-orientation-filter.js';
 
 var WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -19,14 +26,6 @@ function esc(s) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
-}
-
-function holidayLabelForWeek(week) {
-  if (!week) return '';
-  if (week.labels && week.labels.length) return week.labels.join(' / ');
-  if (week.break) return 'Break';
-  if (week.mondayHoliday || week.holiday || week.inactive) return 'Holiday / Break';
-  return '';
 }
 
 function facilityLabel(data, facilityId) {
@@ -79,54 +78,11 @@ function introHtml(data, student, opts) {
     '</ul></div>';
 }
 
-function activityPartsForWeek(data, student, weekIndex, showMarkup) {
-  var cell = student.schedule[weekIndex];
-  var week = data.calendar.weeks[weekIndex];
-  var parts = [];
-  var rowCls = '';
-  var orient = Orientation.getOrientationForWeek(data, student, weekIndex);
-  if (orient) {
-    ScheduleHours.ensureOrientationTimes(orient);
-    var oLabel = Orientation.getOrientationLabel(data, student, weekIndex);
-    var oRange = ScheduleHours.formatTimeRange(orient.timeStart, orient.timeEnd);
-    parts.push(oLabel + (oRange ? ' ' + oRange : ''));
+function summaryRowClassAttr(cls) {
+  if (cls === 'holiday-row' || cls === 'markup-missed' || cls === 'markup-makeup') {
+    return ' class="' + cls + '"';
   }
-  var hol = holidayLabelForWeek(week);
-  if (cell && cell.inactive) {
-    parts.push(hol || 'Holiday / Break');
-    return { activity: parts.join(' · ') || 'Holiday / Break', rowCls: 'holiday-row' };
-  }
-  if (hol && !cell.inactive) {
-    parts.push(hol);
-  }
-  if (!cell) return { activity: parts.join(' · ') || '—', rowCls: '' };
-  if (cell.makeupClinical) {
-    parts.push('Makeup Clinical');
-    if (showMarkup) rowCls = 'markup-makeup';
-  } else {
-    if (cell.clinicalMissed && showMarkup) rowCls = 'markup-missed';
-    if (cell.clinical || cell.clinicalMissed) {
-      var facId = cell.facilityId || student.facilityId;
-      var site = facilityLabel(data, facId);
-      var cTimes = ScheduleHours.clinicalTimesForFacility(data, facId);
-      parts.push(
-        'Clinical (' + DataModel.getClinicalDayForGroup(student.clinicalGroup, data.config) + ')' +
-        (site ? ' @ ' + site : '') +
-        ' ' + ScheduleHours.formatTimeRange(cTimes.start, cTimes.end) +
-        (cell.clinicalMissed ? ' [MISSED]' : '')
-      );
-    }
-    if (cell.sim) {
-      var sTimes = ScheduleHours.simTimesForNum(data, cell.sim);
-      parts.push(
-        'Simulation ' + cell.sim +
-        (cell.simGuestGroup ? ' (guest ' + cell.simGuestGroup + ')' : '') +
-        ' (' + (cell.simDay || 'Mon') + ') ' +
-        ScheduleHours.formatTimeRange(sTimes.start, sTimes.end)
-      );
-    }
-  }
-  return { activity: parts.join(' · ') || '—', rowCls: rowCls };
+  return '';
 }
 
 function buildSummaryHtml(data, student, opts) {
@@ -134,13 +90,27 @@ function buildSummaryHtml(data, student, opts) {
   var showMarkup = !!opts.showMarkup;
   var html = '<div class="print-student-calendar student-calendar-page print-student-calendar-summary">' +
     introHtml(data, student, { title: 'Clinical and Sim Summary' }) +
-    '<table class="data-table"><thead><tr><th>Week</th><th>Date</th><th>Activity</th></tr></thead><tbody>';
+    '<table class="data-table student-cal-summary-table"><thead><tr>' +
+    '<th>Week</th><th>Date</th><th>Day</th><th>Activity</th><th>Times</th>' +
+    '</tr></thead><tbody>';
   for (var i = 0; i < 18; i++) {
-    var week = data.calendar.weeks[i];
-    var act = activityPartsForWeek(data, student, i, showMarkup);
-    html += '<tr class="' + act.rowCls + '"><td>Week ' + (i + 1) + '</td><td>' +
-      esc(week ? CalendarEngine.formatDisplayDate(week.startDate) : '') +
-      '</td><td>' + esc(act.activity) + '</td></tr>';
+    var events = summaryEventsForWeek(data, student, i, showMarkup);
+    if (!events.length) {
+      events = [{ dateIso: '', weekday: '', activity: '—', times: '', rowCls: '' }];
+    }
+    events.forEach(function (ev, idx) {
+      html += '<tr' + summaryRowClassAttr(ev.rowCls) + '>';
+      if (idx === 0) {
+        html += '<td class="student-cal-summary-week"' +
+          (events.length > 1 ? ' rowspan="' + events.length + '"' : '') +
+          '>Week ' + (i + 1) + '</td>';
+      }
+      html += '<td class="student-cal-summary-date">' +
+        esc(ev.dateIso ? formatSummaryDate(ev.dateIso) : '') + '</td>' +
+        '<td class="student-cal-summary-day">' + esc(ev.weekday || '') + '</td>' +
+        '<td class="student-cal-summary-activity">' + esc(ev.activity) + '</td>' +
+        '<td class="student-cal-summary-times">' + esc(ev.times || '') + '</td></tr>';
+    });
   }
   html += '</tbody></table></div>';
   return html;
@@ -246,6 +216,9 @@ function studentDayBands(data, student, weekIndex, weekday, dateIso, showMarkup)
   var isThird = CourseVisibility.isThirdSemester(data.meta && data.meta.courseId);
 
   theoryEventsForDate(data.theory, dateIso).forEach(function (ev) {
+    if (ev.track === 'orientation' && !includeTheoryOrientationForStudent(ev, student)) {
+      return;
+    }
     var chip = renderStudentEventChip(ev, data);
     if (TheoryData.isPracticumTrackEvent(ev) || ev.track === 'clinical' ||
         ev.track === 'simulation' || ev.track === 'orientation') {
@@ -373,5 +346,6 @@ export {
   buildDetailedHtml,
   buildCalendarHtml,
   introHtml,
-  activityPartsForWeek
+  activityPartsForWeek,
+  summaryEventsForWeek
 };

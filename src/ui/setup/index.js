@@ -340,6 +340,7 @@ function init() {
           timeStart: next.timeStart || '0800',
           timeEnd: next.timeEnd || '1200'
         });
+        if (data.theory) TheoryData.syncOrientationsFromSemester(data);
         markSetupDraft(data);
         setupAfterChange(data);
         return;
@@ -350,13 +351,22 @@ function init() {
       var data = resolveSetupData();
       collectFromForm(data);
       data.orientations.splice(parseInt(btn.dataset.idx, 10), 1);
+      if (data.theory) TheoryData.syncOrientationsFromSemester(data);
       markSetupDraft(data);
       setupAfterChange(data);
     });
 
     bindScopedContainer('setupOrientations', 'change', function (e) {
-      if (e.target.getAttribute('data-orient') !== 'date') return;
-      updateOrientationWeekHint(resolveRenderData(), e.target);
+      if (!e.target.getAttribute('data-orient')) return;
+      if (!guardSetupEdit()) return;
+      var data = resolveSetupData();
+      collectFromForm(data);
+      if (data.theory) TheoryData.syncOrientationsFromSemester(data);
+      markSetupDraft(data);
+      if (e.target.getAttribute('data-orient') === 'date') {
+        updateOrientationWeekHint(data, e.target);
+      }
+      setupAfterChange(data, { rerender: false });
     });
 
     bindScopedContainer('setupOrientations', 'input', function (e) {

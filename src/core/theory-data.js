@@ -43,6 +43,7 @@ export {
   coordinatorCompactLabel,
   clinicalOrdinalForGroup,
   practicumSlotsForDay,
+  orientationSlotsForDay,
   coordinatorItemsForDay,
   weekSummaryForLabel,
   semesterHourTotals,
@@ -83,8 +84,16 @@ export {
 
 export {
   syncPracticumFromSemester,
-  SYNCED_PRACTICUM_CATEGORY
+  syncOrientationsFromSemester,
+  SYNCED_PRACTICUM_CATEGORY,
+  SYNCED_ORIENTATION_CATEGORY
 } from './theory-practicum-sync.js';
+
+export {
+  isPlaceholderTopicTitle,
+  seedEmptySessionEvents,
+  importTheoryEventsFromSemester
+} from './theory-session-seed.js';
 
 export var THEORY_VERSION = 1;
 

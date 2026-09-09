@@ -28,6 +28,18 @@ export function stripModuleTitlePrefix(title) {
   return String(title || '').replace(/^Module\s+\d+[A-Za-z]+\s*[—–-]\s*/i, '').trim();
 }
 
+var PLACEHOLDER_GENERIC = /^(theory|skills|topic|skills\s+lab)$/i;
+var PLACEHOLDER_COURSE = /^regn\s+\d+p?(?:\/\d+p?)?\s+(lecture|skills\s+lab)$/i;
+
+/** True when title is empty or a skeleton / generic placeholder. */
+export function isPlaceholderTopicTitle(title) {
+  var bare = stripModuleTitlePrefix(title);
+  if (!bare) return true;
+  if (PLACEHOLDER_GENERIC.test(bare)) return true;
+  if (PLACEHOLDER_COURSE.test(bare)) return true;
+  return false;
+}
+
 export function formatModuleTitle(moduleCode, title) {
   var base = stripModuleTitlePrefix(title);
   if (!base) base = 'Topic';
@@ -62,7 +74,9 @@ export function renumberWeekModules(theory, weekLabel) {
   items.forEach(function (item, idx) {
     var code = String(weekLabel) + moduleLetterAt(idx);
     item.ev.moduleCode = code;
-    item.ev.title = formatModuleTitle(code, item.ev.title);
+    if (!isPlaceholderTopicTitle(item.ev.title)) {
+      item.ev.title = formatModuleTitle(code, item.ev.title);
+    }
   });
   return items;
 }

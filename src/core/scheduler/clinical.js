@@ -2,7 +2,7 @@
  * Clinical day scheduling and conflict makeup placement.
  */
 
-import { getCanonicalFacilityId } from '../data-model/index.js';
+import { getCanonicalFacilityId, resolveClinicalStartWeek } from '../data-model/index.js';
 import * as CalendarEngine from '../calendar-engine.js';
 import * as ClinicalSites from '../clinical-sites.js';
 import { assignClinicalCellFacility } from './assignments.js';
@@ -36,7 +36,7 @@ export function getWeek18ClinicalSlot(data, student) {
 export function scheduleClinicalForStudent(student, data) {
   var cfg = data.config;
   var needed = cfg.clinicalDaysRequired || 10;
-  var clinStart = (cfg.clinicalStartWeek || 5) - 1;
+  var clinStart = resolveClinicalStartWeek(cfg, student.clinicalGroup) - 1;
   var clinDay = getStudentClinicalDay(student, cfg);
   var weeks = CalendarEngine.getClinicalEligibleWeeks(data, clinStart);
   var makeupWeeks = CalendarEngine.resolveMakeupWeeks(data);
@@ -104,7 +104,7 @@ export function scheduleConflictClinicalMakeups(student, data, state) {
 
 export function scheduleMissedMakeups(student, data) {
   var needed = data.config.clinicalDaysRequired || 10;
-  var clinStart = (data.config.clinicalStartWeek || 5) - 1;
+  var clinStart = resolveClinicalStartWeek(data.config, student.clinicalGroup) - 1;
   var makeupWeeks = CalendarEngine.resolveMakeupWeeks(data);
   var shortfall = needed - countedClinicals(student);
   for (var j = makeupWeeks.clinicalFallback; j >= clinStart && shortfall > 0; j--) {

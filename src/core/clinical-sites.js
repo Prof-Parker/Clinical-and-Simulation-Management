@@ -202,7 +202,7 @@ function getGroupFacilities(data, group) {
   function findGroupSiteWeekGaps(data, group) {
     var gaps = [];
     if (!groupUsesWeekRanges(data, group)) return gaps;
-    var clinStart = (data.config.clinicalStartWeek || 5) - 1;
+    var clinStart = DataModel.resolveClinicalStartWeek(data.config, group) - 1;
     var ranges = getGroupSiteWeekRanges(data, group);
     for (var w = clinStart; w < 18; w++) {
       if (CalendarEngine.isSchedulingBlockedWeek(data, w)) continue;
@@ -214,7 +214,7 @@ function getGroupFacilities(data, group) {
   function isWeekGapForGroup(data, group, weekIndex) {
     if (!groupUsesWeekRanges(data, group)) return false;
     if (CalendarEngine.isSchedulingBlockedWeek(data, weekIndex)) return false;
-    var clinStart = (data.config.clinicalStartWeek || 5) - 1;
+    var clinStart = DataModel.resolveClinicalStartWeek(data.config, group) - 1;
     if (weekIndex < clinStart) return false;
     return findGroupSiteWeekGaps(data, group).indexOf(weekIndex) >= 0;
   }

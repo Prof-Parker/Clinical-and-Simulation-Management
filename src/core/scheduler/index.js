@@ -70,6 +70,7 @@ import {
   buildStateFromStudentSchedule,
   scheduleOneSimForStudent
 } from './sim-placement.js';
+import { canUseAlignedHostOnlySimPlacement } from './sim-placement-aligned.js';
 import { syncPracticumFromSemester } from '../theory-practicum-sync.js';
 
 export function regenerateAll(data) {
@@ -129,11 +130,23 @@ export function regenerateStudent(student, data) {
   var needed = cfg.simDaysRequired || 5;
   var state = buildStateFromStudentSchedule(student, cfg);
   data._simSchedulingApplyHeadroom = true;
+  var useAligned = canUseAlignedHostOnlySimPlacement(cfg, data.students);
+  if (useAligned) data._simPlacementMode = 'alignedHost';
   for (var simNum = 1; simNum <= needed; simNum++) {
     if (findSimWeek(student, simNum) < 0) {
       scheduleOneSimForStudent(student, data, state, calendar, simNum);
     }
   }
+  // If aligned host seats were full (others already placed), finish with full tiers.
+  if (useAligned) {
+    delete data._simPlacementMode;
+    for (var n = 1; n <= needed; n++) {
+      if (findSimWeek(student, n) < 0) {
+        scheduleOneSimForStudent(student, data, state, calendar, n);
+      }
+    }
+  }
+  delete data._simPlacementMode;
   delete data._simSchedulingApplyHeadroom;
   scheduleConflictClinicalMakeups(student, data, state);
   scheduleMissedMakeups(student, data);
@@ -199,5 +212,6 @@ export {
   normalizeWeek17Mode,
   consolidateThinSimSessions,
   getSimPracticalMinLoad,
-  getSimIdealMinLoad
+  getSimIdealMinLoad,
+  canUseAlignedHostOnlySimPlacement
 };

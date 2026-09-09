@@ -114,8 +114,8 @@ TODO.md
 - [ ] Add audit mailto feature
 
 #### UI improvements after implementing folder picker:
-- [ ] remove save setup buttons if keeping live sync with onedrive. Investigate dirty state of file and possible storage options for faculty user before proposal submit
-- [ ] Further investigate file managment menu items (may be able to remove/streamline some items)
+- [X] remove save setup buttons if keeping live sync with onedrive. Investigate dirty state of file and possible storage options for faculty user before proposal submit
+- [X] Further investigate file managment menu items (may be able to remove/streamline some items)
 
 ### Lower priority TODO:
 - [ ] Add in app bug and feature request function
@@ -136,6 +136,8 @@ TODO.md
 - [ ] **Priority before rolling out to adjunct faculty** with high numbers of users folder structure is very vulnerable to overwrite both in and out of app. Based on live user demo, app folder requires all users to have full edit access to critical files such as user.registry.json
 - [ ] allow program engineer to be assigned in role of full time faculty for a course, while still granting full UI interface
 - [X] Add week-17 makeup clinical clustering to force to lowest number of clinical groups required to accomodate makeup needs. (Dashboard Apply; modes + preferred-site conflict transfer; soft-floor + multi-pass thin consolidate — see `PROJECT_IMPLEMENTATION_GUIDE.md` §5.1 and `docs/Design Docs/week17_makeup_clustering_and_sim_soft_floor.md`)
+- [ ] Add error message if wrong program folder selected (Example: user selects a sub folder rather than program folder on login)
+- [ ] Debug duplicate file names in open semester file
 
 ## Side Bar Navigation
 - [X] Side bar to nav to sections on each page only appear on mouse over
@@ -147,6 +149,9 @@ TODO.md
 - [X] Increase size of sim faculty text box in setup
 - [X] Add filters to student view (sim group, clinical group), search by student name
 - [X] Finalize semester should lock setup. Include toggle to unlock setup
+- [ ] Practicum Setup control bar no longer pinned **Bug**
+- [ ] Practicum setup UI needs rearranging (organize be type? Sims, holidays, etc)
+- [ ] **Bug** Not able to update clinical site library
 
 ## Theory
 - [X] Add resync practicum information (orientation days, holidays, sims, clinicals etc) button
@@ -157,14 +162,33 @@ TODO.md
 - [X] Add different lecture times for different days 
 - [X] Increase size of faculty slots
 - [X] Add contact hour calculator
+- [ ] Build out program-content library
+- [ ] Need to add delete button for skills in edit event mode
+
+## Faculty View
+- [ ] Remove my requests and semester at a glance from admin panel
+- [ ] **Priority** Once admin approves self schedule request need to then populate events with username and remove slot from self scheduling matrix
+
+## User Registry
+- [ ] Have create new user open at the top of the user list not below
 
 ## Chore Items:
 - [ ] Implement lazy load for node modules (especially excel import/export features)
+- [ ] For new semester file creation change from REGN15P to 1st semester, 2nd semester etc
 - [ ] Refactor data storage and scheduling rules to per semester basis
 - [ ] Implement true seed for REGN 35 and REGN 36 (current are hardcoded, rough approximations)
 - [ ] Update REGN 15 Content Library
 - [ ] **After Feature Lock** review [src](src) and consider refactoring modules for abstraction, inheritance, composition for overall optimization.
 
+## General Idea:
+- [ ] Add support for undo/stage for all screens/areas
+
+## Scheduling logic:
+-[ ] Add 1st pass check: 
+```
+If clinical groups # = sim group # AND sim days NOT clinical days. 1:1 assign students from clinical groups to sim groups on set days
+```
+- [ ] Change odd/even pattern to 1st rotation, 2nd rotation, add support for 3rd rotation
 
 ## Closed out issues
 

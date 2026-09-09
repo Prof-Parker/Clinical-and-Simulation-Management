@@ -32,6 +32,7 @@ import {
   weekIndexForPatternDay,
   getNominalSimWeekStreams
 } from './sim-block-weeks.js';
+import { buildAlignedHostOnlyCandidates } from './sim-placement-aligned.js';
 
 export { resolveSimBlockWeeks, weekIndexForPatternDay } from './sim-block-weeks.js';
 
@@ -248,6 +249,9 @@ function blockHasSoftHeadroom(data, calendar, simNum, cfg) {
 }
 
 export function buildSimPlacementCandidates(student, data, calendar, simNum, state, placementOptions) {
+  if (data && data._simPlacementMode === 'alignedHost') {
+    return buildAlignedHostOnlyCandidates(student, data, calendar, simNum);
+  }
   var cfg = data.config;
   var simGroups = getSimGroups(cfg);
   var block = calendar.blocks[simNum - 1];

@@ -4,6 +4,14 @@
 
 import { getClinicalDayForGroup } from './data-model/index.js';
 import {
+  getWeekIndexForDate,
+  parseDate,
+  weekdayNameForDate
+} from './calendar-engine.js';
+import { facilityInitials } from './orientation.js';
+import {
+  ensureOrientationTimes,
+  orientationSessionHours,
   resolveClinicalDayHours,
   resolveSimDayContactHours,
   rollPracticumHoursByWeek,
@@ -67,7 +75,8 @@ var COORDINATOR_TRACK_LABELS = {
   theory: 'Lecture',
   skills: 'Skills lab',
   simulation: 'Simulation',
-  clinical: 'Clinical'
+  clinical: 'Clinical',
+  orientation: 'Orientation'
 };
 
 export function coordinatorCompactLabel(track, timeStart, timeEnd) {
@@ -132,6 +141,29 @@ export function practicumSlotsForDay(semester, weekLabel, weekday, courseCode) {
   };
 }
 
+/** Setup orientation sessions for a coordinator day (from semester.orientations). */
+export function orientationSlotsForDay(semester, weekLabel, weekday) {
+  var wi = weekLabel - 1;
+  var byGroup = {};
+  (semester.orientations || []).forEach(function (o) {
+    if (!o || !o.date) return;
+    if (getWeekIndexForDate(semester, o.date) !== wi) return;
+    var d = parseDate(o.date);
+    if (!d || weekdayNameForDate(d) !== weekday) return;
+    var cg = o.clinicalGroup || 'C?';
+    if (byGroup[cg]) return;
+    ensureOrientationTimes(o);
+    byGroup[cg] = {
+      group: cg,
+      facilityId: o.facilityId || null,
+      timeStart: o.timeStart,
+      timeEnd: o.timeEnd,
+      hours: orientationSessionHours(o)
+    };
+  });
+  return Object.keys(byGroup).sort().map(function (k) { return byGroup[k]; });
+}
+
 export function coordinatorItemsForDay(theory, semester, weekLabel, weekday, courseCode) {
   var holidayItems = [];
   var theoryItems = [];
@@ -147,7 +179,7 @@ export function coordinatorItemsForDay(theory, semester, weekLabel, weekday, cou
         });
         return;
       }
-      // Lecture / skills only — simulation comes from the practicum scheduler.
+      // Lecture / skills only — clinical/sim/orientation come from Setup + schedules.
       if (['theory', 'skills'].indexOf(ev.track) < 0) return;
       theoryItems.push({
         kind: ev.track,
@@ -156,6 +188,12 @@ export function coordinatorItemsForDay(theory, semester, weekLabel, weekday, cou
     });
   }
   var items = holidayItems.concat(theoryItems);
+  orientationSlotsForDay(semester, weekLabel, weekday).forEach(function (o) {
+    items.push({
+      kind: 'orientation',
+      label: o.group + ' Orient ' + facilityInitials(semester, o.facilityId)
+    });
+  });
   var practicum = practicumSlotsForDay(semester, weekLabel, weekday, courseCode);
   practicum.clinicals.forEach(function (c) {
     items.push({
@@ -203,7 +241,8 @@ export function semesterHourTotals(theory, semester, courseCode) {
 
 export function semesterContactHourTotal(theory, semester, courseCode) {
   var t = semesterHourTotals(theory, semester, courseCode);
-  // Theory courses count lecture only; practicum courses count skills + clinical + sim.
+  // Theory courses count lecture only; practicum courses count skills + clinical
+  // (incl. orientation) + sim.
   if (isTheoryCourseCode(courseCode)) {
     return t.lecture;
   }

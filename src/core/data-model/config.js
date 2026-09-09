@@ -25,6 +25,10 @@ export function defaultConfig() {
     numClinicalGroups: 5,
     clinicalStartWeek: 5,
     simStartWeek: 5,
+    /** When true, clinical scheduling floors use clinicalGroupStartWeek per group. */
+    variableStartWeeksPerGroup: false,
+    /** 1-based start week per clinical group; dormant when variableStartWeeksPerGroup is false. */
+    clinicalGroupStartWeek: {},
     clinicalGroups: CLINICAL_GROUPS.slice(),
     clinicalGroupDays: { C1: 'Sat', C2: 'Mon', C3: 'Mon', C4: 'Mon', C5: 'Tue' },
     simGroups: SIM_GROUPS.slice(),
@@ -162,6 +166,23 @@ export function normalizeConfig(cfg) {
   if (cfg.week17MakeupPreferredSiteId === undefined) cfg.week17MakeupPreferredSiteId = null;
   cfg.clinicalStartWeek = coerceWeekNumber(cfg.clinicalStartWeek, 5);
   cfg.simStartWeek = coerceWeekNumber(cfg.simStartWeek, 5);
+  cfg.variableStartWeeksPerGroup = !!cfg.variableStartWeeksPerGroup;
+  if (!cfg.clinicalGroupStartWeek || typeof cfg.clinicalGroupStartWeek !== 'object') {
+    cfg.clinicalGroupStartWeek = {};
+  }
+  cfg.clinicalGroups.forEach(function (g) {
+    var existing = cfg.clinicalGroupStartWeek[g];
+    if (existing == null || existing === '') {
+      if (cfg.variableStartWeeksPerGroup) {
+        cfg.clinicalGroupStartWeek[g] = cfg.clinicalStartWeek;
+      }
+    } else {
+      cfg.clinicalGroupStartWeek[g] = coerceWeekNumber(existing, cfg.clinicalStartWeek);
+    }
+  });
+  Object.keys(cfg.clinicalGroupStartWeek).forEach(function (key) {
+    if (cfg.clinicalGroups.indexOf(key) < 0) delete cfg.clinicalGroupStartWeek[key];
+  });
   var clinDays = parseInt(cfg.clinicalDaysRequired, 10);
   cfg.clinicalDaysRequired = (isNaN(clinDays) || clinDays < 1) ? 10 : clinDays;
   var simDaysReq = parseInt(cfg.simDaysRequired, 10);
@@ -305,4 +326,15 @@ export function applyConfigToSemester(semester, config, customized) {
 
 export function getClinicalDayForGroup(group, config) {
   return (config.clinicalGroupDays && config.clinicalGroupDays[group]) || 'Mon';
+}
+
+/**
+ * Resolve the 1-based clinical start week for a group.
+ * When variableStartWeeksPerGroup is off, returns the global clinicalStartWeek.
+ */
+export function resolveClinicalStartWeek(cfg, clinicalGroup) {
+  var normalized = normalizeConfig(cfg || {});
+  if (!normalized.variableStartWeeksPerGroup) return normalized.clinicalStartWeek;
+  var w = normalized.clinicalGroupStartWeek && normalized.clinicalGroupStartWeek[clinicalGroup];
+  return w != null ? w : normalized.clinicalStartWeek;
 }

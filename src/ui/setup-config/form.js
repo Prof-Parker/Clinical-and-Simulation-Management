@@ -6,6 +6,7 @@ import * as DataModel from '../../core/data-model/index.js';
 import * as ClinicalSites from '../../core/clinical-sites.js';
 import { setupEl, setupQueryAll } from '../setup/scope.js';
 import { collectSimTimesIntoConfig, collectSimContentTagsIntoConfig } from './sim-groups.js';
+import { collectGroupStartWeeksIntoConfig } from './group-start-weeks.js';
 
 function readOptionalWeekInput(id) {
   var el = setupEl(id);
@@ -50,6 +51,7 @@ export function readFormIntoConfig(cfg, data) {
   if (holBlockEl) cfg.holidayBlocksFullWeek = !!holBlockEl.checked;
   cfg.clinicalStartWeek = readIntField('cfgClinStart', cfg.clinicalStartWeek || 5);
   cfg.simStartWeek = readIntField('cfgSimStart', cfg.simStartWeek || 5);
+  collectGroupStartWeeksIntoConfig(cfg);
   cfg.clinicalMakeupPrimaryWeek = readOptionalWeekInput('cfgClinMakeupPrimary');
   cfg.clinicalMakeupFallbackWeek = readOptionalWeekInput('cfgClinMakeupFallback');
   cfg.simMakeupLastResortWeek = readOptionalWeekInput('cfgSimMakeupLastResort');
@@ -128,6 +130,10 @@ export function renderAdvancedFields(cfg) {
   var holBlockEl = setupEl('cfgHolidayBlocksWeek');
   if (holBlockEl) {
     holBlockEl.checked = cfg.holidayBlocksFullWeek !== false;
+  }
+  var varStartEl = setupEl('cfgVariableStartWeeks');
+  if (varStartEl) {
+    varStartEl.checked = !!cfg.variableStartWeeksPerGroup;
   }
   set('cfgClinStart', cfg.clinicalStartWeek);
   set('cfgSimStart', cfg.simStartWeek);

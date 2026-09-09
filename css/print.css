@@ -1,10 +1,28 @@
 @media print {
+  /* Print / Save as PDF always uses light tokens — do not toggle live html.dark. */
+  html.dark {
+    color-scheme: light;
+    --bg: #f8fafc;
+    --bg-card: #ffffff;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --primary: #2563eb;
+    --primary-light: #dbeafe;
+    --danger: #b91c1c;
+    --danger-bg: #fef2f2;
+    --danger-border: #fecaca;
+    --sticky-bg: #ffffff;
+    --surface-alt: #f1f5f9;
+  }
+  #studentCalendarPdfHost { display: none !important; }
   body { background: #fff; color: #000; font-size: 11pt; }
   .no-print { display: none !important; }
   .app-container { max-width: 100%; padding: 0; }
   .print-student-calendar { page-break-inside: avoid; }
   .print-student-calendar table { font-size: 9pt; width: 100%; }
   .print-student-calendar th, .print-student-calendar td { border: 1px solid #ccc; padding: 4px 6px; }
+  .print-student-calendar-summary td.student-cal-summary-week { vertical-align: top; font-weight: 700; }
   .markup-missed { text-decoration: line-through; background: #fee2e2 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .markup-makeup { background: #fef3c7 !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .student-calendar-page { page-break-after: always; }
@@ -34,14 +52,25 @@
     print-color-adjust: exact;
   }
   .student-cal-chip-theory,
-  .student-cal-chip-exam { border-color: #2563eb; background: #eff6ff; }
-  .student-cal-chip-skills { border-color: #ea580c; background: #fff7ed; }
+  .student-cal-chip-exam,
+  html.dark .student-cal-chip-theory,
+  html.dark .student-cal-chip-exam { border-color: #2563eb; background: #eff6ff; color: #1e3a8a; }
+  .student-cal-chip-skills,
+  html.dark .student-cal-chip-skills { border-color: #ea580c; background: #fff7ed; color: #9a3412; }
   .student-cal-chip-simulation,
-  .student-cal-chip-practicum.student-cal-chip-simulation { border-color: #7c3aed; background: #f5f3ff; }
+  .student-cal-chip-practicum.student-cal-chip-simulation,
+  html.dark .student-cal-chip-simulation,
+  html.dark .student-cal-chip-practicum.student-cal-chip-simulation {
+    border-color: #7c3aed; background: #f5f3ff; color: #5b21b6;
+  }
   .student-cal-chip-clinical,
   .student-cal-chip-orientation,
-  .student-cal-chip-practicum { border-color: #16a34a; background: #f0fdf4; }
-  .student-cal-chip-holiday { border-color: #dc2626; background: #fef2f2; }
+  .student-cal-chip-practicum,
+  html.dark .student-cal-chip-clinical,
+  html.dark .student-cal-chip-orientation,
+  html.dark .student-cal-chip-practicum { border-color: #16a34a; background: #f0fdf4; color: #14532d; }
+  .student-cal-chip-holiday,
+  html.dark .student-cal-chip-holiday { border-color: #dc2626; background: #fef2f2; color: #991b1b; }
 }
 
 .student-cal-intro { margin-bottom: 1rem; }
@@ -66,6 +95,16 @@
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 0.75rem;
+}
+.print-student-calendar-summary td.student-cal-summary-week {
+  vertical-align: top;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.print-student-calendar-summary td.student-cal-summary-date,
+.print-student-calendar-summary td.student-cal-summary-day,
+.print-student-calendar-summary td.student-cal-summary-times {
+  white-space: nowrap;
 }
 .student-cal-master-wrap { overflow-x: auto; }
 .student-cal-master-table {
@@ -147,17 +186,57 @@
   background: #fef2f2;
   color: #991b1b;
 }
-html.dark .student-cal-chip-theory,
-html.dark .student-cal-chip-exam { background: #1e3a8a; color: #dbeafe; border-color: #3b82f6; }
-html.dark .student-cal-chip-skills { background: #7c2d12; color: #ffedd5; border-color: #fb923c; }
-html.dark .student-cal-chip-simulation,
-html.dark .student-cal-chip-practicum.student-cal-chip-simulation {
-  background: #4c1d95; color: #ede9fe; border-color: #a78bfa;
+@media screen {
+  html.dark .student-cal-chip-theory,
+  html.dark .student-cal-chip-exam { background: #1e3a8a; color: #dbeafe; border-color: #3b82f6; }
+  html.dark .student-cal-chip-skills { background: #7c2d12; color: #ffedd5; border-color: #fb923c; }
+  html.dark .student-cal-chip-simulation,
+  html.dark .student-cal-chip-practicum.student-cal-chip-simulation {
+    background: #4c1d95; color: #ede9fe; border-color: #a78bfa;
+  }
+  html.dark .student-cal-chip-clinical,
+  html.dark .student-cal-chip-orientation,
+  html.dark .student-cal-chip-practicum {
+    background: #14532d; color: #dcfce7; border-color: #4ade80;
+  }
 }
-html.dark .student-cal-chip-clinical,
-html.dark .student-cal-chip-orientation,
-html.dark .student-cal-chip-practicum {
-  background: #14532d; color: #dcfce7; border-color: #4ade80;
+
+/* html2canvas uses screen styles; force light tokens on the off-screen host. */
+#studentCalendarPdfHost {
+  color-scheme: light;
+  --bg: #f8fafc;
+  --bg-card: #ffffff;
+  --text: #1e293b;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  --primary: #2563eb;
+  --primary-light: #dbeafe;
+  --danger: #b91c1c;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --sticky-bg: #ffffff;
+  --surface-alt: #f1f5f9;
+  background: #ffffff;
+  color: #1e293b;
+}
+html.dark #studentCalendarPdfHost .student-cal-chip-theory,
+html.dark #studentCalendarPdfHost .student-cal-chip-exam {
+  background: #eff6ff; color: #1e3a8a; border-color: #2563eb;
+}
+html.dark #studentCalendarPdfHost .student-cal-chip-skills {
+  background: #fff7ed; color: #9a3412; border-color: #ea580c;
+}
+html.dark #studentCalendarPdfHost .student-cal-chip-simulation,
+html.dark #studentCalendarPdfHost .student-cal-chip-practicum.student-cal-chip-simulation {
+  background: #f5f3ff; color: #5b21b6; border-color: #7c3aed;
+}
+html.dark #studentCalendarPdfHost .student-cal-chip-clinical,
+html.dark #studentCalendarPdfHost .student-cal-chip-orientation,
+html.dark #studentCalendarPdfHost .student-cal-chip-practicum {
+  background: #f0fdf4; color: #14532d; border-color: #16a34a;
+}
+html.dark #studentCalendarPdfHost .student-cal-chip-holiday {
+  background: #fef2f2; color: #991b1b; border-color: #dc2626;
 }
 .student-cal-chip-time,
 .student-cal-chip-faculty {

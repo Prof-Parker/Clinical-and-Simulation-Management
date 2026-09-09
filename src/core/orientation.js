@@ -8,7 +8,8 @@ import * as DataModel from './data-model/index.js';
 
 var KNOWN_INITIALS = {
     'shasta regional medical center': 'SRMC',
-    'saint elizabeth': 'SE',
+    'saint elizabeth': 'StE',
+    'st elizabeth': 'StE',
     'cal vet': 'CV',
     'california veterans home': 'CV'
   };
@@ -20,12 +21,16 @@ var KNOWN_INITIALS = {
       .trim()
       .toLowerCase()
       .replace(/['']/g, '')
+      .replace(/\./g, '')
       .replace(/\s+/g, ' ');
   }
 
   function facilityInitials(data, facilityId) {
     var fac = DataModel.findFacilityById(data, facilityId);
-    if (!fac || !fac.name) return 'OR';
+    if (!fac) return 'OR';
+    var short = String(fac.shortName || '').trim();
+    if (short) return short;
+    if (!fac.name) return 'OR';
     var key = normalizeName(fac.name);
     if (KNOWN_INITIALS[key]) return KNOWN_INITIALS[key];
     var words = key.split(' ').filter(function (w) { return w && !SKIP_WORDS[w]; });

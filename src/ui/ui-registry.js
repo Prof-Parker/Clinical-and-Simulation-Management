@@ -99,6 +99,7 @@ export var UI_TABS = [
       'sortRosterAzBtn', 'showStudentEmailDomain', 'cfgStudentEmailDomain',
       'cfgClinicalGroupsList', 'cfgSimGroupsList', 'cfgSimDaysList', 'cfgSimDefaultStart',
       'cfgSimDefaultEnd', 'cfgSimLunchBreakMinutes', 'cfgSimTimeOverrides', 'cfgSimContentTags',
+      'cfgVariableStartWeeks', 'cfgGroupStartWeeksPanel', 'cfgGroupStartWeeksList',
       'setupAdvancedPanel'
     ]
   },
@@ -131,6 +132,7 @@ export var UI_TABS = [
       'theoryMasterSetup', 'theorySaveSetupBtn', 'theoryResyncPracticumBtn', 'theoryAdvancedConfigBtn',
       'theoryLectureSessions', 'theorySkillsSessions', 'theoryDefaultSkillsFacultyRequired',
       'theoryFacultyRoster', 'theorySkillsFacultyRoster', 'theoryModuleSeedBlank', 'theoryModuleSeedPull',
+      'theoryModuleSeedSessions', 'theoryModuleSeedFullImport',
       'theoryModuleSeedSemester', 'theoryModuleSeedApplyBtn', 'theoryMasterToolbar',
       'theoryShowLecturers', 'theoryShowPracticumFaculty', 'theoryShowSkillsLabContent',
       'theorySkillCoverageSection', 'theorySkillCoverage'
@@ -146,7 +148,13 @@ export var UI_TABS = [
     id: 'theory-coordinator',
     shell: 'theory',
     workspace: 'calendars',
-    anchors: ['theoryCoordinatorGrid', 'theoryCoordinatorStatusChip', 'theoryHourSettingsBtn', 'theorySimWarnBanner']
+    anchors: [
+      'theoryCoordinatorGrid',
+      'theoryCoordinatorStatusChip',
+      'theoryCoordinatorExportBtn',
+      'theoryHourSettingsBtn',
+      'theorySimWarnBanner'
+    ]
   },
   {
     id: 'users',

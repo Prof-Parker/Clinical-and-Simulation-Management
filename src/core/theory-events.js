@@ -8,7 +8,7 @@ import { reindexTheoryDay, reindexTheoryDays } from './theory-day-index.js';
 import {
   WEEKDAYS,
   isLectureTopicEvent,
-  stripModuleTitlePrefix,
+  isPlaceholderTopicTitle,
   renumberWeekModules
 } from './theory-modules.js';
 
@@ -189,8 +189,7 @@ export function seedTopicsFromTheory(targetTheory, sourceTheory) {
       if (!isLectureTopicEvent(ev) || !ev.moduleCode) return;
       var src = byCode[ev.moduleCode];
       if (!src) return;
-      var bare = stripModuleTitlePrefix(ev.title);
-      if (bare && bare !== ev.track) return;
+      if (!isPlaceholderTopicTitle(ev.title)) return;
       if (src.title) ev.title = src.title;
       if (src.moduleRef) {
         ev.moduleRef = src.moduleRef;
